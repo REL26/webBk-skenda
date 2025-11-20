@@ -20,11 +20,14 @@ $nama_guru_bk = "...";
 $query_hasil = mysqli_query($koneksi, "
     SELECT 
         hg.skor_visual, hg.skor_auditori, hg.skor_kinestetik, 
-        s.nama, s.kelas, s.jenis_kelamin, s.tahun_ajaran_id, s.jurusan 
+        hg.tanggal_tes,
+        s.nama, s.kelas, s.jenis_kelamin, s.tahun_ajaran_id, s.jurusan
     FROM hasil_gayabelajar hg
     JOIN siswa s ON hg.id_siswa = s.id_siswa
     WHERE hg.id_hasil = $id_hasil AND hg.id_siswa = {$_SESSION['id_siswa']}
 ");
+
+
 
 if (mysqli_num_rows($query_hasil) == 0) {
     die("Error: Data hasil tes tidak ditemukan atau tidak memiliki akses.");
@@ -36,7 +39,6 @@ $skor_v = $hasil['skor_visual'];
 $skor_a = $hasil['skor_auditori'];
 $skor_k = $hasil['skor_kinestetik'];
 
-// Menghitung Total Skor untuk Pie Chart dan Persentase
 $total_skor = $skor_v + $skor_a + $skor_k;
 
 $persen_v = ($total_skor > 0) ? round(($skor_v / $total_skor) * 100, 1) : 0;
@@ -57,7 +59,9 @@ if ($id_tahun_ajaran > 0) {
     }
 }
 
-$tanggal_laporan = date('d F Y'); 
+$tanggal_laporan = !empty($hasil['tanggal_tes']) 
+    ? date('d F Y', strtotime($hasil['tanggal_tes'])) 
+    : date('d F Y'); 
 
 $skor_tertinggi = max($skor_v, $skor_a, $skor_k);
 
@@ -99,6 +103,7 @@ $chart_data = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <title>Laporan Hasil Tes Gaya Belajar</title>
+    <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -131,9 +136,6 @@ $chart_data = [
             flex-grow: 1; 
         }
         
-        /* Default/Desktop View (Pratinjau) */
-        
-        /* Hapus border pada grafik di pratinjau */
         .chart-border {
             border: none; 
             padding: 0; 
@@ -142,22 +144,20 @@ $chart_data = [
 
         .score-box {
             display: flex;
-            flex-direction: row; /* Ubah menjadi Row untuk 2 kolom */
+            flex-direction: row; 
             justify-content: space-around;
             align-items: flex-start; 
             width: 100%;
             padding-bottom: 20px;
-            border-bottom: 1px solid #ccc; /* Pembatas di bawah area grafik */
+            border-bottom: 1px solid #ccc; 
         }
         
-        /* Container untuk Pie Chart */
         .chart-visual-container {
              width: 50%;
              max-width: 350px;
              min-width: 300px;
         }
         
-        /* Container untuk Tabel Rinci */
         .data-visual-container {
              width: 40%;
              min-width: 250px;
@@ -173,7 +173,6 @@ $chart_data = [
              border-bottom: 2px solid #aaa;
         }
 
-        /* --- DESKTOP/PRATINJAU BESAR --- */
         @media (min-width: 1024px) {
             #report-content {
                 max-width: 1000px; 
@@ -184,7 +183,6 @@ $chart_data = [
             }
         }
         
-        /* --- MOBILE/PRATINJAU KECIL --- */
         @media (max-width: 1023px) {
              #report-content {
                 width: 800px; 
@@ -195,7 +193,6 @@ $chart_data = [
             #report-overlay {
                 overflow-x: auto; 
             }
-            /* Ubah tata letak kembali menjadi kolom tunggal jika layar terlalu kecil */
             .score-box {
                 flex-direction: column;
                 align-items: center;
@@ -207,8 +204,6 @@ $chart_data = [
         }
 
 
-        /* * --- PRINT (A4) - PERBAIKAN KRITIS UNTUK EKSPOR PDF --- 
-         */
        @media print {
         body > *:not(#report-overlay) { 
             display: none !important; 
@@ -225,7 +220,6 @@ $chart_data = [
             overflow: visible !important;
         }
         
-        /* MENGURANGI PADDING DI CETAK AGAR MUAT */
         #report-content {
             max-width: 21cm !important; 
             width: 21cm !important;
@@ -241,7 +235,6 @@ $chart_data = [
             margin: 0; 
         }
 
-        /* Mengurangi margin dan menambahkan pembatas di bawah judul */
         .header-laporan {
             margin-bottom: 0.5rem !important;
             padding-bottom: 0.5rem !important;
@@ -251,33 +244,30 @@ $chart_data = [
         }
         .section-title {
             margin-top: 0.8rem !important; 
-            border-bottom: 1px solid black !important; /* Pembatas di bawah judul skor */
+            border-bottom: 1px solid black !important; 
             padding-bottom: 5px !important;
         }
 
-        /* Container Grafik + Tabel (SKOR BOX) */
         .score-box {
             display: flex !important; 
-            flex-direction: row !important; /* Pastikan tetap 2 kolom di cetak */
+            flex-direction: row !important; 
             width: 100% !important; 
             justify-content: space-between !important; 
             align-items: center !important;
             margin: 0 !important; 
-            padding-top: 15px !important; /* Jarak dari judul skor */
+            padding-top: 15px !important; 
             padding-bottom: 20px !important;
-            border-bottom: 1px solid black !important; /* Pembatas di bawah area grafik */
+            border-bottom: 1px solid black !important; 
         }
         
-        /* Ukuran dan Posisi Pie Chart */
         .chart-visual-container {
             width: 50% !important; 
-            height: 250px !important; /* Diperkecil untuk menghemat ruang */
+            height: 250px !important; 
             max-width: 350px !important;
             margin: 0 !important; 
             display: block !important; 
         }
         
-        /* Tabel Rinci */
         .data-visual-container {
             width: 45% !important; 
             margin: 0 !important;
@@ -293,18 +283,15 @@ $chart_data = [
              border-bottom: 1px dashed #ccc !important;
         }
         
-        /* Border Grafik (Diabaikan karena border=none) */
         .chart-border {
             border: none !important;
             padding: 0 !important;
         }
         
-        /* Teks Dominan (HILANG) */
         .dominan-text {
             display: none !important;
         }
         
-        /* Tanda Tangan */
         .tanda-tangan {
             margin-top: 30px !important; 
             text-align: justify;
@@ -317,33 +304,42 @@ $chart_data = [
 <body class="bg-gray-50 antialiased leading-relaxed">
 
     <div id="main-content" class="flex items-center justify-center min-h-screen p-4">
-        <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-2xl">
-            <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">Proses Angket Selesai!</h1>
+    <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-2xl">
+        <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">Hasil Laporan Anda ditemukan!</h1>
+        <p class="text-center text-gray-500 mb-8">Informasi Anda sudah siap. Silakan pilih tindakan di bawah ini.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <p class="text-lg text-gray-600 text-center mb-10">
-                Data tes gaya belajar Anda telah diproses.
-                Gaya belajar dominan Anda: <span class="font-bold text-indigo-800"><?= $judul_hasil; ?></span>.
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <button id="openReportButton" class="block p-6 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-green-300">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <svg class="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <h2 class="text-xl font-bold mb-1">Cek Hasil dan Pratinjau</h2>
-                        <p class="text-sm text-center opacity-90">Lihat laporan lengkap.</p>
-                    </div>
-                </button>
+            <button id="openReportButton" class="block p-6 text-white rounded-xl shadow-lg 
+                bg-indigo-600 
+                hover:bg-indigo-700 hover:shadow-xl               
+                transition duration-150 ease-in-out
+                focus:outline-none focus:ring-4 focus:ring-indigo-300">
                 
-                <a href="../siswa/dashboard.php" class="block p-6 bg-gray-200 text-gray-800 rounded-xl shadow-lg hover:bg-gray-300">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <svg class="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                        <h2 class="text-xl font-bold mb-1">Kembali ke Beranda</h2>
-                        <p class="text-sm text-center opacity-90">Selesaikan sesi ini dan kembali ke menu utama.</p>
-                    </div>
-                </a>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <svg class="w-11 h-11 mb-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    
+                    <h2 class="text-xl font-bold mb-1">Cek Hasil dan Pratinjau</h2>
+                    <p class="text-sm text-center opacity-90">Lihat dokumen laporan lengkap.</p>
+                </div>
+            </button>
+            
+            <a href="dashboard.php" class="block p-6 rounded-xl border-2 border-gray-300 
+                bg-white 
+                text-gray-700 
+                hover:bg-gray-50 hover:border-indigo-400 hover:shadow-md
+                transition duration-150 ease-in-out">
+                <div class="flex flex-col items-center justify-center h-full">
+                    <svg class="w-11 h-11 mb-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    
+                    <h2 class="text-xl font-bold mb-1">Kembali ke Beranda</h2>
+                    <p class="text-sm text-center opacity-90">Kembali ke menu utama aplikasi.</p>
+                </div>
+            </a>
 
-            </div>
         </div>
     </div>
+</div>
     
     <div id="report-overlay">
         
@@ -361,56 +357,61 @@ $chart_data = [
                 <tr><td class="label w-[140px] p-0 align-top">TAHUN PELAJARAN</td><td class="p-0">: <?= $tahun_ajaran; ?></td></tr>
             </table>
 
-            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 pb-1 border-b border-black">1. HASIL SKOR GAYA BELAJAR (Persentase & Rinci)</h4> 
+            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 pb-1 border-b border-black">1. HASIL SKOR GAYA BELAJAR:</h4> 
             
             <div class="score-box mt-5">
-                
-                <div class="chart-visual-container chart-border" style="height: 300px !important;"> 
-                    <canvas id="skorChart"></canvas>
-                </div>
-                
-                <div class="data-visual-container">
-                    <table class="data-visual-table w-full text-left border-collapse">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Gaya Belajar</th>
-                                <th class="text-center">Skor (Poin)</th>
-                                <th class="text-center">Persentase (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Visual (V)</td>
-                                <td class="text-center"><?= $skor_v; ?></td>
-                                <td class="text-center"><?= $persen_v; ?>%</td>
-                            </tr>
-                            <tr>
-                                <td>Auditori (A)</td>
-                                <td class="text-center"><?= $skor_a; ?></td>
-                                <td class="text-center"><?= $persen_a; ?>%</td>
-                            </tr>
-                            <tr>
-                                <td>Kinestetik (K)</td>
-                                <td class="text-center"><?= $skor_k; ?></td>
-                                <td class="text-center"><?= $persen_k; ?>%</td>
-                            </tr>
-                            <tr>
-                                <td class="font-bold border-t-2 border-black pt-2">TOTAL</td>
-                                <td class="text-center font-bold border-t-2 border-black pt-2"><?= $total_skor; ?></td>
-                                <td class="text-center font-bold border-t-2 border-black pt-2">100%</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
 
-            </div>
+    <div class="chart-visual-container chart-border" style="height: 300px !important;"> 
+        <canvas id="skorChart"></canvas>
+    </div>
+
+    <?php
+    $data_gaya = [
+        ['nama' => 'Visual (V)', 'skor' => $skor_v, 'persen' => $persen_v],
+        ['nama' => 'Auditori (A)', 'skor' => $skor_a, 'persen' => $persen_a],
+        ['nama' => 'Kinestetik (K)', 'skor' => $skor_k, 'persen' => $persen_k],
+    ];
+
+    usort($data_gaya, function ($a, $b) {
+        return $b['skor'] <=> $a['skor'];
+    });
+
+    $skor_tertinggi = $data_gaya[0]['skor'];
+    ?>
+
+    <div class="data-visual-container mt-4">
+        <table class="data-visual-table w-full text-left border border-black border-collapse">
+            <thead>
+                <tr class="bg-gray-200">
+                    <th class="text-center py-2">Gaya Belajar</th>
+                    <th class="text-center py-2">Skor (Poin)</th>
+                    <th class="text-center py-2">Persentase (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($data_gaya as $row): ?>
+                    <?php 
+                        $highlight = ($row['skor'] == $skor_tertinggi) ? 'bg-gray-200 font-semibold' : '';
+                    ?>
+                    <tr class="<?= $highlight; ?>">
+                        <td class="text-center py-2"><?= htmlspecialchars($row['nama']); ?></td>
+                        <td class="text-center py-2"><?= htmlspecialchars($row['skor']); ?></td>
+                        <td class="text-center py-2"><?= htmlspecialchars($row['persen']); ?>%</td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
             
             <p class="text-center mt-10 font-bold text-gray-800 dominan-text">Gaya Belajar Dominan: <?= $judul_hasil; ?></p>
 
 
             <div class="tanda-tangan mt-10 flex justify-between text-[10.5pt]">
                 <div class="text-center w-[45%]">
-                    Mengetahui,<br>Kepala Sekolah SMKN 2 Banjarmasin    
+                    Mengetahui,<br>Kepala Sekolah SMKN 2 Banjarmasin     
                     <div style="height: 70px;"></div>
                     <div class="ttd-placeholder mt-2 leading-loose underline font-bold"><?= $nama_kepsek; ?></div>
                 </div>
@@ -434,7 +435,6 @@ $chart_data = [
     </div>
 
 <script>
-    // Daftarkan plugin ChartDataLabels secara global
     Chart.register(ChartDataLabels);
 
     const reportOverlay = document.getElementById('report-overlay');

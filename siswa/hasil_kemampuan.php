@@ -2,46 +2,51 @@
 session_start();
 include '../koneksi.php'; 
 
-// 1. Ambil ID Hasil dari URL
-$id_hasil = $_GET['id_hasil'] ?? null;
-
-if (!$id_hasil || !is_numeric($id_hasil)) {
-    header("Location: dashboard.php?error=no_id");
-    exit();
+if (!isset($_SESSION['id_siswa'])) {
+    header("Location: ../login.php");
+    exit;
 }
 
-// 2. Ambil data laporan dari Database
-// QUERY SUDAH DIKOREKSI TOTAL: 
-// Kolom judul_hasil, nama_kepsek, nama_guru_bk, dan kota telah DIHAPUS.
-// Kolom tanggal_laporan diganti menjadi tanggal_tes.
+$id_siswa_int = (int) $_SESSION['id_siswa'];
+
+$nama_pengguna = isset($_SESSION['nama']) ? htmlspecialchars($_SESSION['nama']) : 'Siswa SMKN 2 Banjarmasin';
+$nama_kepsek = "..."; 
+$nama_guru_bk = "...";      
+$kota = "Banjarmasin"; 
+
 $q_data_utama = "
     SELECT 
         s.nama AS nama_siswa, 
-        s.kelas,                
-        s.jurusan,              
+        s.kelas,          
+        s.jurusan,            
         s.jenis_kelamin, 
         s.tanggal_lahir, 
         hk.skor_A, hk.skor_B, hk.skor_C, hk.skor_D, 
         hk.skor_E, hk.skor_F, hk.skor_G, hk.skor_H, 
-        DATE_FORMAT(hk.tanggal_tes, '%d %M %Y') AS tanggal_laporan
+        hk.tanggal_tes
     FROM 
         hasil_kecerdasan hk
     JOIN 
         siswa s ON hk.id_siswa = s.id_siswa
     WHERE 
-        hk.id_hasil = '$id_hasil'
-"; // Baris di sekitar sini yang dulunya menyebabkan error di baris 38/45
+        hk.id_siswa = ?
+    ORDER BY hk.tanggal_tes DESC
+    LIMIT 1
+"; 
 
-// BARIS INI SEKARANG AKAN BERHASIL (Mungkin ini baris 38 di kode Anda)
-$result_data_utama = mysqli_query($koneksi, $q_data_utama); 
+$stmt = mysqli_prepare($koneksi, $q_data_utama);
+if (!$stmt) die("Error prepare query hasil: " . mysqli_error($koneksi));
+
+mysqli_stmt_bind_param($stmt, "i", $id_siswa_int);
+mysqli_stmt_execute($stmt);
+$result_data_utama = mysqli_stmt_get_result($stmt);
 $data_utama = mysqli_fetch_assoc($result_data_utama);
-
+$tanggal_laporan = date('d F Y', strtotime($data_utama['tanggal_tes'] ?? date('Y-m-d')));
+mysqli_stmt_close($stmt);
 
 if (!$data_utama) {
-    die("Error: Data hasil tes tidak ditemukan atau tidak memiliki akses.");
+    die("Error: Data hasil tes tidak ditemukan untuk siswa ID: {$id_siswa_int}.");
 }
-
-// --- Logika Penentuan Tipe Dominan dan Ekstrak Variabel ---
 
 $skor_tipe = [];
 $tipe_dominan = [];
@@ -64,7 +69,6 @@ foreach($skor_tipe as $tipe => $skor) {
 $tipe_list_str = "'" . implode("', '", $tipe_dominan) . "'";
 if(empty($tipe_list_str)) $tipe_list_str = "'NO_TIPE'";
 
-// Ambil Keterangan dari tabel keterangan_kecerdasan
 $q_data_detail = "
     SELECT 
         nama_tipe, 
@@ -82,37 +86,28 @@ $keterangan_lengkap = mysqli_fetch_all($result_data_detail, MYSQLI_ASSOC);
 $nama_tipe_dominan = array_column($keterangan_lengkap, 'nama_tipe');
 $judul_hasil_dominan = implode(" & ", $nama_tipe_dominan);
 
-// 4. Finalisasi Variabel sebelum extract()
-// Menggabungkan kelas dan jurusan
 $data_utama['kelas_jurusan'] = htmlspecialchars($data_utama['kelas']) . " " . htmlspecialchars($data_utama['jurusan']);
 $data_utama['jenis_kelamin'] = ($data_utama['jenis_kelamin'] == 'L') ? 'Laki-laki' : 'Perempuan';
 
-// Tambahkan data hardcode untuk laporan (karena tidak ada di DB)
-$data_utama['judul_hasil'] = 'Laporan Hasil Tes Kecerdasan Majemuk';
-$data_utama['nama_kepsek'] = 'Nama Kepala Sekolah'; // Ganti dengan nama Kepsek sebenarnya
-$data_utama['nama_guru_bk'] = 'Nama Guru BK';      // Ganti dengan nama Guru BK sebenarnya
-$data_utama['kota'] = 'Banjarmasin';              // Ganti dengan nama Kota/Daerah sebenarnya
+$data_utama['judul_hasil'] = 'Laporan Hasil Tes Kemampuan';
 
-// Cleanup: Hapus kolom mentah yang sudah diproses atau tidak diperlukan lagi
 foreach($skor_tipe as $tipe => $skor) {
     unset($data_utama['skor_' . $tipe]);
 }
 unset($data_utama['kelas']);
 unset($data_utama['jurusan']);
 
-// Ekstrak semua data menjadi variabel terpisah ($nama_siswa, $kelas_jurusan, dll.)
 $data = array_merge($data_utama, [
     'keterangan_lengkap' => $keterangan_lengkap,
     'judul_hasil_dominan' => $judul_hasil_dominan,
-    'skor_tipe' => $skor_tipe
+    'skor_tipe' => $skor_tipe,
+    'nama_kepsek' => $nama_kepsek,
+    'nama_guru_bk' => $nama_guru_bk,
+    'kota' => $kota
 ]);
 extract($data); 
 
-// Cleanup LocalStorage key (jika ada)
-if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['id_siswa'])) {
-    $localStorageKey = 'testAnswers_siswa' . $_SESSION['id_siswa'];
-    echo "<script>localStorage.removeItem('$localStorageKey');</script>";
-}
+$tanggal_laporan = $tanggal_laporan ?? date('d F Y'); 
 ?>
 
 <!DOCTYPE html>
@@ -120,25 +115,15 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>Hasil Angket Kemampuan</title>
+    <title>Laporan Hasil Tes Kemampuan</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <style>
-        /* Desain Card */
-        .card {
-            transition: all 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Menggunakan font Times New Roman untuk tampilan dokumen formal */
         html {
             font-family: 'Times New Roman', Times, serif;
             font-size: 10.5pt;
         }
 
-        /* --- OVERLAY Laporan (Pratinjau Web) --- */
         #report-overlay {
             display: none; 
             position: fixed;
@@ -155,28 +140,19 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
             background-color: white;
             padding: 1rem;
             margin: 0 auto;
+            position: relative;
+        }
+        
+        .data-siswa-table { 
+            flex-grow: 1; 
         }
 
-        /* Tata Letak Data Siswa */
-        .data-siswa {
-             align-items: flex-start;
-        }
-        .data-siswa-table {
-            flex-grow: 1;
-        }
         .tanggal-lahir-box {
             flex-shrink: 0; 
-            margin-left: 0.5rem; 
-            width: 180px; 
             margin-top: 0 !important; 
         }
-
-        /* PERBAIKAN: Aturan untuk Tampilan Pratinjau di Desktop dan Mobile (A4 Zoomable) */
+    
         @media (min-width: 1024px) {
-            /* Desktop View: Terpusat dan rapi */
-            .data-siswa-table { 
-                width: calc(100% - 200px); 
-            }
             #report-content {
                 max-width: 1000px; 
                 padding: 3rem; 
@@ -184,35 +160,6 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
                 box-shadow: 0 0 15px rgba(0,0,0,0.2);
                 border-radius: 0.5rem;
             }
-            /* TTD Menyamping di Desktop */
-            .tanda-tangan {
-                flex-direction: row !important;
-                gap: 0 !important;
-            }
-            /* Data Siswa Menyamping di Desktop */
-            .data-siswa {
-                flex-direction: row !important;
-            }
-        }
-
-        @media (max-width: 1023px) {
-            /* MOBILE View: Memaksa lebar minimum dokumen A4 (~800px) agar bisa dizoom/geser */
-            #report-content {
-                width: 800px; 
-                margin: 1rem auto;
-                padding: 1.5rem;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
-            #report-overlay {
-                overflow-x: auto; 
-            }
-            /* TTD Menyamping di mobile pratinjau */
-            .tanda-tangan {
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                gap: 0 !important;
-            }
-            /* Data Siswa Menyamping di mobile pratinjau */
             .data-siswa {
                 flex-direction: row !important;
             }
@@ -222,10 +169,33 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
             }
         }
         
-        .h-10 { height: 10px; }
+        @media (max-width: 1023px) {
+             #report-content {
+                width: 800px; 
+                margin: 1rem auto;
+                padding: 1.5rem;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            #report-overlay {
+                overflow-x: auto; 
+            }
+            .data-siswa {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            .data-siswa-table {
+                width: 100% !important;
+            }
+            .tanggal-lahir-box {
+                width: 100% !important;
+                margin-left: 0 !important;
+                margin-top: 0.5rem !important;
+            }
+        }
+        
+        .h-10 { height: 70px; }
 
 
-        /* --- Aturan Print (A4 Bersih) - KRITIS JANGAN DIUBAH --- */
         @media print {
             
             body > *:not(#report-overlay) {
@@ -247,42 +217,58 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
             #report-content {
                 max-width: 21cm !important;
                 width: 21cm !important;
-                height: 29.7cm !important; 
-                padding: 1cm !important; 
-                margin: 0 !important;
+                height: auto !important; 
+                padding: 0.8cm 1cm !important; 
+                margin: 0 auto !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
+                position: relative !important;
             }
-
-            /* Memastikan Tanda Tangan Selalu Menyamping saat Print */
-            .tanda-tangan {
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                gap: 0 !important;
-                width: 100% !important;
+            
+            .header-laporan {
+                margin-bottom: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
             }
-
-            /* Memastikan Data Siswa sejajar saat Print */
             .data-siswa {
                 flex-direction: row !important;
+                margin-bottom: 0.8rem !important;
+            }
+            .data-siswa-table {
+                width: calc(100% - 190px) !important;
             }
             .tanggal-lahir-box {
                 width: 180px !important;
                 margin-left: 0.5rem !important;
+                margin-top: 10px !important;
             }
 
-            @page {
-                size: A4;
-                margin: 0.5cm !important;
+            .section-title {
+                margin-top: 0.8rem !important; 
+                border-bottom: 1px solid black !important; 
+                padding-bottom: 5px !important;
+            }
+
+            .hasil-table {
+                margin-top: 0.3rem !important;
+            }
+            
+            .tanda-tangan {
+                margin-top: 30px !important; 
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                gap: 0 !important;
+                width: 100% !important;
             }
             
             .action-buttons-surat { display: none !important; } 
             .hasil-table tr {
                 page-break-inside: avoid;
             }
-            /* Menghilangkan semua jarak tambahan di akhir dokumen */
-            #report-overlay > .h-10 {
-                display: none !important;
+
+            @page {
+                size: A4;
+                margin: 0;
             }
         }
     </style>
@@ -291,39 +277,40 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
 
     <div id="main-content" class="flex items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-2xl">
-            <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">Proses Angket Selesai!</h1>
+        <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">Hasil Laporan Anda ditemukan!</h1>
+        <p class="text-center text-gray-500 mb-8">Informasi Anda sudah siap. Silakan pilih tindakan di bawah ini.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <p class="text-lg text-gray-600 text-center mb-10">
-                Terima kasih, <span class="font-bold text-indigo-600"><?= $nama_siswa; ?></span>. Data angket Anda telah diproses.
-                Tipe kemampuan dominan Anda: <span class="font-bold text-gray-800"><?= $judul_hasil; ?></span>.
-            </p>
-
-            <p class="text-center text-gray-700 mb-8">Silakan pilih aksi selanjutnya:</p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button id="openReportButton" class="block p-6 text-white rounded-xl shadow-lg 
+                bg-indigo-600 
+                hover:bg-indigo-700 hover:shadow-xl               
+                transition duration-150 ease-in-out
+                focus:outline-none focus:ring-4 focus:ring-indigo-300">
                 
-                <button id="openReportButton" class="card block p-6 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <svg class="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <h2 class="text-xl font-bold mb-1">Cek Hasil dan Pratinjau</h2>
-                        <p class="text-sm text-center opacity-90">Lihat laporan lengkap.</p>
-                    </div>
-                </button>
-                
-                <a href="dashboard.php" class="card block p-6 bg-gray-200 text-gray-800 rounded-xl shadow-lg hover:bg-gray-300">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <svg class="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                        <h2 class="text-xl font-bold mb-1">Kembali ke Beranda</h2>
-                        <p class="text-sm text-center opacity-90">Selesaikan sesi ini dan kembali ke menu utama.</p>
-                    </div>
-                </a>
+                <div class="flex flex-col items-center justify-center h-full">
+                    <svg class="w-11 h-11 mb-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    
+                    <h2 class="text-xl font-bold mb-1">Cek Hasil dan Pratinjau</h2>
+                    <p class="text-sm text-center opacity-90">Lihat dokumen laporan lengkap.</p>
+                </div>
+            </button>
+            
+            <a href="dashboard.php" class="block p-6 rounded-xl border-2 border-gray-300 
+                bg-white 
+                text-gray-700 
+                hover:bg-gray-50 hover:border-indigo-400 hover:shadow-md
+                transition duration-150 ease-in-out">
+                <div class="flex flex-col items-center justify-center h-full">
+                    <svg class="w-11 h-11 mb-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    
+                    <h2 class="text-xl font-bold mb-1">Kembali ke Beranda</h2>
+                    <p class="text-sm text-center opacity-90">Kembali ke menu utama aplikasi.</p>
+                </div>
+            </a>
 
-            </div>
         </div>
+    </div>
     </div>
     
     <div id="report-overlay">
@@ -331,7 +318,7 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
         <div id="report-content">
             
             <div class="header-laporan text-center mb-6 border-b-[3px] border-double border-black pb-3">
-                <h2 class="m-0 text-[13pt] font-bold">LAPORAN HASIL ANGKET TES KEMAMPUAN SISWA</h2>
+                <h2 class="m-0 text-[13pt] font-bold">LAPORAN HASIL TES KEMAMPUAN</h2>
                 <h2 class="m-0 text-[13pt] font-bold">BIMBINGAN KONSELING SMKN 2 BANJARMASIN</h2>
             </div>
             
@@ -355,8 +342,8 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
                     <div class="mt-1 font-bold"><?= $tanggal_lahir; ?></div>
                 </div>
             </div>
-
-            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 border-b border-black pb-1">1. HASIL ANGKET KEMAMPUAN: <?= strtoupper($judul_hasil); ?></h4>
+            
+            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 border-b border-black pb-1">1. HASIL ANGKET KEMAMPUAN:</h4>
             <div class="overflow-x-auto">
                 <table class="hasil-table w-full border-collapse mt-1 table-fixed text-[10.5pt]">
                     <thead>
@@ -378,7 +365,7 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
                 </table>
             </div>
 
-            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 border-b border-black pb-1">2. SARAN PROFESI DI PERGURUAN TINGGI</h4>
+            <h4 class="section-title text-[11.5pt] font-bold text-left mt-5 border-b border-black pb-1">2. SARAN PROFESI DI PERGURUAN TINGGI:</h4>
             <div class="overflow-x-auto">
                 <table class="hasil-table w-full border-collapse mt-1 table-fixed text-[10.5pt]">
                     <thead>
@@ -398,19 +385,20 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
                             <td class="border border-black p-2 align-top text-left whitespace-normal">
                                 <?= $saran_tergabung; ?>
                             </td>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div class="tanda-tangan mt-10 flex justify-between text-[10.5pt] flex-col gap-5">
-                <div class="w-full text-center lg:w-[45%]">
+            <div class="tanda-tangan mt-10 flex justify-between text-[10.5pt]">
+                <div class="text-center w-[45%]">
                     Mengetahui,<br>
                     Kepala Sekolah SMKN 2 Banjarmasin
                     <div class="h-10"></div>
                     <div class="ttd-placeholder mt-2 leading-loose underline font-bold"><?= $nama_kepsek; ?></div>
                 </div>
-                <div class="w-full text-center lg:w-[45%]">
+                <div class="text-center w-[45%]">
                     <?= $kota; ?>, <?= $tanggal_laporan; ?><br>
                     Guru Bimbingan Konseling
                     <div class="h-10"></div>
@@ -419,10 +407,10 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
             </div>
 
             <div class="action-buttons-surat mt-8 pt-4 border-t border-gray-300 flex justify-center space-x-4">
-                <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold transition duration-300 hover:bg-indigo-700" onclick="window.print()">
+                <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold transition duration-300 hover:bg-indigo-700 w-1/2" onclick="window.print()">
                     Simpan / Cetak Laporan (ke PDF)
                 </button>
-                <button class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold transition duration-300 hover:bg-gray-300" onclick="closeReport()">
+                <button class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold transition duration-300 hover:bg-gray-300 w-1/2" onclick="closeReport()">
                     Kembali
                 </button>
             </div>
@@ -435,21 +423,21 @@ if (isset($_GET['cleanup']) && $_GET['cleanup'] === 'true' && isset($_SESSION['i
     const reportOverlay = document.getElementById('report-overlay');
     const openReportButton = document.getElementById('openReportButton');
 
-    // Fungsi untuk menampilkan overlay pratinjau
     function openReport() {
         reportOverlay.style.display = 'block';
         document.body.style.overflow = 'hidden'; 
         reportOverlay.scrollTop = 0; 
     }
 
-    // Fungsi untuk menutup overlay
     function closeReport() {
         reportOverlay.style.display = 'none';
         document.body.style.overflow = ''; 
     }
 
-    // Event listener untuk tombol 'Cek Hasil dan Pratinjau'
-    openReportButton.addEventListener('click', openReport);
+    if(openReportButton) {
+        openReportButton.addEventListener('click', openReport);
+    }
+    
 </script>
 
 </body>

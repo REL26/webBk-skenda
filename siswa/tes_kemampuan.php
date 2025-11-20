@@ -91,7 +91,7 @@ $total_cards = $total_soal + 1;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tes Kemampuan - SMKN 2 BJM</title>
+    <title>Tes Kemampuan | BK SMKN 2 Banjarmasin</title>
     <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
