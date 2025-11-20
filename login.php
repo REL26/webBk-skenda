@@ -24,14 +24,14 @@
 
   <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-xs md:max-w-md">
     <div class="flex justify-center mb-6">
-      <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logo/0x200/1758083167/ELEARNINGok2.png" alt="Logo SMKN 2 BJM" class="w-32 h-auto">
+      <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logo/0x200/1758083167/ELEARNINGok2.png" alt="Logo SMKN 2 BJM" class="w-58 h-auto">
     </div>
     <h2 class="text-center text-xl font-bold text-gray-800 mb-1">Login Bimbingan Konseling</h2>
     <p class="text-center font-semibold text-gray-600 mb-6 text-sm">SMKN 2 BJM</p>
     <form action="proses_login.php" method="POST" class="space-y-4">
       <div>
-        <label for="nis" class="block text-gray-800 font-semibold mb-1 text-sm">NIS:</label>
-        <input type="text" id="nis" name="nis" placeholder="Masukkan NIS kamu di sini..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">
+        <label for="nis" class="block text-gray-800 font-semibold mb-1 text-sm">NIS (Siswa) / Email (Guru):</label>
+        <input type="text" id="nis" name="nis" placeholder="Masukkan NIS (Siswa) atau Email (Guru) kamu di sini..." class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm">
       </div>
       <div class="relative">
         <label for="password" class="block text-gray-800 font-semibold mb-1 text-sm">Password:</label>
@@ -40,7 +40,7 @@
       </div>
       <button type="submit" class="w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-900 transition font-semibold">Login</button>
       <div class="text-center pt-1">
-        <a href="index.php" class="text-blue-500 text-sm hover:underline">Lupa Password?</a>
+        <a href="lupa_password.php" class="text-blue-500 text-sm hover:underline">Lupa Password?</a>
       </div>
     </form>
   </div>

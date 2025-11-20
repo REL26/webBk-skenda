@@ -13,7 +13,6 @@
         .primary-bg { background-color: #2F6C6E; }
         .primary-border { border-color: #2F6C6E; }
 
-        /* Transisi menu */
         .fade-slide {
             transition: all 0.24s ease-in-out;
             transform-origin: top;
@@ -29,7 +28,6 @@
             pointer-events: auto;
         }
 
-        /* Card interactions */
         .card-link:hover .card-icon { transform: scale(1.08); }
         .test-card-locked {
             filter: grayscale(100%);
@@ -44,7 +42,7 @@
     </style>
 
     <script>
-        const TRANSITION_DURATION = 240; // ms, sinkron dengan CSS
+        const TRANSITION_DURATION = 240;
 
         function toggleMenu() {
             const menu = document.getElementById('mobileMenu');
@@ -55,13 +53,11 @@
             const isClosed = menu.classList.contains('hidden-transition');
 
             if (isClosed) {
-                // buka
                 menu.classList.remove('hidden-transition');
                 menu.classList.add('visible-transition');
                 overlay.classList.remove('hidden');
                 body.classList.add('overflow-hidden');
             } else {
-                // tutup
                 menu.classList.remove('visible-transition');
                 menu.classList.add('hidden-transition');
                 overlay.classList.add('hidden');
@@ -70,7 +66,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // test-card locked clicks
             document.querySelectorAll('.test-card-locked').forEach(card => {
                 card.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -79,17 +74,14 @@
                 });
             });
 
-            // pasang click handler overlay (defensive: cek dulu elemen ada)
             const overlay = document.getElementById('menuOverlay');
             if (overlay) overlay.addEventListener('click', toggleMenu);
 
-            // optional: tutup menu saat resize > md (agar tidak tersisa terbuka jika resize)
             window.addEventListener('resize', () => {
                 const menu = document.getElementById('mobileMenu');
                 const overlay = document.getElementById('menuOverlay');
                 const body = document.body;
                 if (!menu || !overlay) return;
-                // jika layar menjadi desktop, pastikan menu off
                 if (window.innerWidth >= 768) {
                     menu.classList.remove('visible-transition');
                     menu.classList.add('hidden-transition');
@@ -102,31 +94,25 @@
 </head>
 <body class="font-sans bg-gray-50 text-gray-800">
 
-    <!-- Header -->
     <header class="flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-md relative z-30">
         <div>
             <strong class="text-lg md:text-xl primary-color">Bimbingan Konseling</strong><br>
             <small class="text-xs md:text-sm text-gray-600">SMKN 2 BJM</small>
         </div>
 
-        <!-- Desktop nav -->
         <nav class="hidden md:flex items-center space-x-6">
             <a href="login.php" class="primary-color font-semibold hover:text-green-700 transition">Beranda</a>
             <a href="login.php" class="primary-color hover:text-green-700 transition">Data Profiling</a>
             <button onclick="window.location.href='login.php'" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm">Login</button>
         </nav>
 
-        <!-- Mobile hamburger -->
         <button aria-label="Buka menu" onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40">
             <i class="fas fa-bars"></i>
         </button>
     </header>
 
-    <!-- Overlay (awalnya hidden) -->
     <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20"></div>
 
-    <!-- Mobile Menu (status awal: tertutup secara visual via hidden-transition) -->
-    <!-- jangan tambahkan class 'hidden' di sini supaya transisi scaleY bisa bekerja -->
     <div id="mobileMenu" class="fade-slide hidden-transition absolute top-[64px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-left text-base">
         <a href="login.php" class="py-3 px-4 primary-color font-semibold transition">Beranda</a>
         <hr class="border-gray-200 w-full">
@@ -135,7 +121,6 @@
         <button onclick="window.location.href='login.php'" class="bg-blue-500 text-white py-3 hover:bg-blue-700 transition text-sm">Login</button>
     </div>
 
-    <!-- Hero -->
     <section class="text-center py-12 md:py-20 primary-bg text-white">
         <h1 class="text-2xl md:text-4xl font-extrabold mb-3 px-4">
             Selamat Datang di Layanan Bimbingan Konseling
@@ -146,14 +131,13 @@
         <button onclick="window.location.href='login.php'" class="bg-white primary-color font-bold px-6 py-2 md:px-8 md:py-3 rounded-lg hover:bg-gray-100 transition text-sm md:text-base">Mulai Sekarang</button>
     </section>
 
-    <!-- Pilihan Tes -->
     <section id="tes-minat-bakat" class="py-12 md:py-16 px-4 bg-white">
         <h2 class="text-2xl md:text-3xl font-bold text-center mb-8 primary-color">Pilihan Tes Minat Bakat</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             <a href="login.php" class="card-link flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg hover:shadow-xl transition bg-white hover:bg-gray-50 transform hover:-translate-y-1">
                 <i class="fas fa-brain primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
                 <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Kemampuan</h4>
-                <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">Tes ini mengukur potensi kognitif dan akademik Anda. Hasilnya akan membantu Anda memahami kecerdasan majemuk dan memilih jurusan yang tepat.</p>
+                <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">Tes ini mengukur potensi kognitif dan akademik Anda. Hasilnya akan membantu Anda memahami kemampuan dan memilih jurusan yang tepat.</p>
                 <div class="mt-auto text-sm md:text-base font-bold primary-color">Lihat</div>
             </a>
 
