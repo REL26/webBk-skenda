@@ -422,7 +422,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 
     <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
         <div>
-            <strong class="text-base font-semibold primary-color">BK Admin</strong><br>
+            <strong class="text-base font-semibold primary-color">Guru BK</strong><br>
             <small class="text-xs text-gray-500">SMKN 2 BJM</small>
         </div>
         <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 z-40 hover:bg-gray-100 rounded-lg transition">
@@ -465,10 +465,10 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             </div>
         </div>
         <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-user-friends mr-2"></i> Konseling Individu
             </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-users mr-2"></i> Konseling Kelompok
             </a>
             <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
@@ -491,7 +491,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                         <i class="fas fa-user-tie text-lg"></i>
                     </div>
                     <div>
-                        <strong class="text-base font-semibold block">BK Admin</strong>
+                        <strong class="text-base font-semibold block">Guru BK</strong>
                     </div>
                 </div>
             </div>
@@ -529,7 +529,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
                     </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
                     </a>
                     <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
@@ -761,7 +761,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         </h3>
         <p class="text-gray-600 text-xs sm:text-sm mb-4">
             Gunakan tombol di bawah untuk menaikkan kelas seluruh siswa sesuai jenjang.  
-            X → XI, XI → XII, XII → LULUS.
+            X ke XI, XI ke XII, XII ke LULUS.
         </p>
 
         <form method="POST" action="proses_naik_kelas.php"

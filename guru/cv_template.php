@@ -1,8 +1,6 @@
 <?php
-// session_start() dihilangkan
 include '../koneksi.php';
 
-// Cek sederhana untuk memastikan ID siswa tersedia
 if (!isset($_GET['id_siswa'])) {
     die("ID Siswa tidak ditemukan.");
 }

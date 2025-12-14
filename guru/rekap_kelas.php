@@ -126,6 +126,7 @@ $get_dominant = function($counts) {
         }
     }
     
+    // Logika untuk mendeteksi semua Belum Tes
     if ($max_count == 0 && ($counts['Belum Tes'] ?? 0) == $total) {
         return [
             'types' => [], 
@@ -448,7 +449,7 @@ $total_siswa = count($data_siswa);
 
     <header class="no-print md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
         <div>
-            <span class="text-base font-semibold primary-color">BK Admin</span><br>
+            <span class="text-base font-semibold primary-color">Guru BK</span><br>
             <small class="text-xs text-gray-500">SMKN 2 BJM</small>
         </div>
         <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 z-40 hover:bg-gray-100 rounded-lg transition">
@@ -491,10 +492,10 @@ $total_siswa = count($data_siswa);
             </div>
         </div>
         <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-user-friends mr-2"></i> Konseling Individu
             </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-users mr-2"></i> Konseling Kelompok
             </a>
             <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
@@ -517,7 +518,7 @@ $total_siswa = count($data_siswa);
                         <i class="fas fa-user-tie text-lg"></i>
                     </div>
                     <div>
-                        <span class="text-base font-semibold block">BK Admin</span>
+                        <span class="text-base font-semibold block">Guru BK</span>
                     </div>
                 </div>
             </div>
@@ -555,7 +556,7 @@ $total_siswa = count($data_siswa);
                     <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
                     </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
                     </a>
                     <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
@@ -638,7 +639,7 @@ $total_siswa = count($data_siswa);
             
                 <div class="secondary-bg p-4 rounded-xl shadow-sm mb-6 border border-gray-200 no-print">
                     <h3 class="text-xl font-bold primary-color">
-                        Hasil Rekapitulasi Data <?php echo $filter_title; ?> (Total <?php echo count($data_siswa); ?> Siswa)
+                        Data <?php echo $filter_title; ?> (Total <?php echo count($data_siswa); ?> Siswa)
                     </h3>
                     <div class="mt-4">
                         <button onclick="exportToPdf()" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-sm">
@@ -671,7 +672,7 @@ $total_siswa = count($data_siswa);
                         <p>Berdasarkan data profil siswa <?php echo $filter_title; ?> (Total <?php echo $total_siswa; ?> Siswa), diperoleh ringkasan data sebagai berikut:</p>
                         <ul style="list-style-type: disc; margin-left: 20px; padding-left: 0;">
                             <li>
-                                Gaya Belajar Dominan: Tipe <span><?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi (Semua Belum Tes)' : implode(' dan ', $dominant_gb['types']); ?></span> (<?php echo $dominant_gb['count']; ?> siswa, <?php echo $gb_percentage; ?>% dari siswa yang sudah tes).
+                                Gaya Belajar Dominan: <span><?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi (Semua Belum Tes)' : implode(' dan ', $dominant_gb['types']); ?></span> (<?php echo $dominant_gb['count']; ?> siswa, <?php echo $gb_percentage; ?>% dari siswa yang sudah tes).
                             </li>
                             <li>
                                 Status Tes Siswa: 
@@ -682,7 +683,7 @@ $total_siswa = count($data_siswa);
                     
                     <ul class="wawasan-data-web list-disc pl-5 text-gray-600 space-y-2 text-sm hide-on-print">
                         <li>
-                            Gaya Belajar Dominan: Kelas ini didominasi oleh tipe <span><?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi (Semua Belum Tes)' : implode(' dan ', $dominant_gb['types']); ?></span> (<?php echo $dominant_gb['count']; ?> siswa, <?php echo $gb_percentage; ?>% dari siswa yang sudah tes).
+                            Gaya Belajar Dominan: <span><?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi (Semua Belum Tes)' : implode(' dan ', $dominant_gb['types']); ?></span> (<?php echo $dominant_gb['count']; ?> siswa, <?php echo $gb_percentage; ?>% dari siswa yang sudah tes).
                         </li>
                         <li>
                             Status Tes Siswa: <?php echo $gb_status_text; ?>.
@@ -692,7 +693,7 @@ $total_siswa = count($data_siswa);
                 
                 <div class="report-section show-on-print-only mt-6">
                     <h4 style="font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 5px;">
-                        1. Distribusi Hasil Tes Gaya Belajar
+                        1. Hasil Tes Gaya Belajar
                     </h4>
                     <table class="data-table-report">
                         <thead>
@@ -733,8 +734,8 @@ $total_siswa = count($data_siswa);
 
             <?php else: ?>
                 <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-md shadow-md" role="alert">
-                    <p class="font-bold">Pilih Kriteria Filter</p>
-                    <p class="text-sm">Silakan pilih kombinasi Kelas, Jurusan, dan Tahun Ajaran di atas untuk menampilkan rekapitulasi data profil siswa secara keseluruhan.</p>
+                    <p class="font-bold">Pilih Kriteria</p>
+                    <p class="text-sm">Silakan pilih kombinasi Kelas, Jurusan, dan Tahun Ajaran di atas untuk menampilkan data gaya belajar siswa yang dominan dalam 1 kelas.</p>
                 </div>
             <?php endif; ?>
         </main>

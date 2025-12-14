@@ -138,7 +138,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 
     <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
         <div>
-            <strong class="text-base font-semibold primary-color">BK Admin</strong><br>
+            <strong class="text-base font-semibold primary-color">Guru BK</strong><br>
             <small class="text-xs text-gray-500">SMKN 2 BJM</small>
         </div>
         <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 z-40 hover:bg-gray-100 rounded-lg transition">
@@ -150,7 +150,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
     
     <div id="mobileMenu" class="fade-slide hidden-transition fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
         <a href="dashboard.php" class="py-3 px-5 primary-color bg-gray-100 font-medium transition">
-            <i class="fas fa-home mr-2"></i> Beranda
+            <i class="fas fa-home mr-2"></i> Dashbaord
         </a>
         <hr class="border-gray-200">
         
@@ -181,10 +181,10 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             </div>
         </div>
         <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-user-friends mr-2"></i> Konseling Individu
             </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+            <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-users mr-2"></i> Konseling Kelompok
             </a>
             <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
@@ -207,7 +207,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                         <i class="fas fa-user-tie text-lg"></i>
                     </div>
                     <div>
-                        <strong class="text-base font-semibold block">BK Admin</strong>
+                        <strong class="text-base font-semibold block">Guru BK</strong>
                     </div>
                 </div>
             </div>
@@ -242,10 +242,10 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     </div>
                 </div>
                 <div id="programBkSubmenuDesktop" class="pl-8 space-y-1 hidden">
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingindividu.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
                     </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
                     </a>
                     <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
@@ -266,7 +266,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             <section class="secondary-bg border-b border-gray-200 shadow-sm">
                 <div class="py-8 px-4 sm:px-6 md:py-10 md:px-8 max-w-7xl mx-auto">
                     <h1 class="text-3xl md:text-4xl font-extrabold mb-2 primary-color">
-                        Dashboard Administrator
+                        Beranda Guru BK
                     </h1>
                     <p class="text-gray-600 text-sm md:text-base">
                         Pantau rekap data profiling siswa SMKN 2 Banjarmasin.
@@ -281,7 +281,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                         <i class="fas fa-database primary-color mr-2"></i> Data Hasil Persiswa
                     </h3>
                     <p class="text-gray-600 mb-4 text-sm">
-                        Lihat daftar lengkap siswa dan kelola detail hasil tes profiling siswa.
+                        Lihat daftar lengkap siswa dan kelola detail hasil tes siswa dan biodata siswa.
                     </p>
                     <a href="hasil_tes.php" class="inline-flex items-center px-5 py-2.5 primary-bg text-white text-sm font-semibold rounded-lg hover:bg-[#3C7F81] transition shadow-md w-full justify-center">
                         <i class="fas fa-list-alt mr-2"></i> Lihat Data Hasil Persiswa
@@ -292,25 +292,12 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                         <i class="fas fa-chart-bar primary-color mr-2"></i> Data Hasil Perkelas
                     </h3>
                     <p class="text-gray-600 mb-4 text-sm">
-                        Lihat hasil tes yang dominan per kelas secara keseluruhan.
+                        Lihat hasil tes gaya belajar yang dominan per kelas.
                     </p>
                     <a href="rekap_kelas.php" class="inline-flex items-center px-5 py-2.5 primary-bg text-white text-sm font-semibold rounded-lg hover:bg-[#3C7F81] transition shadow-md w-full justify-center">
                         <i class="fas fa-chart-bar mr-2"></i> Lihat Data Hasil Perkelas
                     </a>
                 </div>
-                
-                <div class="mt-6 md:mt-0 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-800 flex items-center">
-                        <i class="fas fa-chalkboard-teacher primary-color mr-2"></i> Panduan Penggunaan
-                    </h3>
-                    <p class="text-gray-600 text-sm">
-                        Gunakan menu Data Hasil Persiswa untuk melihat daftar lengkap siswa, mencari data berdasarkan filter, dan mengakses detail hasil tes per siswa. Gunakan menu Data Hasil Perkelas untuk melihat dominasi data per kelas secara keseluruhan.
-                    </p>
-                    <a href="hasil_tes.php" class="mt-4 inline-flex items-center text-indigo-600 hover:text-indigo-800 text-sm font-medium transition">
-                        Selengkapnya <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
-
             </section>
         </main>
     </div>
