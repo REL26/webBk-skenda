@@ -118,6 +118,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <nav class="hidden md:flex items-center space-x-6">
             <a href="dashboard.php" class="primary-color hover:text-green-700 transition">Beranda</a>
             <a href="data_profiling.php" class="primary-color hover:text-green-700 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="primary-color hover:text-green-700 transition">Riwayat</a>
             <a href="ganti_password.php" class="primary-color font-semibold hover:text-green-700 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm shadow-md">Logout</button>
         </nav>
@@ -132,6 +133,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <a href="dashboard.php" class="py-3 px-4 primary-color hover:bg-gray-100 transition">Beranda</a>
         <hr class="border-gray-200 w-full">
         <a href="data_profiling.php" class="py-3 px-4 primary-color hover:bg-gray-100 transition">Data Profiling</a>
+        <hr class="border-gray-200 w-full">
+        <a href="riwayatkonselingsiswa.php" class="py-3 px-4 primary-color transition">Riwayat</a>
         <hr class="border-gray-200 w-full">
         <a href="ganti_password.php" class="py-3 px-4 primary-color font-semibold bg-gray-50 transition">Ganti Password</a>
         <hr class="border-gray-200 w-full">

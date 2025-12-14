@@ -333,7 +333,6 @@ $total_cards = $total_soal + 1;
                         <p class="flex items-center"><span class="h-3 w-3 bg-green-600 rounded-full mr-2"></span>Sudah dijawab</p>
                         <p class="flex items-center"><span class="h-3 w-3 bg-gray-800 rounded-full mr-2"></span>Soal aktif</p>
                         <p class="flex items-center"><span class="h-3 w-3 bg-gray-300 rounded-full mr-2"></span>Belum dijawab</p>
-                        <p class="flex items-center"><span class="h-3 w-3 bg-indigo-600 rounded-full mr-2"></span>Halaman Kirim</p>
                     </div>
                 </div>
             </div>

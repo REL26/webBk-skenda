@@ -18,7 +18,8 @@ if (!is_dir($target_dir)) {
     }
 }
 
-$daftar_agama = ['Islam', 'Kristen Protestan', 'Kristen Katolik', 'Hindu', 'Buddha', 'Konghucu', 'Lainnya'];
+$daftar_agama = ['Islam', 'Kristen Protestan', 'Kristen Katolik', 'Hindu', 'Buddha', 'Konghucu'];
+$daftar_kepemilikan_gadget = ['HP Saja', 'Laptop Saja', 'Keduanya', 'Tidak Ada'];
 
 $query_siswa = mysqli_query($koneksi, "
     SELECT 
@@ -67,6 +68,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $organisasi = mysqli_real_escape_string($koneksi, $_POST['organisasi'] ?? '');
     
     $url_foto_db = $_POST['current_url_foto'] ?? '';
+
+    $anak_ke = mysqli_real_escape_string($koneksi, $_POST['anak_ke'] ?? '');
+    $suku = mysqli_real_escape_string($koneksi, $_POST['suku'] ?? '');
+    $cita_cita = mysqli_real_escape_string($koneksi, $_POST['cita_cita'] ?? '');
+    $riwayat_penyakit = mysqli_real_escape_string($koneksi, $_POST['riwayat_penyakit'] ?? '');
+
+    $nama_ayah = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
+    $pekerjaan_ayah = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
+    $nama_ibu = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
+    $pekerjaan_ibu = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
+    $no_hp_ortu = mysqli_real_escape_string($koneksi, $_POST['no_hp_ortu'] ?? '');
+
+    $status_tempat_tinggal = mysqli_real_escape_string($koneksi, $_POST['status_tempat_tinggal'] ?? '');
+    $jarak_ke_sekolah = mysqli_real_escape_string($koneksi, $_POST['jarak_ke_sekolah'] ?? '');
+    $transportasi_ke_sekolah = mysqli_real_escape_string($koneksi, $_POST['transportasi_ke_sekolah'] ?? '');
+    $memiliki_hp_laptop = mysqli_real_escape_string($koneksi, $_POST['memiliki_hp_laptop'] ?? '');
+    $fasilitas_internet = mysqli_real_escape_string($koneksi, $_POST['fasilitas_internet'] ?? '');
+    $fasilitas_belajar_dirumah = mysqli_real_escape_string($koneksi, $_POST['fasilitas_belajar_dirumah'] ?? '');
+    $buku_pelajaran_dimiliki = mysqli_real_escape_string($koneksi, $_POST['buku_pelajaran_dimiliki'] ?? '');
+    $bahasa_sehari_hari = mysqli_real_escape_string($koneksi, $_POST['bahasa_sehari_hari'] ?? '');
+    $bahasa_asing_dikuasai = mysqli_real_escape_string($koneksi, $_POST['bahasa_asing_dikuasai'] ?? '');
+    
+    $pelajaran_disenangi = mysqli_real_escape_string($koneksi, $_POST['pelajaran_disenangi'] ?? '');
+    $pelajaran_tdk_disenangi = mysqli_real_escape_string($koneksi, $_POST['pelajaran_tdk_disenangi'] ?? '');
+    $tempat_curhat = mysqli_real_escape_string($koneksi, $_POST['tempat_curhat'] ?? '');
+    $kelebihan_diri = mysqli_real_escape_string($koneksi, $_POST['kelebihan_diri'] ?? '');
+    $kekurangan_diri = mysqli_real_escape_string($koneksi, $_POST['kekurangan_diri'] ?? '');
 
     if (isset($_FILES["url_foto"]) && $_FILES["url_foto"]["error"] == 0) {
         $file_name = basename($_FILES["url_foto"]["name"]);
@@ -117,7 +145,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 riwayat_sd_mi = '$riwayat_sd_mi',
                 prestasi_pengalaman = '$prestasi_pengalaman',
                 organisasi = '$organisasi',
-                url_foto = '$url_foto_db'
+                url_foto = '$url_foto_db',
+                
+                anak_ke = '$anak_ke',
+                suku = '$suku',
+                cita_cita = '$cita_cita',
+                riwayat_penyakit = '$riwayat_penyakit',
+                nama_ayah = '$nama_ayah',
+                pekerjaan_ayah = '$pekerjaan_ayah',
+                nama_ibu = '$nama_ibu',
+                pekerjaan_ibu = '$pekerjaan_ibu',
+                no_hp_ortu = '$no_hp_ortu',
+                status_tempat_tinggal = '$status_tempat_tinggal',
+                jarak_ke_sekolah = '$jarak_ke_sekolah',
+                transportasi_ke_sekolah = '$transportasi_ke_sekolah',
+                memiliki_hp_laptop = '$memiliki_hp_laptop',
+                fasilitas_internet = '$fasilitas_internet',
+                fasilitas_belajar_dirumah = '$fasilitas_belajar_dirumah',
+                buku_pelajaran_dimiliki = '$buku_pelajaran_dimiliki',
+                bahasa_sehari_hari = '$bahasa_sehari_hari',
+                bahasa_asing_dikuasai = '$bahasa_asing_dikuasai',
+                pelajaran_disenangi = '$pelajaran_disenangi',
+                pelajaran_tdk_disenangi = '$pelajaran_tdk_disenangi',
+                tempat_curhat = '$tempat_curhat',
+                kelebihan_diri = '$kelebihan_diri',
+                kekurangan_diri = '$kekurangan_diri'
+
             WHERE id_siswa = '$id_siswa'
         ";
         
@@ -449,6 +502,7 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
         <nav class="hidden md:flex items-center space-x-6">
             <a href="dashboard.php" class="primary-color hover:text-green-700 transition">Beranda</a>
             <a href="data_profiling.php" class="primary-color font-semibold hover:text-green-700 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="primary-color hover:text-green-700 transition">Riwayat</a>
             <a href="ganti_password.php" class="primary-color hover:text-green-700 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm">Logout</button>
         </nav>
@@ -463,6 +517,8 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
         <a href="dashboard.php" class="py-3 px-4 primary-color hover:bg-gray-100 transition">Beranda</a>
         <hr class="border-gray-200 w-full">
         <a href="data_profiling.php" class="py-3 px-4 primary-color font-semibold bg-gray-50 transition">Data Profiling</a>
+        <hr class="border-gray-200 w-full">
+        <a href="riwayatkonselingsiswa.php" class="py-3 px-4 primary-color transition">Riwayat</a>
         <hr class="border-gray-200 w-full">
         <a href="ganti_password.php" class="py-3 px-4 primary-color transition">Ganti Password</a>
         <hr class="border-gray-200 w-full">
@@ -544,8 +600,9 @@ if (!empty($siswa['url_foto'])) {
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                                 <div><span class="font-medium text-gray-600">Nama Lengkap:</span> <strong class="text-gray-900"><?php echo $siswa['nama']; ?></strong></div>
                                 <div><span class="font-medium text-gray-600">NIS:</span> <strong class="text-gray-900"><?php echo $siswa['nis']; ?></strong></div>
-                                <div><span class="font-medium text-gray-600">Kelas/Jurusan:</span> <strong class="text-gray-900"><?php echo $kelas_jurusan; ?></strong></div>
+                                <div><span class="font-medium text-gray-600">NISN:</span> <strong class="text-gray-900"><?php echo htmlspecialchars($siswa['nisn'] ?? '-'); ?></strong></div>
                                 <div><span class="font-medium text-gray-600">Jenis Kelamin:</span> <strong class="text-gray-900"><?php echo ($siswa['jenis_kelamin'] == 'L' ? 'Laki-laki' : 'Perempuan'); ?></strong></div>
+                                <div><span class="font-medium text-gray-600">Kelas/Jurusan:</span> <strong class="text-gray-900"><?php echo $kelas_jurusan; ?></strong></div>
                             </div>
                         </div>
 
@@ -557,6 +614,10 @@ if (!empty($siswa['url_foto'])) {
                                     <input type="text" id="nama_panggilan" name="nama_panggilan" class="form-input" value="<?php echo htmlspecialchars($siswa['nama_panggilan'] ?? ''); ?>" placeholder="Contoh: Budi" required>
                                 </div>
                                 <div>
+                                    <label for="suku" class="form-label">Suku</label>
+                                    <input type="text" id="suku" name="suku" class="form-input" value="<?php echo htmlspecialchars($siswa['suku'] ?? ''); ?>" placeholder="Contoh: Banjar / Jawa">
+                                </div>
+                                <div>
                                     <label for="agama" class="form-label">Agama <span class="text-red-500">*</span></label>
                                     <select id="agama" name="agama" class="form-select" required>
                                         <option value="">-- Pilih Agama --</option>
@@ -566,6 +627,10 @@ if (!empty($siswa['url_foto'])) {
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
+                                </div>
+                                <div>
+                                    <label for="anak_ke" class="form-label">Anak ke... dari ...</label>
+                                    <input type="text" id="anak_ke" name="anak_ke" class="form-input" value="<?php echo htmlspecialchars($siswa['anak_ke'] ?? ''); ?>" placeholder="Cth: 1 dari 3">
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -586,6 +651,82 @@ if (!empty($siswa['url_foto'])) {
                     </div>
                 </div>
 
+                <hr class="border-gray-200">
+
+                <h3 class="text-xl font-bold text-gray-700 section-title">
+                    <i class="fas fa-users mr-2 primary-color"></i> Data Orang Tua & Keluarga
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 class="text-lg font-semibold text-gray-700 border-b pb-2">Ayah</h4>
+                        <div>
+                            <label for="nama_ayah" class="form-label">Nama Ayah</label>
+                            <input type="text" id="nama_ayah" name="nama_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['nama_ayah'] ?? ''); ?>" placeholder="Nama Ayah Kandung/Wali">
+                        </div>
+                        <div>
+                            <label for="pekerjaan_ayah" class="form-label">Pekerjaan Ayah</label>
+                            <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" placeholder="Contoh: Wiraswasta">
+                        </div>
+                    </div>
+                    <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 class="text-lg font-semibold text-gray-700 border-b pb-2">Ibu</h4>
+                        <div>
+                            <label for="nama_ibu" class="form-label">Nama Ibu</label>
+                            <input type="text" id="nama_ibu" name="nama_ibu" class="form-input" value="<?php echo htmlspecialchars($siswa['nama_ibu'] ?? ''); ?>" placeholder="Nama Ibu Kandung/Wali">
+                        </div>
+                        <div>
+                            <label for="pekerjaan_ibu" class="form-label">Pekerjaan Ibu</label>
+                            <input type="text" id="pekerjaan_ibu" name="pekerjaan_ibu" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ibu'] ?? ''); ?>" placeholder="Contoh: Ibu Rumah Tangga">
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                         <label for="no_hp_ortu" class="form-label"><i class="fas fa-mobile-alt mr-1"></i> No. HP Ayah/Ibu</label>
+                         <input type="text" id="no_hp_ortu" name="no_hp_ortu" class="form-input" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" placeholder="Nomor yang dapat dihubungi">
+                    </div>
+                </div>
+
+                <hr class="border-gray-200">
+
+                <h3 class="text-xl font-bold text-gray-700 section-title">
+                    <i class="fas fa-home mr-2 primary-color"></i> Kondisi Tempat Tinggal & Fasilitas
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="status_tempat_tinggal" class="form-label">Status Tempat Tinggal</label>
+                        <input type="text" id="status_tempat_tinggal" name="status_tempat_tinggal" class="form-input" value="<?php echo htmlspecialchars($siswa['status_tempat_tinggal'] ?? ''); ?>" placeholder="Cth: Tinggal dengan Orang Tua / Kos">
+                    </div>
+                    <div>
+                        <label for="jarak_ke_sekolah" class="form-label">Jarak ke Sekolah</label>
+                        <input type="text" id="jarak_ke_sekolah" name="jarak_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['jarak_ke_sekolah'] ?? ''); ?>" placeholder="Cth: 5 km / 30 menit">
+                    </div>
+                    <div>
+                        <label for="transportasi_ke_sekolah" class="form-label">Transportasi ke sekolah</label>
+                        <input type="text" id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['transportasi_ke_sekolah'] ?? ''); ?>" placeholder="Cth: Sepeda Motor / Angkutan Umum">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="memiliki_hp_laptop" class="form-label">Memiliki HP / Laptop</label>
+                        <select id="memiliki_hp_laptop" name="memiliki_hp_laptop" class="form-select">
+                            <option value="">-- Pilih Kepemilikan --</option>
+                            <?php foreach ($daftar_kepemilikan_gadget as $gadget): ?>
+                                <option value="<?php echo $gadget; ?>" <?php echo ($gadget == ($siswa['memiliki_hp_laptop'] ?? '')) ? 'selected' : ''; ?>>
+                                    <?php echo $gadget; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="fasilitas_internet" class="form-label">Fasilitas Internet dirumah</label>
+                        <input type="text" id="fasilitas_internet" name="fasilitas_internet" class="form-input" value="<?php echo htmlspecialchars($siswa['fasilitas_internet'] ?? ''); ?>" placeholder="Cth: Ada (Wifi) / Tidak Ada">
+                    </div>
+                    <div>
+                        <label for="fasilitas_belajar_dirumah" class="form-label">Fasilitas belajar di rumah</label>
+                        <input type="text" id="fasilitas_belajar_dirumah" name="fasilitas_belajar_dirumah" class="form-input" value="<?php echo htmlspecialchars($siswa['fasilitas_belajar_dirumah'] ?? ''); ?>" placeholder="Cth: Meja Belajar, Ruangan Sendiri">
+                    </div>
+                </div>
+                
                 <hr class="border-gray-200">
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -623,15 +764,77 @@ if (!empty($siswa['url_foto'])) {
                             </div>
                         </div>
                         <div>
+                             <label for="riwayat_penyakit" class="form-label">Penyakit yang di derita</label>
+                             <input type="text" id="riwayat_penyakit" name="riwayat_penyakit" class="form-input" value="<?php echo htmlspecialchars($siswa['riwayat_penyakit'] ?? ''); ?>" placeholder="Cth: Asma, Alergi (kosongkan jika tidak ada)">
+                        </div>
+                        <div>
                             <label for="hobi_kegemaran" class="form-label">Hobi / Kegemaran <span class="text-red-500">*</span></label>
                             <input type="text" id="hobi_kegemaran" name="hobi_kegemaran" class="form-input" value="<?php echo htmlspecialchars($siswa['hobi_kegemaran'] ?? ''); ?>" placeholder="Cth: Membaca, Sepak Bola, Coding" required>
                         </div>
                         <div>
-                            <label for="tentang_saya_singkat" class="form-label">Tentang Saya (Cerita Singkat - maks 500 karakter) <span class="text-red-500">*</span></label>
-                            <textarea id="tentang_saya_singkat" name="tentang_saya_singkat" class="form-textarea min-h-[120px] max-h-[200px]" placeholder="Tuliskan cerita singkat tentang diri Anda, minat, dan tujuan Anda..." required><?php echo htmlspecialchars($siswa['tentang_saya_singkat'] ?? ''); ?></textarea>
+                            <label for="cita_cita" class="form-label">Cita – cita</label>
+                            <input type="text" id="cita_cita" name="cita_cita" class="form-input" value="<?php echo htmlspecialchars($siswa['cita_cita'] ?? ''); ?>" placeholder="Cth: Programmer, Guru, Pengusaha">
                         </div>
                     </div>
                 </div>
+
+                <hr class="border-gray-200">
+
+                <h3 class="text-xl font-bold text-gray-700 section-title">
+                    <i class="fas fa-book-open mr-2 primary-color"></i> Minat Belajar & Bahasa
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="pelajaran_disenangi" class="form-label">Pelajaran yg disenangi</label>
+                        <textarea id="pelajaran_disenangi" name="pelajaran_disenangi" class="form-textarea min-h-[80px] max-h-[150px]" placeholder="Cth: Matematika, Bahasa Inggris, Produktif RPL..."><?php echo htmlspecialchars($siswa['pelajaran_disenangi'] ?? ''); ?></textarea>
+                    </div>
+                    <div>
+                        <label for="pelajaran_tdk_disenangi" class="form-label">Pelajaran yg tdk disenangi</label>
+                        <textarea id="pelajaran_tdk_disenangi" name="pelajaran_tdk_disenangi" class="form-textarea min-h-[80px] max-h-[150px]" placeholder="Cth: Kimia, Fisika, Sejarah..."><?php echo htmlspecialchars($siswa['pelajaran_tdk_disenangi'] ?? ''); ?></textarea>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="bahasa_sehari_hari" class="form-label">Bahasa sehari -hari</label>
+                        <input type="text" id="bahasa_sehari_hari" name="bahasa_sehari_hari" class="form-input" value="<?php echo htmlspecialchars($siswa['bahasa_sehari_hari'] ?? ''); ?>" placeholder="Cth: Indonesia, Banjar">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="bahasa_asing_dikuasai" class="form-label">Bahasa asing yang di kuasai</label>
+                        <input type="text" id="bahasa_asing_dikuasai" name="bahasa_asing_dikuasai" class="form-input" value="<?php echo htmlspecialchars($siswa['bahasa_asing_dikuasai'] ?? ''); ?>" placeholder="Cth: Inggris, Jepang">
+                    </div>
+                </div>
+                
+                <hr class="border-gray-200">
+
+                <h3 class="text-xl font-bold text-gray-700 section-title">
+                    <i class="fas fa-clipboard-list mr-2 primary-color"></i> Profil Psikologis & Diri
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="kelebihan_diri" class="form-label">Kelebihan yang di miliki</label>
+                        <textarea id="kelebihan_diri" name="kelebihan_diri" class="form-textarea min-h-[120px] max-h-[200px]" placeholder="Cth: Disiplin, Mudah bergaul, Cepat tanggap..."><?php echo htmlspecialchars($siswa['kelebihan_diri'] ?? ''); ?></textarea>
+                    </div>
+                    <div>
+                        <label for="kekurangan_diri" class="form-label">Kekurangan yang di miliki</label>
+                        <textarea id="kekurangan_diri" name="kekurangan_diri" class="form-textarea min-h-[120px] max-h-[200px]" placeholder="Cth: Kurang percaya diri, Sering menunda, Pelupa..."><?php echo htmlspecialchars($siswa['kekurangan_diri'] ?? ''); ?></textarea>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="tempat_curhat" class="form-label">Tempat mencurahkan isi hati</label>
+                        <input type="text" id="tempat_curhat" name="tempat_curhat" class="form-input" value="<?php echo htmlspecialchars($siswa['tempat_curhat'] ?? ''); ?>" placeholder="Cth: Orang Tua, Sahabat, Guru BK">
+                    </div>
+                     <div>
+                        <label for="buku_pelajaran_dimiliki" class="form-label">Buku pelajaran yang di miliki</label>
+                        <input type="text" id="buku_pelajaran_dimiliki" name="buku_pelajaran_dimiliki" class="form-input" value="<?php echo htmlspecialchars($siswa['buku_pelajaran_dimiliki'] ?? ''); ?>" placeholder="Cth: Semua buku cetak dari sekolah">
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="tentang_saya_singkat" class="form-label">Cerita Singkat Tentang Saya (maks 500 karakter) <span class="text-red-500">*</span></label>
+                    <textarea id="tentang_saya_singkat" name="tentang_saya_singkat" class="form-textarea min-h-[120px] max-h-[200px]" placeholder="Tuliskan cerita singkat tentang diri Anda, minat, dan tujuan Anda..." required><?php echo htmlspecialchars($siswa['tentang_saya_singkat'] ?? ''); ?></textarea>
+                </div>
+
 
                 <hr class="border-gray-200">
 
@@ -671,14 +874,14 @@ if (!empty($siswa['url_foto'])) {
                     <div>
                         <label for="prestasi_pengalaman" class="form-label">Prestasi & Pengalaman (Lomba/Olimpiade)</label>
                         <textarea id="prestasi_pengalaman" name="prestasi_pengalaman" class="form-textarea min-h-[120px] max-h-[300px]" 
-                                  placeholder="Tuliskan daftar prestasi Anda, pisahkan dengan baris baru."
+                                  placeholder="Tuliskan daftar prestasi Anda, pisahkan dengan baris baru. (Kosongkan jika tidak ada/tidak punya)"
                                   onfocus="showInstructions('prestasi', event)"><?php echo htmlspecialchars($siswa['prestasi_pengalaman'] ?? ''); ?></textarea>
                         <p class="text-xs text-gray-500 mt-1">Opsional: Klik untuk lihat format pengisian. Gunakan Enter untuk baris baru.</p>
                     </div>
                     <div>
                         <label for="organisasi" class="form-label">Organisasi di Sekolah / Eksternal</label>
                         <textarea id="organisasi" name="organisasi" class="form-textarea min-h-[120px] max-h-[300px]" 
-                                  placeholder="Tuliskan daftar organisasi yang diikuti, pisahkan dengan baris baru."
+                                  placeholder="Tuliskan daftar organisasi yang diikuti, pisahkan dengan baris baru. (Kosongkan jika tidak ada/tidak punya)"
                                   onfocus="showInstructions('prestasi', event)"><?php echo htmlspecialchars($siswa['organisasi'] ?? ''); ?></textarea>
                         <p class="text-xs text-gray-500 mt-1">Opsional: Klik untuk lihat format pengisian. Gunakan Enter untuk baris baru.</p>
                     </div>
@@ -691,12 +894,12 @@ if (!empty($siswa['url_foto'])) {
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-inner mb-10">
                     <div class="p-3 bg-white rounded-lg border border-gray-300">
-                        <label class="form-label text-sm text-gray-500">Hasil Tes Kemampuan</label>
+                        <label class="form-label text-sm text-gray-500">Tipe Kemampuan</label>
                         <input type="text" class="form-input bg-gray-200 font-medium border-gray-400 text-gray-700" value="<?php echo htmlspecialchars($hasil_tes_kemampuan_calculated); ?>" readonly>
                         <p class="text-xs text-red-500 mt-1">Diambil dari tes yang Anda kerjakan.</p>
                     </div>
                     <div class="p-3 bg-white rounded-lg border border-gray-300">
-                        <label class="form-label text-sm text-gray-500">Gaya Belajar Dominan</label>
+                        <label class="form-label text-sm text-gray-500">Tipe Gaya Belajar</label>
                         <input type="text" class="form-input bg-gray-200 text-gray-700 font-medium" value="<?php echo htmlspecialchars($gaya_belajar); ?>" readonly>
                         <p class="text-xs text-red-500 mt-1">Diambil dari tes yang Anda kerjakan.</p>
                     </div>
@@ -704,7 +907,7 @@ if (!empty($siswa['url_foto'])) {
                     <?php $is_kepribadian_empty = empty($siswa['hasil_tes_kepribadian'] ?? ''); ?>
                     <div class="p-3 bg-white rounded-lg border border-gray-300 
                         <?php echo $is_kepribadian_empty ? 'no-print faded-input-container' : ''; ?>">
-                        <label class="form-label text-sm text-gray-500">Hasil Tes Kepribadian</label>
+                        <label class="form-label text-sm text-gray-500">Tipe Kepribadian</label>
                         <input type="text" class="form-input font-medium" 
                                value="<?php echo $is_kepribadian_empty ? 'segera hadir' : htmlspecialchars($siswa['hasil_tes_kepribadian'] ?? ''); ?>" 
                                readonly>

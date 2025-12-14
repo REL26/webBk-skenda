@@ -423,10 +423,10 @@ $chart_data = [
             </div>
 
             <div class="action-buttons-surat mt-8 pt-4 border-t border-gray-300 flex justify-center space-x-4">
-                <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold transition duration-300 hover:bg-indigo-700" onclick="window.print()">
+                <button class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold transition duration-300 hover:bg-indigo-700 w-1/2" onclick="window.print()">
                     Simpan / Cetak Laporan (ke PDF)
                 </button>
-                <button class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold transition duration-300 hover:bg-gray-300" onclick="closeReport()">
+                <button class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold transition duration-300 hover:bg-gray-300 w-1/2" onclick="closeReport()">
                     Kembali
                 </button>
             </div>

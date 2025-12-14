@@ -32,21 +32,43 @@ $nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
 
 $is_biodata_complete = true;
 $required_fields = [
-
+    'nama_panggilan',
     'tempat_lahir', 
     'tanggal_lahir', 
     'alamat_lengkap', 
     'berat_badan', 
     'tinggi_badan', 
     'agama', 
-
-    'tentang_saya_singkat', 
+    'hobi_kegemaran',
+    'anak_ke',
+    'suku',
+    'cita_cita',
     'no_telp', 
     'email', 
     'instagram', 
+    'tentang_saya_singkat', 
     'riwayat_sma_smk_ma', 
     'riwayat_smp_mts', 
-    'riwayat_sd_mi'
+    'riwayat_sd_mi',
+    'nama_ayah',
+    'pekerjaan_ayah',
+    'nama_ibu',
+    'pekerjaan_ibu',
+    'no_hp_ortu',
+    'status_tempat_tinggal',
+    'jarak_ke_sekolah',
+    'transportasi_ke_sekolah',
+    'memiliki_hp_laptop',
+    'fasilitas_internet',
+    'fasilitas_belajar_dirumah',
+    'pelajaran_disenangi',
+    'pelajaran_tdk_disenangi',
+    'buku_pelajaran_dimiliki',
+    'bahasa_sehari_hari',   
+    'bahasa_asing_dikuasai',
+    'tempat_curhat', 
+    'kelebihan_diri',
+    'kekurangan_diri'
 ];
 
 foreach ($required_fields as $field) {
@@ -269,6 +291,7 @@ $status_gayabelajar_js = $is_tes_gayabelajar_done ? 'true' : 'false';
         <nav class="hidden md:flex items-center space-x-6">
             <a href="dashboard.php" class="primary-color font-semibold hover:text-green-700 transition">Beranda</a>
             <a href="data_profiling.php" class="primary-color hover:text-green-700 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="primary-color hover:text-green-700 transition">Riwayat</a>
             <a href="ganti_password.php" class="primary-color hover:text-green-700 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm">Logout</button>
         </nav>
@@ -283,6 +306,8 @@ $status_gayabelajar_js = $is_tes_gayabelajar_done ? 'true' : 'false';
         <a href="dashboard.php" class="py-3 px-4 primary-color bg-gray-50 font-semibold transition">Beranda</a>
         <hr class="border-gray-200 w-full">
         <a href="data_profiling.php" class="py-3 px-4 primary-color transition">Data Profiling</a>
+        <hr class="border-gray-200 w-full">
+        <a href="riwayatkonselingsiswa.php" class="py-3 px-4 primary-color transition">Riwayat</a>
         <hr class="border-gray-200 w-full">
         <a href="ganti_password.php" class="py-3 px-4 primary-color transition">Ganti Password</a>
         <hr class="border-gray-200 w-full">
