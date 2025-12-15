@@ -28,10 +28,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if ($data) {
-
         $admin = "6287834937238";
         $nama = urlencode($data["nama"]);
-        $id_value = urlencode($identifier);
         $role_text = ($role === "siswa") ? "Siswa" : "Guru";
 
         $pesan = urlencode(
@@ -48,12 +46,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 
 if (isset($_GET["status"])) {
-    $status = $_GET["status"];
-
-    if ($status === "notfound") {
-        $message = "Data tidak ditemukan. Pastikan memasukkan NIS (siswa) atau Email (guru) yang benar.";
+    if ($_GET["status"] === "notfound") {
+        $message = "Data tidak ditemukan. Pastikan NIS (siswa) atau Email (guru) benar.";
         $alert_class = "bg-red-100 border-red-500 text-red-700";
-    } elseif ($status === "error_koneksi") {
+    } elseif ($_GET["status"] === "error_koneksi") {
         $message = "Tidak dapat terhubung ke database. Hubungi admin.";
         $alert_class = "bg-red-100 border-red-500 text-red-700";
     }
@@ -62,49 +58,107 @@ if (isset($_GET["status"])) {
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lupa Password - BK SMKN 2 BJM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lupa Password - BK SMKN 2 BJM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
 
-<div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-xs md:max-w-md">
+<!-- ================= MAIN CARD ================= -->
+<div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full
+            grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+
+  <!-- ================= LEFT : FORM ================= -->
+  <div class="p-8 md:p-10 flex flex-col justify-center">
+
     <div class="flex justify-center mb-6">
-      <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logo/0x200/1758083167/ELEARNINGok2.png" alt="Logo SMKN 2 BJM" class="w-58 h-auto">
+      <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logo/0x200/1758083167/ELEARNINGok2.png"
+           class="w-44">
     </div>
-    <h2 class="text-xl font-bold text-center mb-1">Lupa Password</h2>
-    <p class="text-center text-gray-600 text-sm mb-6">
-        Masukkan NIS untuk Siswa dan Email untuk Guru.  
+
+    <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">
+      Lupa Password
+    </h2>
+    <p class="text-center text-gray-500 mb-6 text-sm">
+      Reset akun Bimbingan Konseling
     </p>
 
     <?php if (!empty($message)): ?>
-        <div class="<?= $alert_class ?> border-l-4 p-3 mb-4 text-sm">
-            <?= $message ?>
-        </div>
+      <div class="<?= $alert_class ?> border-l-4 p-3 mb-4 text-sm rounded">
+        <?= $message ?>
+      </div>
     <?php endif; ?>
 
-    <form action="" method="POST" class="space-y-4">
+    <form method="POST" class="space-y-5">
 
-        <div>
-            <label class="text-sm font-semibold">NIS / Email:</label>
-            <input type="text" required name="identifier"
-                   class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400"
-                   placeholder="Masukkan NIS atau Email">
-        </div>
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">
+          NIS (Siswa) / Email (Guru)
+        </label>
+        <input type="text" name="identifier" required
+          placeholder="Masukkan NIS atau Email"
+          class="w-full px-4 py-3 rounded-xl border border-gray-300
+                 focus:ring-2 focus:ring-gray-700 focus:outline-none">
+      </div>
 
-        <button type="submit"
-                class="w-full bg-gray-800 text-white py-2 rounded-lg font-semibold hover:bg-gray-900 flex items-center justify-center">
-            <i class="fab fa-whatsapp mr-2"></i> Verifikasi & Hubungi Admin
-        </button>
+      <button type="submit"
+        class="w-full bg-gray-800 text-white py-3 rounded-xl
+               font-semibold hover:bg-gray-900 transition">
+        Verifikasi & Hubungi Admin BK
+      </button>
+
     </form>
 
-    <div class="mt-4 text-center">
-        <a href="login.php" class="text-sm text-blue-700 hover:underline">
-            Kembali ke Halaman Login
-        </a>
+    <div class="text-center mt-5">
+      <a href="login.php"
+         class="text-sm text-gray-600 hover:text-gray-900 hover:underline">
+        ← Kembali ke Login
+      </a>
     </div>
+  </div>
+
+  <!-- ================= RIGHT : TATA CARA ================= -->
+  <div class="bg-gradient-to-br from-gray-900 to-gray-800
+              text-white p-10 flex flex-col justify-center">
+
+    <div class="w-16 h-1 bg-white/60 mb-6 rounded-full"></div>
+
+    <h3 class="text-3xl font-bold mb-6">
+      Tata Cara Lupa Password
+    </h3>
+
+<div class="space-y-4 text-gray-200 text-sm leading-relaxed">
+
+  <div class="bg-white/5 rounded-xl px-5 py-4 flex gap-3">
+    <span>▸</span>
+    <span>Masukkan <b>NIS</b> jika Anda adalah <b>Siswa</b>.</span>
+  </div>
+
+  <div class="bg-white/5 rounded-xl px-5 py-4 flex gap-3">
+    <span>▸</span>
+    <span>Masukkan <b>Email</b> jika Anda adalah <b>Guru BK</b>.</span>
+  </div>
+
+  <div class="bg-white/5 rounded-xl px-5 py-4 flex gap-3">
+    <span>▸</span>
+    <span>Sistem akan mengarahkan Anda ke <b>WhatsApp Admin BK</b>.</span>
+  </div>
+
+  <div class="bg-white/5 rounded-xl px-5 py-4 flex gap-3">
+    <span>▸</span>
+    <span>Admin akan membantu proses reset password.</span>
+  </div>
+
+</div>
+
+
+    <p class="text-gray-400 text-xs mt-6">
+      *Pastikan data yang dimasukkan benar dan aktif.
+    </p>
+
+  </div>
 
 </div>
 
