@@ -61,16 +61,15 @@ if (isset($_GET["status"])) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lupa Password - BK SMKN 2 BJM</title>
+  <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
 
-<!-- ================= MAIN CARD ================= -->
 <div class="bg-white rounded-3xl shadow-2xl max-w-5xl w-full
             grid grid-cols-1 md:grid-cols-2 overflow-hidden">
 
-  <!-- ================= LEFT : FORM ================= -->
   <div class="p-8 md:p-10 flex flex-col justify-center">
 
     <div class="flex justify-center mb-6">
@@ -119,7 +118,6 @@ if (isset($_GET["status"])) {
     </div>
   </div>
 
-  <!-- ================= RIGHT : TATA CARA ================= -->
   <div class="bg-gradient-to-br from-gray-900 to-gray-800
               text-white p-10 flex flex-col justify-center">
 
