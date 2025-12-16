@@ -1,4 +1,5 @@
 <?php
+// ... (Bagian PHP Logic Anda tetap sama, tidak ada perubahan di sini)
 session_start();
 include '../koneksi.php'; 
 
@@ -10,27 +11,27 @@ if (!isset($_SESSION['id_siswa'])) {
 $id_siswa = $_SESSION['id_siswa'];
 
 function tgl_indo($tanggal){
-	$bulan = array (
-		1 => 'Januari',
-		'Februari',
-		'Maret',
-		'April',
-		'Mei',
-		'Juni',
-		'Juli',
-		'Agustus',
-		'September',
-		'Oktober',
-		'November',
-		'Desember'
-	);
+    $bulan = array (
+        1 => 'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember'
+    );
     $pecahkan = explode('-', $tanggal);
     
-	return $pecahkan[2] . ' ' . $bulan[ (int)$pecahkan[1] ] . ' ' . $pecahkan[0];
+    return $pecahkan[2] . ' ' . $bulan[ (int)$pecahkan[1] ] . ' ' . $pecahkan[0];
 }
 
 // ==========================================================================================
-// KEPUTUSAN INDIVIDU - FETCH
+// KEPUTUSAN INDIVIDU - FETCH (Logika sama)
 // ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_individu') {
     header('Content-Type: application/json');
@@ -64,7 +65,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_individu') {
 }
 
 // ==========================================================================================
-// KEPUTUSAN INDIVIDU - SUBMIT (TIDAK BOLEH UPDATE)
+// KEPUTUSAN INDIVIDU - SUBMIT (Logika sama)
 // ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
     header('Content-Type: application/json');
@@ -85,17 +86,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
         $stmt_check->close();
 
         if ($is_filled) {
-            // LOGIKA BARU: Jika sudah terisi, tolak pengiriman
             echo json_encode(["status" => "error", "message" => "Penilaian ini sudah pernah Anda isi dan tidak dapat diubah lagi."]);
             exit;
         } 
         
-        // Jika belum terisi, lakukan INSERT
         $query_submit = "
             INSERT INTO kepuasan_siswa (aspek_penerimaan, aspek_kemudahan_curhat, aspek_kepercayaan, aspek_pemecahan_masalah, id_konseling, id_siswa)
             VALUES (?, ?, ?, ?, ?, ?)
         ";
-        $bind_types = "iiiiii"; // 4 rating + id_konseling + id_siswa
+        $bind_types = "iiiiii";
         $bind_values = [
             $aspek_penerimaan, 
             $aspek_kemudahan_curhat, 
@@ -123,7 +122,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
 }
 
 // ==========================================================================================
-// KEPUTUSAN KELOMPOK - FETCH
+// KEPUTUSAN KELOMPOK - FETCH (Logika sama)
 // ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_kelompok') {
     header('Content-Type: application/json');
@@ -157,7 +156,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_kelompok') {
 }
 
 // ==========================================================================================
-// KEPUTUSAN KELOMPOK - SUBMIT (TIDAK BOLEH UPDATE)
+// KEPUTUSAN KELOMPOK - SUBMIT (Logika sama)
 // ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
     header('Content-Type: application/json');
@@ -178,12 +177,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
         $stmt_check->close();
 
         if ($is_filled) {
-            // LOGIKA BARU: Jika sudah terisi, tolak pengiriman
             echo json_encode(["status" => "error", "message" => "Penilaian ini sudah pernah Anda isi dan tidak dapat diubah lagi."]);
             exit;
         } 
         
-        // Jika belum terisi, lakukan INSERT
         $query_submit = "
             INSERT INTO kepuasan_kelompok (aspek_penerimaan, aspek_kemudahan_curhat, aspek_kepercayaan, aspek_pemecahan_masalah, id_kelompok, id_siswa)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -216,7 +213,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
 }
 
 // ------------------------------------------------------------------------------------------
-// PENGAMBILAN DATA UNTUK TAMPILAN UTAMA
+// PENGAMBILAN DATA UNTUK TAMPILAN UTAMA (Logika sama)
 // ------------------------------------------------------------------------------------------
 
 // Ambil data siswa
@@ -232,7 +229,7 @@ if (!$siswa_data) {
     exit;
 }
 
-// Query untuk Riwayat Konseling Individu (ki=konseling_individu, rk=riwayat_konseling, ks=kepuasan_siswa)
+// Query untuk Riwayat Konseling Individu
 $query_individu = "
     SELECT 
         ki.id_konseling, ki.tanggal_pelaksanaan, ki.pertemuan_ke, ki.gejala_nampak,
@@ -254,10 +251,9 @@ $stmt_individu->bind_param("ii", $id_siswa, $id_siswa);
 $stmt_individu->execute();
 $result_individu = $stmt_individu->get_result();
 $riwayat_individu_count = $result_individu->num_rows;
-$stmt_individu->close();
 
 
-// Query untuk Riwayat Konseling Kelompok (kk=kelompok, rk=riwayat_kelompok, pk=detail_kelompok, kks=kepuasan_kelompok)
+// Query untuk Riwayat Konseling Kelompok
 $query_kelompok = "
     SELECT 
         kk.id_kelompok, kk.tanggal_pelaksanaan, kk.pertemuan_ke, kk.topik_masalah,
@@ -300,6 +296,8 @@ $stmt_kelompok->close();
         * { font-family: 'Inter', sans-serif; }
         .primary-bg { background-color: #2F6C6E; }
         .primary-color { color: #2F6C6E; }
+        
+        /* Transition untuk modal */
         .modal {
             transition: opacity 0.3s ease, visibility 0.3s ease;
             visibility: hidden;
@@ -309,26 +307,68 @@ $stmt_kelompok->close();
             visibility: visible;
             opacity: 1;
         }
-        /* CSS untuk pilihan rating yang terpilih */
-        .rating-input:checked + .rating-option {
-            background-color: #3b82f6; /* blue-500 */
-            color: white;
-            border-color: #2563eb; /* blue-700 */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+
+        /* Styling radio button untuk Rating Kepuasan */
+        .rating-input {
+            /* Sembunyikan radio button bawaan */
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-        /* CSS untuk mode Read-Only */
-        .rating-option-disabled {
-            background-color: #f3f4f6; /* gray-100 */
-            color: #4b5563; /* gray-600 */
-            cursor: default;
-            opacity: 0.7;
+        
+/* Style untuk opsi rating (default mode input) */
+.rating-option {
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    /* Ganti @apply border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-100; */
+    border-width: 2px;
+    border-color: #d1d5db; /* Tailwind gray-300 */
+    background-color: #ffffff;
+    color: #4b5563; /* Tailwind gray-700 */
+}
+
+.rating-option:hover {
+    background-color: #f3f4f6; /* Tailwind gray-100 */
+}
+
+/* CSS untuk pilihan rating yang terpilih (Mode Input) */
+.rating-input:checked + .rating-option {
+    /* Ganti @apply bg-blue-600 text-white border-blue-700 shadow-md; */
+    background-color: #2563eb; /* Tailwind blue-600 */
+    color: #ffffff;
+    border-color: #1d4ed8; /* Tailwind blue-700 */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Tailwind shadow-md */
+}
+
+/* --- PERUBAHAN UTAMA UNTUK MODE READ-ONLY (sesuai permintaan) --- */
+/* Style untuk semua opsi ketika input dinonaktifkan */
+.rating-input:disabled + .rating-option {
+    /* Ganti @apply bg-gray-100 text-gray-500 cursor-default opacity-80; */
+    background-color: #f3f4f6; /* Tailwind gray-100 */
+    color: #6b7280; /* Tailwind gray-500 */
+    cursor: default;
+    opacity: 0.8;
+    border-color: #e5e7eb; /* gray-200, tetap ada di kode lama */
+}
+
+/* Style untuk rating yang terpilih di mode Read-Only (Highlight Hijau) */
+.rating-input:checked:disabled + .rating-option {
+    /* Ganti @apply bg-green-500 text-white border-green-600 opacity-100 shadow-lg; */
+    background-color: #10b981; /* Tailwind green-500 */
+    color: #ffffff;
+    border-color: #059669; /* Tailwind green-600 */
+    opacity: 1;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* Tailwind shadow-lg */
+}
+        /* Style untuk card riwayat (tambahan) */
+        .counseling-card {
+            border-left: 5px solid #2F6C6E; /* Primary color */
         }
-        .rating-option-disabled.selected {
-            background-color: #10b981; /* emerald-500 */
-            color: white;
-            border-color: #059669; /* emerald-600 */
-            opacity: 1;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        
+        /* FIX: Tambahkan max-width untuk konten modal agar bisa di-scroll di HP */
+        .modal-content-fix {
+             max-height: 90vh; /* Agar konten bisa di-scroll jika terlalu panjang */
         }
     </style>
     <script>
@@ -336,25 +376,30 @@ $stmt_kelompok->close();
         let currentSesiId = null;
         let currentSesiType = null; // 'individu' or 'kelompok'
 
+        // Fungsi untuk mengkonfigurasi Modal Kepuasan
         function openKepuasanModal(id, type) {
             currentSesiId = id;
             currentSesiType = type;
             const modal = $('#kepuasanModal');
             const title = modal.find('#kepuasanModalTitle');
             const form = $('#kepuasanForm');
+            const submitBtn = $('#submitKepuasanBtn');
+            const statusDiv = modal.find('#statusPenilaian');
+            const ratingContainers = modal.find('.rating-container');
 
-            // 1. Reset form, inputs, and state
+            // 1. Reset form and initial state
             form.trigger('reset');
-            $('.rating-input').prop('checked', false);
-            $('.rating-option').removeClass('rating-option-disabled selected').prop('disabled', false).parent().removeClass('cursor-default');
-            $('#submitKepuasanBtn').show().prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Simpan Penilaian');
+            // Pastikan semua input dienable dan reset styling Read-Only/Selected
+            ratingContainers.find('.rating-input').prop('checked', false).prop('disabled', false);
+            ratingContainers.find('.rating-option').removeClass('bg-blue-600 text-white border-blue-700 shadow-md bg-green-500 text-white border-green-600 opacity-100 shadow-lg').addClass('cursor-pointer').removeClass('bg-gray-100 text-gray-500 opacity-80 border-gray-200');
+            
+            submitBtn.show().prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Simpan Penilaian');
+            statusDiv.addClass('hidden').removeClass('bg-red-100 text-red-700 bg-green-100 text-green-700');
             
             form.find('#id_sesi').val(id);
             form.find('#sesi_type').val(type);
             
             title.text('Penilaian Kepuasan Konseling ' + (type === 'individu' ? 'Individu' : 'Kelompok'));
-            modal.find('#jenisSesiText').text(type === 'individu' ? 'Individu' : 'Kelompok');
-            modal.find('#statusPenilaian').addClass('hidden');
 
             // 2. Fetch existing satisfaction data
             const action = type === 'individu' ? 'fetch_kepuasan_individu' : 'fetch_kepuasan_kelompok';
@@ -363,47 +408,49 @@ $stmt_kelompok->close();
                 url: pageUrl + '?action=' + action + '&id=' + id,
                 method: 'GET',
                 dataType: 'json',
+                beforeSend: function() {
+                   // Tampilkan spinner kecil saat fetch
+                   statusDiv.removeClass('hidden').addClass('bg-gray-100 text-gray-700 p-2 rounded-lg text-sm').html('<i class="fas fa-spinner fa-spin mr-1"></i> Memuat data penilaian...');
+                },
                 success: function(res) {
                     if (res.status === 'success') {
-                        // --- MODE READ-ONLY ---
+                        // --- MODE READ-ONLY (Sudah Diisi) ---
                         const data = res.data;
-                        const ratings = [data.aspek_penerimaan, data.aspek_kemudahan_curhat, data.aspek_kepercayaan, data.aspek_pemecahan_masalah];
+                        const ratings = [
+                            data.aspek_penerimaan, 
+                            data.aspek_kemudahan_curhat, 
+                            data.aspek_kepercayaan, 
+                            data.aspek_pemecahan_masalah
+                        ];
                         
                         for (let i = 0; i < ratings.length; i++) {
                             const value = ratings[i];
                             const aspek = 'r' + (i + 1);
                             
-                            // Set selected value
-                            if (value) {
-                                const selectedInput = $('#' + aspek + '_' + value);
-                                selectedInput.prop('checked', true); // Check the input
-                                
-                                // Apply visual style for selected item in read-only mode
-                                selectedInput.next('.rating-option').addClass('rating-option-disabled selected');
-                            }
-                            
-                            // Disable all inputs
+                            // Set selected value and disable all options
                             $('input[name="' + aspek + '"]').prop('disabled', true);
-                            $('input[name="' + aspek + '"]').next('.rating-option').addClass('rating-option-disabled').removeClass('cursor-pointer').parent().addClass('cursor-default');
+                            if (value) {
+                                $('#' + aspek + '_' + value).prop('checked', true);
+                            }
                         }
                         
-                        // Change button and status for filled form
-                        modal.find('#submitKepuasanBtn').hide();
-                        modal.find('#statusPenilaian').removeClass('hidden').html('<i class="fas fa-check-circle mr-1 text-green-600"></i> Penilaian telah diisi pada ' + (data.tanggal_isi ? new Date(data.tanggal_isi).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : 'sebelumnya') + ' dan tidak dapat diubah.');
+                        // Update status dan sembunyikan tombol submit
+                        submitBtn.hide();
+                        statusDiv.removeClass('hidden').removeClass('bg-gray-100').addClass('bg-green-100 text-green-700 p-2 rounded-lg text-sm').html('<i class="fas fa-check-circle mr-1"></i> Penilaian telah diisi pada ' + (data.tanggal_isi ? new Date(data.tanggal_isi).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : 'sebelumnya') + ' dan tidak dapat diubah.');
 
                     } else if (res.status === 'not_found') {
-                        // --- MODE INPUT ---
-                        modal.find('#submitKepuasanBtn').show();
-                        // Ensure all inputs are enabled (already done in step 1, but for safety)
-                        $('.rating-input').prop('disabled', false);
-                        $('.rating-option').removeClass('rating-option-disabled').addClass('cursor-pointer').parent().removeClass('cursor-default');
-                        modal.find('#statusPenilaian').removeClass('hidden').html('<i class="fas fa-exclamation-triangle mr-1 text-red-600"></i> Anda belum mengisi penilaian untuk sesi ini.');
+                        // --- MODE INPUT (Belum Diisi) ---
+                        submitBtn.show();
+                        // Pastikan input tidak disabled (sudah dilakukan di langkah 1)
+                        statusDiv.removeClass('hidden').removeClass('bg-gray-100').addClass('bg-red-100 text-red-700 p-2 rounded-lg text-sm').html('<i class="fas fa-exclamation-triangle mr-1"></i> Anda belum mengisi penilaian untuk sesi ini. Mohon lengkapi.');
                     }
                 },
                 error: function() {
-                    alert("Gagal mengambil data kepuasan. Silakan coba lagi.");
+                    statusDiv.removeClass('hidden').removeClass('bg-gray-100').addClass('bg-red-100 text-red-700 p-2 rounded-lg text-sm').html('<i class="fas fa-times-circle mr-1"></i> Gagal memuat data kepuasan.');
+                    submitBtn.hide();
                 },
                 complete: function() {
+                    // Tampilkan modal setelah proses loading selesai
                     modal.addClass('open');
                     $('body').addClass('overflow-hidden');
                 }
@@ -423,7 +470,7 @@ $stmt_kelompok->close();
             const iframe = $('#pdfIframe');
             
             $('#pdfIframeTitle').text(title);
-            // Menyesuaikan path untuk siswa
+            // Construct full PDF URL (Adjust this if your path logic is different)
             const pdfUrl = pdfPath.startsWith('..') ? pdfPath.replace('../', '<?= dirname(dirname($_SERVER['PHP_SELF'])) ?>/') : pdfPath;
             iframe.attr('src', pdfUrl);
 
@@ -458,6 +505,20 @@ $stmt_kelompok->close();
             $("#kepuasanForm").submit(function(e) {
                 e.preventDefault();
                 
+                // Cek apakah semua radio button sudah dipilih
+                const requiredNames = ['r1', 'r2', 'r3', 'r4'];
+                let isFormValid = true;
+                requiredNames.forEach(name => {
+                    if ($('input[name="' + name + '"]:checked').length === 0) {
+                        isFormValid = false;
+                    }
+                });
+
+                if (!isFormValid) {
+                    alert("Harap lengkapi semua 4 aspek penilaian kepuasan sebelum menyimpan.");
+                    return; 
+                }
+
                 const type = $('#sesi_type').val();
                 const action = type === 'individu' ? 'submit_kepuasan_individu' : 'submit_kepuasan_kelompok';
                 
@@ -473,19 +534,19 @@ $stmt_kelompok->close();
                     success: function(res) {
                         alert(res.message);
                         if (res.status === 'success') {
-                             // Update UI state for the specific session
+                            // Update UI state for the specific session's button
                             const $btn_state = $(`.btn-kepuasan[data-id="${currentSesiId}"][data-type="${currentSesiType}"]`);
                             if ($btn_state.length) {
+                                // Mengubah ke status "Lihat Penilaian" (Hijau)
                                 $btn_state.removeClass('bg-red-500 hover:bg-red-600').addClass('bg-green-600 hover:bg-green-700').html('<i class="fas fa-check-circle mr-1"></i> Lihat Penilaian');
                             }
                             
                             closeKepuasanModal();
-                            // Optional: Reload the page to ensure data consistency
+                            // Redirect untuk refresh data dan status di daftar riwayat
                             window.location.href = window.location.pathname + '?tab=' + currentSesiType; 
                         }
                     },
                     error: function(xhr) {
-                        // Coba parsing error jika ada response JSON
                         let error_message = "Terjadi error saat mengirim data.";
                         try {
                             const error_res = JSON.parse(xhr.responseText);
@@ -493,7 +554,6 @@ $stmt_kelompok->close();
                                 error_message = error_res.message;
                             }
                         } catch (e) {
-                            // Jika bukan JSON, tampilkan status teks atau error umum
                             error_message += " (Status: " + xhr.statusText + ")";
                         }
                         
@@ -505,270 +565,206 @@ $stmt_kelompok->close();
                     }
                 });
             });
-            
-            // Handle radio button selection visual state
-            $(document).on('change', '.rating-input', function() {
-                const name = $(this).attr('name');
-                const is_disabled = $(this).prop('disabled');
-                
-                if (!is_disabled) {
-                    // Reset all options for this aspect
-                    $('input[name="' + name + '"]').next('.rating-option').removeClass('bg-blue-600 text-white border-blue-700 shadow');
-                    
-                    // Apply selected style
-                    if (this.checked) {
-                         $(this).next('.rating-option').addClass('bg-blue-600 text-white border-blue-700 shadow');
-                    }
-                }
-            });
         });
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header class="fixed top-0 left-0 w-full bg-white shadow-md z-30 flex items-center justify-between h-[56px] px-4">
+    <header class="fixed top-0 left-0 w-full bg-white shadow-lg z-30 flex items-center justify-between h-[56px] px-4">
         <a href="dashboard_siswa.php" class="flex items-center space-x-2">
             <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
             <span class="text-lg font-bold primary-color hidden sm:inline">Riwayat Konseling</span>
         </a>
-        <a href="dashboard.php" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center transition duration-200">
-            Kembali
+        <a href="dashboard.php" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center transition duration-200 shadow-md">
+            <i class="fas fa-arrow-left mr-1"></i> Kembali
         </a>
     </header>
 
     <main class="flex-1 p-4 md:p-8 mt-[56px] w-full">
-        <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <div class="max-w-4xl mx-auto bg-white p-4 md:p-8 rounded-xl shadow-2xl">
+            
             <div class="mb-6 border-b pb-4">
-                <h2 class="text-2xl font-bold text-gray-800">Riwayat Layanan BK</h2>
-                <p class="text-gray-600">Selamat datang, <span class="font-semibold text-blue-600"><?= htmlspecialchars($siswa_data['nama']) ?></span>!</p>
+                <h2 class="text-xl md:text-3xl font-extrabold text-gray-900 flex items-center">
+                    <i class="fas fa-history primary-color mr-3"></i> Riwayat Layanan BK
+                </h2>
+                <p class="text-gray-600 mt-1 text-sm md:text-base">Halo, <span class="font-bold text-blue-600"><?= htmlspecialchars($siswa_data['nama']) ?></span>. Berikut adalah riwayat sesi Anda.</p>
+                <div class="mt-2 text-sm text-gray-500">
+                    <p>Kelas: **<?= htmlspecialchars($siswa_data['kelas'] . ' ' . $siswa_data['jurusan']) ?>**</p>
+                </div>
             </div>
 
             <div class="mb-6 border-b border-gray-200">
-                <ul class="flex flex-wrap -mb-px">
-                    <li class="mr-2">
-                        <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" class="inline-block p-4 border-b-2 font-medium text-sm rounded-t-lg text-blue-600 border-blue-600">
-                            <i class="fas fa-user-circle mr-1"></i> Konseling Individu (<?= $riwayat_individu_count ?>)
+                <ul class="flex flex-wrap -mb-px" role="tablist">
+                    <li class="mr-2" role="presentation">
+                        <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" class="inline-block p-4 border-b-2 font-semibold text-sm md:text-base rounded-t-lg transition duration-150">
+                            <i class="fas fa-user-circle mr-1"></i> Individu (<span class="font-bold"><?= $riwayat_individu_count ?></span>)
                         </a>
                     </li>
-                    <li class="mr-2">
-                        <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" class="inline-block p-4 border-b-2 font-medium text-sm rounded-t-lg text-gray-500 hover:text-gray-700 hover:border-gray-400">
-                            <i class="fas fa-users-line mr-1"></i> Konseling Kelompok (<?= $riwayat_kelompok_count ?>)
+                    <li class="mr-2" role="presentation">
+                        <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" class="inline-block p-4 border-b-2 font-semibold text-sm md:text-base rounded-t-lg transition duration-150">
+                            <i class="fas fa-users-line mr-1"></i> Kelompok (<span class="font-bold"><?= $riwayat_kelompok_count ?></span>)
                         </a>
                     </li>
                 </ul>
             </div>
 
-            <div id="content-individu" class="space-y-4">
+            <div id="content-individu" class="space-y-6" role="tabpanel">
                 <?php if ($riwayat_individu_count > 0): ?> 
                     <?php mysqli_data_seek($result_individu, 0); while ($data = mysqli_fetch_assoc($result_individu)): ?>
-                        <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white hover:shadow-lg transition duration-200">
-                            <div class="flex justify-between items-start mb-3 border-b pb-2">
-                                <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                                    <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_pelaksanaan']) ?>
+                        <div class="counseling-card p-4 sm:p-5 border border-gray-200 rounded-xl shadow-lg bg-white hover:shadow-xl transition duration-300">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 border-b pb-3">
+                                <span class="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 mb-2 sm:mb-0">
+                                    <i class="fas fa-calendar-alt mr-1"></i> **<?= tgl_indo($data['tanggal_pelaksanaan']) ?>**
                                 </span>
-                                <span class="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
-                                    Pertemuan Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
+                                <span class="text-xs font-extrabold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full w-fit">
+                                    Sesi Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
                                 </span>
                             </div>
 
-                            <div class="text-sm mb-3">
-                                <p class="font-medium text-gray-700">Gejala Awal:</p>
-                                <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['gejala_nampak']) ?></p>
+                            <div class="text-sm md:text-base mb-4">
+                                <p class="font-bold text-gray-800 mb-1">Gejala Awal / Permasalahan:</p>
+                                <p class="text-gray-700 italic line-clamp-3 leading-relaxed">"<?= htmlspecialchars($data['gejala_nampak']) ?>"</p>
                             </div>
 
-                            <div class="pt-3 border-t flex justify-end space-x-3">
+                            <div class="pt-4 border-t flex flex-col space-y-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-y-0">
+                                
+                               
+                                
                                 <?php 
                                     $btn_class = empty($data['id_kepuasan']) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text = empty($data['id_kepuasan']) ? 'Beri Penilaian' : 'Lihat Penilaian';
                                     $btn_icon = empty($data['id_kepuasan']) ? 'fa-star' : 'fa-check-circle';
                                 ?>
-                                
                                 <button
                                     onclick="openKepuasanModal(<?= $data['id_konseling'] ?>, 'individu')"
-                                    class="btn-kepuasan px-4 py-2 <?= $btn_class ?> text-white rounded-lg transition duration-200 font-semibold text-sm"
+                                    class="btn-kepuasan px-4 py-2 <?= $btn_class ?> text-white rounded-lg transition duration-200 font-semibold text-sm shadow-md flex items-center justify-center"
                                     data-id="<?= $data['id_konseling'] ?>"
                                     data-type="individu">
-                                    <i class="fas <?= $btn_icon ?> mr-1"></i> <?= $btn_text ?>
+                                    <i class="fas <?= $btn_icon ?> mr-2"></i> <?= $btn_text ?>
                                 </button>
-                                
-                                
                             </div>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-gray-50">
-                        <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
-                        <p class="text-base text-gray-700 font-medium">
+                    <div class="p-8 text-center border-dashed border-2 border-gray-300 rounded-lg bg-gray-50">
+                        <i class="fas fa-user-circle text-4xl text-gray-500 mb-3"></i>
+                        <p class="text-lg text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Individu.
                         </p>
+                        <p class="text-sm text-gray-500 mt-1">Silakan hubungi Guru BK Anda untuk menjadwalkan sesi.</p>
                     </div>
                 <?php endif; ?>
             </div>
             
-            <div id="content-kelompok" class="space-y-4 hidden">
+            <div id="content-kelompok" class="space-y-6 hidden" role="tabpanel">
                 <?php if ($riwayat_kelompok_count > 0): ?>
                     <?php mysqli_data_seek($result_kelompok, 0); while ($data = mysqli_fetch_assoc($result_kelompok)): ?>
-                        <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white hover:shadow-lg transition duration-200">
-                            <div class="flex justify-between items-start mb-3 border-b pb-2">
-                                <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
-                                    <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_pelaksanaan']) ?>
+                        <div class="counseling-card p-4 sm:p-5 border border-gray-200 rounded-xl shadow-lg bg-white hover:shadow-xl transition duration-300">
+                            <div class="flex flex-col sm:flex-row justify-between items-start mb-3 border-b pb-3">
+                                <span class="text-sm font-medium text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 mb-2 sm:mb-0">
+                                    <i class="fas fa-calendar-alt mr-1"></i> **<?= tgl_indo($data['tanggal_pelaksanaan']) ?>**
                                 </span>
-                                <span class="text-xs font-bold bg-green-100 text-green-800 px-3 py-1 rounded-full">
-                                    <i class="fas fa-users mr-1"></i> Total Peserta: <?= $data['total_siswa_kelompok'] ?>
-                                </span>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="text-xs font-extrabold bg-green-100 text-green-800 px-3 py-1 rounded-full w-fit">
+                                        <i class="fas fa-users mr-1"></i> Peserta: <?= $data['total_siswa_kelompok'] ?>
+                                    </span>
+                                    <span class="text-xs font-extrabold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full w-fit">
+                                        Sesi Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
+                                    </span>
+                                </div>
                             </div>
 
-                            <div class="text-sm mb-3">
-                                <p class="font-medium text-gray-700">Topik Kelompok:</p>
-                                <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['topik_masalah']) ?></p>
+                            <div class="text-sm md:text-base mb-4">
+                                <p class="font-bold text-gray-800 mb-1">Topik Masalah:</p>
+                                <p class="text-gray-700 italic line-clamp-3 leading-relaxed">"<?= htmlspecialchars($data['topik_masalah']) ?>"</p>
                             </div>
 
-                            <div class="pt-3 border-t flex justify-end space-x-3">
-                                <?php 
-                                    $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700';
-                                    $btn_text_k = empty($data['id_kepuasan_kelompok']) ? 'Beri Penilaian' : 'Lihat Penilaian';
-                                    $btn_icon_k = empty($data['id_kepuasan_kelompok']) ? 'fa-star' : 'fa-check-circle';
-                                ?>
+                            <div class="pt-4 border-t flex flex-col space-y-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-y-0">
                                 
+                               
+                                
+                                <?php 
+                                    $btn_class = empty($data['id_kepuasan_kelompok']) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700';
+                                    $btn_text = empty($data['id_kepuasan_kelompok']) ? 'Beri Penilaian' : 'Lihat Penilaian';
+                                    $btn_icon = empty($data['id_kepuasan_kelompok']) ? 'fa-star' : 'fa-check-circle';
+                                ?>
                                 <button
                                     onclick="openKepuasanModal(<?= $data['id_kelompok'] ?>, 'kelompok')"
-                                    class="btn-kepuasan px-4 py-2 <?= $btn_class_k ?> text-white rounded-lg transition duration-200 font-semibold text-sm"
+                                    class="btn-kepuasan px-4 py-2 <?= $btn_class ?> text-white rounded-lg transition duration-200 font-semibold text-sm shadow-md flex items-center justify-center"
                                     data-id="<?= $data['id_kelompok'] ?>"
                                     data-type="kelompok">
-                                    <i class="fas <?= $btn_icon_k ?> mr-1"></i> <?= $btn_text_k ?>
+                                    <i class="fas <?= $btn_icon ?> mr-2"></i> <?= $btn_text ?>
                                 </button>
-                                
-    
                             </div>
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-gray-50">
-                        <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
-                        <p class="text-base text-gray-700 font-medium">
+                    <div class="p-8 text-center border-dashed border-2 border-gray-300 rounded-lg bg-gray-50">
+                        <i class="fas fa-users-line text-4xl text-gray-500 mb-3"></i>
+                        <p class="text-lg text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Kelompok.
                         </p>
+                        <p class="text-sm text-gray-500 mt-1">Silakan hubungi Guru BK Anda untuk menjadwalkan sesi kelompok.</p>
                     </div>
                 <?php endif; ?>
             </div>
             
         </div>
     </main>
-    
-    <div id="kepuasanModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform scale-100 transition-all max-h-[90vh] flex flex-col">
-            
-            <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white z-20 rounded-t-xl">
+
+    <div id="kepuasanModal" class="modal fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
+        <div class="modal-content-fix bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto overflow-y-auto transform transition-all duration-300">
+            <div class="flex justify-between items-center p-5 border-b sticky top-0 bg-white z-10">
                 <h3 id="kepuasanModalTitle" class="text-xl font-bold text-gray-800">Penilaian Kepuasan Konseling</h3>
-                <button onclick="closeKepuasanModal()" class="text-gray-400 hover:text-gray-600">
+                <button onclick="closeKepuasanModal()" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
 
-            <form id="kepuasanForm" class="flex flex-col flex-grow overflow-hidden">
-                <input type="hidden" name="id_sesi" id="id_sesi" value="">
-                <input type="hidden" name="sesi_type" id="sesi_type" value="">
+            <form id="kepuasanForm" class="p-5">
+                <input type="hidden" name="id_sesi" id="id_sesi">
+                <input type="hidden" name="sesi_type" id="sesi_type">
                 
-                <div class="p-6 space-y-6 overflow-y-auto">
-                    <div class="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-sm font-medium">
-                        <p class="font-semibold text-base mb-1">Penilaian Konseling <span id="jenisSesiText" class="font-extrabold"></span></p>
-                        <p>Berikan penilaian Anda hanya sekali. Penilaian yang sudah diisi tidak dapat diubah lagi. <span class="text-red-600">*Wajib Diisi</span></p>
-                    </div>
+                <div id="statusPenilaian" class="hidden p-2 rounded-lg text-sm mb-4"></div>
 
-                    <p id="statusPenilaian" class="text-sm font-medium p-2 bg-gray-100 rounded-md hidden"></p>
+                <div class="space-y-6">
+                    <?php 
+                    $aspek_rating = [
+                        1 => 'Pelayanan Penerimaan Guru BK',
+                        2 => 'Kemudahan dalam Mencurahkan Masalah',
+                        3 => 'Kepercayaan terhadap Kerahasiaan Informasi',
+                        4 => 'Bantuan dalam Pemecahan Masalah'
+                    ];
+                    $rating_options = [
+                        1 => 'Sangat Tidak Puas',
+                        2 => 'Tidak Puas',
+                        3 => 'Cukup Puas',
+                        4 => 'Puas',
+                        5 => 'Sangat Puas'
+                    ];
+                    ?>
 
-                    <div class="space-y-6">
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2 text-base">1. Aspek Penerimaan Konselor (Kehangatan, Empati)</h4>
-                            <div class="flex flex-wrap justify-between gap-2 text-center text-sm font-medium">
-                                <input type="radio" name="r1" id="r1_3" value="3" class="rating-input hidden" required>
-                                <label for="r1_3" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-smile-beam text-xl mb-1"></i><br>
-                                    <span>Sangat Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r1" id="r1_2" value="2" class="rating-input hidden">
-                                <label for="r1_2" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-meh text-xl mb-1"></i><br>
-                                    <span>Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r1" id="r1_1" value="1" class="rating-input hidden">
-                                <label for="r1_1" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-frown-open text-xl mb-1"></i><br>
-                                    <span>Kurang Memuaskan</span>
-                                </label>
+                    <?php foreach ($aspek_rating as $key => $aspek): ?>
+                        <div class="rating-container">
+                            <p class="font-semibold text-gray-700 mb-2 text-sm md:text-base">Aspek <?= $key ?>: <?= $aspek ?></p>
+                            <div class="flex justify-between flex-wrap gap-2">
+                                <?php foreach ($rating_options as $value => $label): ?>
+                                    <label class="flex-1 min-w-[70px] sm:min-w-[80px] text-center">
+                                        <input type="radio" name="r<?= $key ?>" id="r<?= $key ?>_<?= $value ?>" value="<?= $value ?>" class="rating-input">
+                                        <span class="rating-option block px-2 py-2 rounded-lg text-xs md:text-sm font-medium">
+                                            <?= $value ?>
+                                            <span class="block text-gray-500 text-xs mt-1 transition-colors group-hover:text-gray-700 font-normal"><?= $label ?></span>
+                                        </span>
+                                    </label>
+                                <?php endforeach; ?>
                             </div>
                         </div>
+                    <?php endforeach; ?>
 
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2 text-base">2. Aspek Kemudahan Curhat (Keterbukaan, Kenyamanan)</h4>
-                            <div class="flex flex-wrap justify-between gap-2 text-center text-sm font-medium">
-                                <input type="radio" name="r2" id="r2_3" value="3" class="rating-input hidden" required>
-                                <label for="r2_3" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-smile-beam text-xl mb-1"></i><br>
-                                    <span>Sangat Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r2" id="r2_2" value="2" class="rating-input hidden">
-                                <label for="r2_2" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-meh text-xl mb-1"></i><br>
-                                    <span>Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r2" id="r2_1" value="1" class="rating-input hidden">
-                                <label for="r2_1" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-frown-open text-xl mb-1"></i><br>
-                                    <span>Kurang Memuaskan</span>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2 text-base">3. Aspek Kerahasiaan & Kepercayaan</h4>
-                            <div class="flex flex-wrap justify-between gap-2 text-center text-sm font-medium">
-                                <input type="radio" name="r3" id="r3_3" value="3" class="rating-input hidden" required>
-                                <label for="r3_3" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-smile-beam text-xl mb-1"></i><br>
-                                    <span>Sangat Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r3" id="r3_2" value="2" class="rating-input hidden">
-                                <label for="r3_2" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-meh text-xl mb-1"></i><br>
-                                    <span>Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r3" id="r3_1" value="1" class="rating-input hidden">
-                                <label for="r3_1" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-frown-open text-xl mb-1"></i><br>
-                                    <span>Kurang Memuaskan</span>
-                                </label>
-                            </div>
-                        </div>
+                </div>
 
-                        <div>
-                            <h4 class="font-semibold text-gray-800 mb-2 text-base">4. Aspek Pemecahan Masalah (Bantuan Solusi)</h4>
-                            <div class="flex flex-wrap justify-between gap-2 text-center text-sm font-medium">
-                                <input type="radio" name="r4" id="r4_3" value="3" class="rating-input hidden" required>
-                                <label for="r4_3" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-smile-beam text-xl mb-1"></i><br>
-                                    <span>Sangat Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r4" id="r4_2" value="2" class="rating-input hidden">
-                                <label for="r4_2" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-meh text-xl mb-1"></i><br>
-                                    <span>Memuaskan</span>
-                                </label>
-                                <input type="radio" name="r4" id="r4_1" value="1" class="rating-input hidden">
-                                <label for="r4_1" class="rating-option p-3 rounded-xl border border-gray-300 cursor-pointer flex-1 max-w-[140px] hover:bg-gray-100 transition duration-150">
-                                    <i class="fas fa-frown-open text-xl mb-1"></i><br>
-                                    <span>Kurang Memuaskan</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-
-                <div class="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50 sticky bottom-0 z-20 rounded-b-xl space-x-3 shadow-inner">
-                    <button type="button" onclick="closeKepuasanModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 font-medium transition duration-200 text-sm">
-                        <i class="fas fa-times mr-1"></i> Tutup
-                    </button>
-                    <button type="submit" id="submitKepuasanBtn" class="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 font-medium transition duration-200 shadow-md text-sm">
+                <div class="mt-6 border-t pt-4">
+                    <button type="submit" id="submitKepuasanBtn" class="w-full primary-bg text-white px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition duration-200 shadow-lg">
                         <i class="fas fa-save mr-1"></i> Simpan Penilaian
                     </button>
                 </div>
@@ -776,26 +772,18 @@ $stmt_kelompok->close();
         </div>
     </div>
     
-    <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col transform scale-100 transition-all">
-            
-            <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                <h3 id="pdfIframeTitle" class="text-xl font-semibold text-gray-800">Laporan Konseling</h3>
-                <button onclick="closePdfViewerModal()" class="text-gray-400 hover:text-gray-600">
+    <div id="pdfViewerModal" class="modal fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-75 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] mx-auto overflow-hidden transform transition-all duration-300">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="pdfIframeTitle" class="text-lg font-bold text-gray-800 truncate">Lihat Laporan Konseling</h3>
+                <button onclick="closePdfViewerModal()" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            
-            <div class="flex-grow overflow-hidden">
-                <iframe id="pdfIframe" src="" class="w-full h-[65vh] border-0" title="PDF Viewer"></iframe>
-            </div>
 
-            <div class="px-6 py-3 border-t flex justify-end space-x-3 bg-gray-50 sticky bottom-0 z-10">
-                <button type="button" onclick="closePdfViewerModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">
-                    <i class="fas fa-arrow-left mr-1"></i> Tutup
-                </button>
-            </div>
+            <iframe id="pdfIframe" src="" frameborder="0" class="w-full h-[calc(100%-60px)]"></iframe>
         </div>
     </div>
+
 </body>
 </html>
