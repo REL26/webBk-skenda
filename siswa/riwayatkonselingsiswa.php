@@ -29,9 +29,6 @@ function tgl_indo($tanggal){
 	return $pecahkan[2] . ' ' . $bulan[ (int)$pecahkan[1] ] . ' ' . $pecahkan[0];
 }
 
-// ==========================================================================================
-// KEPUTUSAN INDIVIDU - FETCH
-// ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_individu') {
     header('Content-Type: application/json');
     $id_konseling = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -63,9 +60,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_individu') {
     exit;
 }
 
-// ==========================================================================================
-// KEPUTUSAN INDIVIDU - SUBMIT (TIDAK BOLEH UPDATE)
-// ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
     header('Content-Type: application/json');
 
@@ -85,17 +79,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
         $stmt_check->close();
 
         if ($is_filled) {
-            // LOGIKA BARU: Jika sudah terisi, tolak pengiriman
+
             echo json_encode(["status" => "error", "message" => "Penilaian ini sudah pernah Anda isi dan tidak dapat diubah lagi."]);
             exit;
         } 
-        
-        // Jika belum terisi, lakukan INSERT
+   
         $query_submit = "
             INSERT INTO kepuasan_siswa (aspek_penerimaan, aspek_kemudahan_curhat, aspek_kepercayaan, aspek_pemecahan_masalah, id_konseling, id_siswa)
             VALUES (?, ?, ?, ?, ?, ?)
         ";
-        $bind_types = "iiiiii"; // 4 rating + id_konseling + id_siswa
+        $bind_types = "iiiiii"; 
         $bind_values = [
             $aspek_penerimaan, 
             $aspek_kemudahan_curhat, 
@@ -122,9 +115,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_individu') {
     exit;
 }
 
-// ==========================================================================================
-// KEPUTUSAN KELOMPOK - FETCH
-// ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_kelompok') {
     header('Content-Type: application/json');
     $id_kelompok = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -156,9 +146,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_kepuasan_kelompok') {
     exit;
 }
 
-// ==========================================================================================
-// KEPUTUSAN KELOMPOK - SUBMIT (TIDAK BOLEH UPDATE)
-// ==========================================================================================
 if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
     header('Content-Type: application/json');
 
@@ -178,12 +165,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
         $stmt_check->close();
 
         if ($is_filled) {
-            // LOGIKA BARU: Jika sudah terisi, tolak pengiriman
+  
             echo json_encode(["status" => "error", "message" => "Penilaian ini sudah pernah Anda isi dan tidak dapat diubah lagi."]);
             exit;
         } 
-        
-        // Jika belum terisi, lakukan INSERT
+
         $query_submit = "
             INSERT INTO kepuasan_kelompok (aspek_penerimaan, aspek_kemudahan_curhat, aspek_kepercayaan, aspek_pemecahan_masalah, id_kelompok, id_siswa)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -215,11 +201,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
     exit;
 }
 
-// ------------------------------------------------------------------------------------------
-// PENGAMBILAN DATA UNTUK TAMPILAN UTAMA
-// ------------------------------------------------------------------------------------------
-
-// Ambil data siswa
 $stmt_siswa = $koneksi->prepare("SELECT nama, kelas, jurusan FROM siswa WHERE id_siswa = ?");
 $stmt_siswa->bind_param("i", $id_siswa);
 $stmt_siswa->execute();
@@ -232,7 +213,6 @@ if (!$siswa_data) {
     exit;
 }
 
-// Query untuk Riwayat Konseling Individu (ki=konseling_individu, rk=riwayat_konseling, ks=kepuasan_siswa)
 $query_individu = "
     SELECT 
         ki.id_konseling, ki.tanggal_pelaksanaan, ki.pertemuan_ke, ki.gejala_nampak,
@@ -256,8 +236,6 @@ $result_individu = $stmt_individu->get_result();
 $riwayat_individu_count = $result_individu->num_rows;
 $stmt_individu->close();
 
-
-// Query untuk Riwayat Konseling Kelompok (kk=kelompok, rk=riwayat_kelompok, pk=detail_kelompok, kks=kepuasan_kelompok)
 $query_kelompok = "
     SELECT 
         kk.id_kelompok, kk.tanggal_pelaksanaan, kk.pertemuan_ke, kk.topik_masalah,
@@ -300,6 +278,13 @@ $stmt_kelompok->close();
         * { font-family: 'Inter', sans-serif; }
         .primary-bg { background-color: #2F6C6E; }
         .primary-color { color: #2F6C6E; }
+        .accent-color { color: #5FA8A1; }
+        body { background-color: #F9FAFB; }
+
+        .fade-slide { transition: all 0.3s ease-in-out; transform-origin: top; }
+        .hidden-transition { opacity: 0; transform: scaleY(0.95); max-height: 0; overflow: hidden; pointer-events: none; }
+        .visible-transition { opacity: 1; transform: scaleY(1); max-height: 500px; pointer-events: auto; }
+
         .modal {
             transition: opacity 0.3s ease, visibility 0.3s ease;
             visibility: hidden;
@@ -309,24 +294,24 @@ $stmt_kelompok->close();
             visibility: visible;
             opacity: 1;
         }
-        /* CSS untuk pilihan rating yang terpilih */
+
         .rating-input:checked + .rating-option {
-            background-color: #3b82f6; /* blue-500 */
+            background-color: #4C8E89; 
             color: white;
-            border-color: #2563eb; /* blue-700 */
+            border-color: #0F3A3A; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
-        /* CSS untuk mode Read-Only */
+        
         .rating-option-disabled {
-            background-color: #f3f4f6; /* gray-100 */
-            color: #4b5563; /* gray-600 */
+            background-color: #F9FAFB; 
+            color: #4b5563; 
             cursor: default;
             opacity: 0.7;
         }
         .rating-option-disabled.selected {
-            background-color: #10b981; /* emerald-500 */
+            background-color: #10b981; 
             color: white;
-            border-color: #059669; /* emerald-600 */
+            border-color: #059669; 
             opacity: 1;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
@@ -334,8 +319,28 @@ $stmt_kelompok->close();
     <script>
         const pageUrl = '<?= basename($_SERVER['PHP_SELF']) ?>';
         let currentSesiId = null;
-        let currentSesiType = null; // 'individu' or 'kelompok'
+        let currentSesiType = null; 
 
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const body = document.body;
+
+            const isClosed = menu.classList.contains('hidden-transition');
+
+            if (isClosed) {
+                menu.classList.remove('hidden-transition');
+                menu.classList.add('visible-transition');
+                overlay.classList.remove('hidden');
+                body.classList.add('overflow-hidden');
+            } else {
+                menu.classList.remove('visible-transition');
+                menu.classList.add('hidden-transition');
+                overlay.classList.add('hidden');
+                body.classList.remove('overflow-hidden');
+            }
+        }
+        
         function openKepuasanModal(id, type) {
             currentSesiId = id;
             currentSesiType = type;
@@ -343,7 +348,6 @@ $stmt_kelompok->close();
             const title = modal.find('#kepuasanModalTitle');
             const form = $('#kepuasanForm');
 
-            // 1. Reset form, inputs, and state
             form.trigger('reset');
             $('.rating-input').prop('checked', false);
             $('.rating-option').removeClass('rating-option-disabled selected').prop('disabled', false).parent().removeClass('cursor-default');
@@ -356,7 +360,6 @@ $stmt_kelompok->close();
             modal.find('#jenisSesiText').text(type === 'individu' ? 'Individu' : 'Kelompok');
             modal.find('#statusPenilaian').addClass('hidden');
 
-            // 2. Fetch existing satisfaction data
             const action = type === 'individu' ? 'fetch_kepuasan_individu' : 'fetch_kepuasan_kelompok';
 
             $.ajax({
@@ -365,7 +368,6 @@ $stmt_kelompok->close();
                 dataType: 'json',
                 success: function(res) {
                     if (res.status === 'success') {
-                        // --- MODE READ-ONLY ---
                         const data = res.data;
                         const ratings = [data.aspek_penerimaan, data.aspek_kemudahan_curhat, data.aspek_kepercayaan, data.aspek_pemecahan_masalah];
                         
@@ -373,28 +375,22 @@ $stmt_kelompok->close();
                             const value = ratings[i];
                             const aspek = 'r' + (i + 1);
                             
-                            // Set selected value
                             if (value) {
                                 const selectedInput = $('#' + aspek + '_' + value);
-                                selectedInput.prop('checked', true); // Check the input
+                                selectedInput.prop('checked', true);
                                 
-                                // Apply visual style for selected item in read-only mode
                                 selectedInput.next('.rating-option').addClass('rating-option-disabled selected');
                             }
                             
-                            // Disable all inputs
                             $('input[name="' + aspek + '"]').prop('disabled', true);
                             $('input[name="' + aspek + '"]').next('.rating-option').addClass('rating-option-disabled').removeClass('cursor-pointer').parent().addClass('cursor-default');
                         }
                         
-                        // Change button and status for filled form
                         modal.find('#submitKepuasanBtn').hide();
                         modal.find('#statusPenilaian').removeClass('hidden').html('<i class="fas fa-check-circle mr-1 text-green-600"></i> Penilaian telah diisi pada ' + (data.tanggal_isi ? new Date(data.tanggal_isi).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : 'sebelumnya') + ' dan tidak dapat diubah.');
 
                     } else if (res.status === 'not_found') {
-                        // --- MODE INPUT ---
                         modal.find('#submitKepuasanBtn').show();
-                        // Ensure all inputs are enabled (already done in step 1, but for safety)
                         $('.rating-input').prop('disabled', false);
                         $('.rating-option').removeClass('rating-option-disabled').addClass('cursor-pointer').parent().removeClass('cursor-default');
                         modal.find('#statusPenilaian').removeClass('hidden').html('<i class="fas fa-exclamation-triangle mr-1 text-red-600"></i> Anda belum mengisi penilaian untuk sesi ini.');
@@ -423,7 +419,6 @@ $stmt_kelompok->close();
             const iframe = $('#pdfIframe');
             
             $('#pdfIframeTitle').text(title);
-            // Menyesuaikan path untuk siswa
             const pdfUrl = pdfPath.startsWith('..') ? pdfPath.replace('../', '<?= dirname(dirname($_SERVER['PHP_SELF'])) ?>/') : pdfPath;
             iframe.attr('src', pdfUrl);
 
@@ -440,21 +435,21 @@ $stmt_kelompok->close();
         function switchTab(type) {
             const tabs = ['individu', 'kelompok'];
             tabs.forEach(tab => {
-                $('#tab-' + tab).removeClass('border-blue-600 text-blue-600').addClass('border-transparent text-gray-500 hover:text-gray-700');
+                $('#tab-' + tab).removeClass('border-[#123E44] text-[#123E44] font-semibold')
+                                 .addClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300');
                 $('#content-' + tab).addClass('hidden');
             });
 
-            $('#tab-' + type).removeClass('border-transparent text-gray-500 hover:text-gray-700').addClass('border-blue-600 text-blue-600');
+            $('#tab-' + type).removeClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                             .addClass('border-[#123E44] text-[#123E44] font-semibold');
             $('#content-' + type).removeClass('hidden');
         }
 
 
         $(document).ready(function() {
-            // Initial tab selection
             const initialTab = '<?= isset($_GET['tab']) && $_GET['tab'] === 'kelompok' ? 'kelompok' : 'individu' ?>';
             switchTab(initialTab);
-            
-            // AJAX Form Submission for Kepuasan
+
             $("#kepuasanForm").submit(function(e) {
                 e.preventDefault();
                 
@@ -473,19 +468,16 @@ $stmt_kelompok->close();
                     success: function(res) {
                         alert(res.message);
                         if (res.status === 'success') {
-                             // Update UI state for the specific session
                             const $btn_state = $(`.btn-kepuasan[data-id="${currentSesiId}"][data-type="${currentSesiType}"]`);
                             if ($btn_state.length) {
-                                $btn_state.removeClass('bg-red-500 hover:bg-red-600').addClass('bg-green-600 hover:bg-green-700').html('<i class="fas fa-check-circle mr-1"></i> Lihat Penilaian');
+                                $btn_state.removeClass('bg-[#0F3A3A] hover:bg-[#123E44]').addClass('bg-green-600 hover:bg-green-700').html('<i class="fas fa-check-circle mr-1"></i> Lihat Penilaian');
                             }
                             
                             closeKepuasanModal();
-                            // Optional: Reload the page to ensure data consistency
                             window.location.href = window.location.pathname + '?tab=' + currentSesiType; 
                         }
                     },
                     error: function(xhr) {
-                        // Coba parsing error jika ada response JSON
                         let error_message = "Terjadi error saat mengirim data.";
                         try {
                             const error_res = JSON.parse(xhr.responseText);
@@ -493,7 +485,6 @@ $stmt_kelompok->close();
                                 error_message = error_res.message;
                             }
                         } catch (e) {
-                            // Jika bukan JSON, tampilkan status teks atau error umum
                             error_message += " (Status: " + xhr.statusText + ")";
                         }
                         
@@ -506,53 +497,94 @@ $stmt_kelompok->close();
                 });
             });
             
-            // Handle radio button selection visual state
             $(document).on('change', '.rating-input', function() {
                 const name = $(this).attr('name');
                 const is_disabled = $(this).prop('disabled');
                 
                 if (!is_disabled) {
-                    // Reset all options for this aspect
-                    $('input[name="' + name + '"]').next('.rating-option').removeClass('bg-blue-600 text-white border-blue-700 shadow');
-                    
-                    // Apply selected style
+                    $('input[name="' + name + '"]').next('.rating-option').removeClass('bg-[#4C8E89] text-white border-[#0F3A3A] shadow');
                     if (this.checked) {
-                         $(this).next('.rating-option').addClass('bg-blue-600 text-white border-blue-700 shadow');
+                         $(this).next('.rating-option').addClass('bg-[#4C8E89] text-white border-[#0F3A3A] shadow');
                     }
                 }
             });
         });
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-[#F9FAFB] text-gray-800 min-h-screen flex flex-col">
 
-    <header class="fixed top-0 left-0 w-full bg-white shadow-md z-30 flex items-center justify-between h-[56px] px-4">
-        <a href="dashboard_siswa.php" class="flex items-center space-x-2">
+ <header class="flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2">
             <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
-            <span class="text-lg font-bold primary-color hidden sm:inline">Riwayat Konseling</span>
+            <div>
+                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-gray-600">Bimbingan Konseling</small>
+            </div>
         </a>
-        <a href="dashboard.php" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center transition duration-200">
-            Kembali
-        </a>
+        <nav class="hidden md:flex items-center space-x-6">
+            <a href="dashboard.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Beranda</a>
+            <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="primary-color font-bold border-b-2 border-primary-color pb-1 transition underline">Riwayat</a>
+            <a href="ganti_password.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Ganti Password</a>
+            <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
+                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+            </button>
+        </nav>
+        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+            <i class="fas fa-bars"></i>
+        </button>
     </header>
 
-    <main class="flex-1 p-4 md:p-8 mt-[56px] w-full">
+    <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 transition-opacity duration-300" onclick="toggleMenu()"></div>
+    <div id="mobileMenu" class="fade-slide hidden-transition absolute top-[64px] left-0 w-full bg-white shadow-xl z-30 md:hidden flex flex-col text-left text-base border-t border-gray-100">
+        <a href="dashboard.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-home mr-3"></i>Beranda</a>
+        <a href="data_profiling.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-user-edit mr-3"></i>Data Profiling</a>
+        <a href="riwayatkonselingsiswa.php" class="py-3 px-4 primary-color bg-gray-100 font-bold transition flex items-center"><i class="fas fa-history mr-3"></i>Riwayat</a>
+        <a href="ganti_password.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-key mr-3"></i>Ganti Password</a>
+        <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-semibold mt-1">
+            <i class="fas fa-sign-out-alt mr-1"></i> Logout
+        </button>
+    </div>
+
+<section class="text-center py-8 md:py-12 primary-bg text-white shadow-xl">
+    <h1 class="text-2xl md:text-4xl font-extrabold mb-1">
+        <i class="fas fa-history mr-2"></i> Riwayat Konseling Siswa
+    </h1>
+    <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
+        Daftar riwayat bimbingan dan konseling yang telah Anda ikuti.
+    </p>
+</section>
+
+
+    <main class="flex-1 p-4 md:p-8 w-full">
         <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
             <div class="mb-6 border-b pb-4">
-                <h2 class="text-2xl font-bold text-gray-800">Riwayat Layanan BK</h2>
-                <p class="text-gray-600">Selamat datang, <span class="font-semibold text-blue-600"><?= htmlspecialchars($siswa_data['nama']) ?></span>!</p>
+                <h2 class="text-3xl font-bold text-gray-800">Riwayat Layanan BK</h2>
+                <p class="text-gray-600">Selamat datang, <span class="font-semibold accent-color"><?= htmlspecialchars($siswa_data['nama']) ?></span>!</p>
             </div>
 
             <div class="mb-6 border-b border-gray-200">
                 <ul class="flex flex-wrap -mb-px">
-                    <li class="mr-2">
-                        <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" class="inline-block p-4 border-b-2 font-medium text-sm rounded-t-lg text-blue-600 border-blue-600">
-                            <i class="fas fa-user-circle mr-1"></i> Konseling Individu (<?= $riwayat_individu_count ?>)
+                    <li class="mr-2 flex-grow sm:flex-grow-0">
+                        <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" 
+                           class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
+                                  <?php if (!isset($_GET['tab']) || $_GET['tab'] !== 'kelompok'): ?> 
+                                      text-[#123E44] border-[#123E44] font-semibold 
+                                  <?php else: ?> 
+                                      text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300
+                                  <?php endif; ?>"> 
+                            Konseling Individu (<?= $riwayat_individu_count ?>)
                         </a>
                     </li>
-                    <li class="mr-2">
-                        <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" class="inline-block p-4 border-b-2 font-medium text-sm rounded-t-lg text-gray-500 hover:text-gray-700 hover:border-gray-400">
-                            <i class="fas fa-users-line mr-1"></i> Konseling Kelompok (<?= $riwayat_kelompok_count ?>)
+                    <li class="mr-2 flex-grow sm:flex-grow-0">
+                        <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" 
+                           class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
+                                  <?php if (isset($_GET['tab']) && $_GET['tab'] === 'kelompok'): ?> 
+                                      text-[#123E44] border-[#123E44] font-semibold 
+                                  <?php else: ?> 
+                                      text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 
+                                  <?php endif; ?>">
+                            Konseling Kelompok (<?= $riwayat_kelompok_count ?>)
                         </a>
                     </li>
                 </ul>
@@ -566,7 +598,7 @@ $stmt_kelompok->close();
                                 <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
                                     <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_pelaksanaan']) ?>
                                 </span>
-                                <span class="text-xs font-bold bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full">
+                                <span class="text-xs font-bold bg-gray-100 text-[#0F3A3A] px-3 py-1 rounded-full">
                                     Pertemuan Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
                                 </span>
                             </div>
@@ -578,7 +610,7 @@ $stmt_kelompok->close();
 
                             <div class="pt-3 border-t flex justify-end space-x-3">
                                 <?php 
-                                    $btn_class = empty($data['id_kepuasan']) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700';
+                                    $btn_class = empty($data['id_kepuasan']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text = empty($data['id_kepuasan']) ? 'Beri Penilaian' : 'Lihat Penilaian';
                                     $btn_icon = empty($data['id_kepuasan']) ? 'fa-star' : 'fa-check-circle';
                                 ?>
@@ -596,7 +628,7 @@ $stmt_kelompok->close();
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-gray-50">
+                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-[#F9FAFB]">
                         <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
                         <p class="text-base text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Individu.
@@ -625,7 +657,7 @@ $stmt_kelompok->close();
 
                             <div class="pt-3 border-t flex justify-end space-x-3">
                                 <?php 
-                                    $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700';
+                                    $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text_k = empty($data['id_kepuasan_kelompok']) ? 'Beri Penilaian' : 'Lihat Penilaian';
                                     $btn_icon_k = empty($data['id_kepuasan_kelompok']) ? 'fa-star' : 'fa-check-circle';
                                 ?>
@@ -643,7 +675,7 @@ $stmt_kelompok->close();
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-gray-50">
+                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-[#F9FAFB]">
                         <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
                         <p class="text-base text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Kelompok.
@@ -670,7 +702,7 @@ $stmt_kelompok->close();
                 <input type="hidden" name="sesi_type" id="sesi_type" value="">
                 
                 <div class="p-6 space-y-6 overflow-y-auto">
-                    <div class="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-sm font-medium">
+                    <div class="mb-4 p-3 rounded-lg border border-[#4C8E89] bg-[#E5F5F4] text-[#0F3A3A] text-sm font-medium">
                         <p class="font-semibold text-base mb-1">Penilaian Konseling <span id="jenisSesiText" class="font-extrabold"></span></p>
                         <p>Berikan penilaian Anda hanya sekali. Penilaian yang sudah diisi tidak dapat diubah lagi. <span class="text-red-600">*Wajib Diisi</span></p>
                     </div>
@@ -768,7 +800,7 @@ $stmt_kelompok->close();
                     <button type="button" onclick="closeKepuasanModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 font-medium transition duration-200 text-sm">
                         <i class="fas fa-times mr-1"></i> Tutup
                     </button>
-                    <button type="submit" id="submitKepuasanBtn" class="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 font-medium transition duration-200 shadow-md text-sm">
+                    <button type="submit" id="submitKepuasanBtn" class="px-4 py-2 bg-[#4C8E89] text-white rounded-md hover:bg-[#0F3A3A] font-medium transition duration-200 shadow-md text-sm">
                         <i class="fas fa-save mr-1"></i> Simpan Penilaian
                     </button>
                 </div>
@@ -797,5 +829,8 @@ $stmt_kelompok->close();
             </div>
         </div>
     </div>
+    <footer class="text-center py-4 primary-bg text-white text-xs md:text-sm mt-auto">
+    <p>&copy; <?php echo date('Y'); ?> Bimbingan Konseling - SMKN 2 Banjarmasin. All rights reserved.</p>
+</footer>
 </body>
 </html>
