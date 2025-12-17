@@ -275,7 +275,6 @@ $stmt_kelompok->close();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        * { font-family: 'Inter', sans-serif; }
         .primary-bg { background-color: #2F6C6E; }
         .primary-color { color: #2F6C6E; }
         .accent-color { color: #5FA8A1; }
@@ -834,3 +833,4 @@ $stmt_kelompok->close();
 </footer>
 </body>
 </html>
+
