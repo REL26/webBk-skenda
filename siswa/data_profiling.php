@@ -12,7 +12,6 @@ $pesan_sukses = "";
 $pesan_error = "";
 $target_dir = "../uploads/foto_siswa/";
 
-// Pastikan direktori ada
 if (!is_dir($target_dir)) {
     if (!mkdir($target_dir, 0777, true)) {
         $pesan_error .= "Gagal membuat direktori upload: " . $target_dir;
@@ -21,12 +20,7 @@ if (!is_dir($target_dir)) {
 
 $daftar_agama = ['Islam', 'Kristen Protestan', 'Kristen Katolik', 'Hindu', 'Buddha', 'Konghucu'];
 $daftar_kepemilikan_gadget = ['HP Saja', 'Laptop Saja', 'Keduanya', 'Tidak Ada'];
-$daftar_status_tinggal = ['Orang Tua', 'Wali', 'Asrama', 'Kost/Kontrakan', 'Lainnya'];
-$daftar_jarak = ['Kurang dari 1 km', '1 - 3 km', '3 - 5 km', 'Lebih dari 5 km'];
-$daftar_transportasi = ['Jalan Kaki', 'Sepeda Motor Pribadi', 'Angkutan Umum', 'Diantar Orang Tua', 'Lainnya'];
 
-// Ambil data siswa
-// PERBAIKAN: Pastikan kolom tgl_update atau kolom tanggal update ada di query
 $query_siswa = mysqli_query($koneksi, "
     SELECT 
         s.*,
@@ -41,7 +35,6 @@ if (!$siswa) {
     die("Data siswa tidak ditemukan atau sesi bermasalah.");
 }
 
-// Ambil hasil kecerdasan
 $query_kecerdasan = mysqli_query($koneksi, "
     SELECT *
     FROM hasil_kecerdasan
@@ -53,7 +46,6 @@ $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    // --- Proses Pengambilan dan Sanitasi Data POST ---
     $nama_panggilan = mysqli_real_escape_string($koneksi, $_POST['nama_panggilan'] ?? '');
     $tempat_lahir = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir'] ?? '');
     $tanggal_lahir = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir'] ?? '');
@@ -69,6 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $instagram = mysqli_real_escape_string($koneksi, $_POST['instagram'] ?? '');
     
     $riwayat_sma_smk_ma = mysqli_real_escape_string($koneksi, $_POST['riwayat_sma_smk_ma'] ?? '');
+
     $riwayat_smp_mts = mysqli_real_escape_string($koneksi, $_POST['riwayat_smp_mts'] ?? '');
     $riwayat_sd_mi = mysqli_real_escape_string($koneksi, $_POST['riwayat_sd_mi'] ?? '');
     $prestasi_pengalaman = mysqli_real_escape_string($koneksi, $_POST['prestasi_pengalaman'] ?? '');
@@ -103,7 +96,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $kelebihan_diri = mysqli_real_escape_string($koneksi, $_POST['kelebihan_diri'] ?? '');
     $kekurangan_diri = mysqli_real_escape_string($koneksi, $_POST['kekurangan_diri'] ?? '');
 
-    // --- Proses Upload Foto ---
     if (isset($_FILES["url_foto"]) && $_FILES["url_foto"]["error"] == 0) {
         $file_name = basename($_FILES["url_foto"]["name"]);
         $file_extension = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
@@ -123,7 +115,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if ($uploadOk == 1) {
             if (move_uploaded_file($_FILES["url_foto"]["tmp_name"], $target_file)) {
-                // Hapus foto lama jika ada dan bukan placeholder
                 if (!empty($url_foto_db) && file_exists('../' . $url_foto_db) && strpos($url_foto_db, 'placeholder') === false) {
                     unlink('../' . $url_foto_db);
                 }
@@ -134,9 +125,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
     
-    // --- Proses Update Database ---
     if (empty($pesan_error)) {
-        // PERBAIKAN: Tambahkan kolom tgl_update dengan nilai NOW() untuk mencatat waktu update
         $update_query = "
             UPDATE siswa SET 
                 nama_panggilan = '$nama_panggilan',
@@ -180,24 +169,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 pelajaran_tdk_disenangi = '$pelajaran_tdk_disenangi',
                 tempat_curhat = '$tempat_curhat',
                 kelebihan_diri = '$kelebihan_diri',
-                kekurangan_diri = '$kekurangan_diri',
-                tgl_update = NOW() -- Kolom ini menyimpan tanggal update
+                kekurangan_diri = '$kekurangan_diri'
+
             WHERE id_siswa = '$id_siswa'
         ";
         
         if (mysqli_query($koneksi, $update_query)) {
             $pesan_sukses = "Data biodata berhasil diperbarui!";
-            // Refresh data siswa setelah update
             $query_siswa = mysqli_query($koneksi, "
-                SELECT s.*, hg.skor_visual, hg.skor_auditori, hg.skor_kinestetik
-                FROM siswa s LEFT JOIN hasil_gayabelajar hg ON s.id_siswa = hg.id_siswa
+                SELECT 
+                    s.*,
+                    hg.skor_visual, hg.skor_auditori, hg.skor_kinestetik
+                FROM siswa s
+                LEFT JOIN hasil_gayabelajar hg ON s.id_siswa = hg.id_siswa
                 WHERE s.id_siswa='$id_siswa'
             ");
             $siswa = mysqli_fetch_assoc($query_siswa);
 
             $query_kecerdasan = mysqli_query($koneksi, "
-                SELECT * FROM hasil_kecerdasan
-                WHERE id_siswa='$id_siswa' ORDER BY tanggal_tes DESC LIMIT 1
+                SELECT *
+                FROM hasil_kecerdasan
+                WHERE id_siswa='$id_siswa'
+                ORDER BY tanggal_tes DESC 
+                LIMIT 1
             ");
             $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
             
@@ -207,7 +201,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// --- LOGIKA TAMPILAN DATA HASIL TES ---
 $gaya_belajar = "Belum Mengisi";
 if ($siswa['skor_visual'] !== null) {
     $skor_v = $siswa['skor_visual'];
@@ -226,10 +219,14 @@ if ($siswa['skor_visual'] !== null) {
 $hasil_tes_kemampuan_calculated = "Belum Mengisi";
 if ($hasil_kecerdasan) {
     $skor_kecerdasan = [
-        'A' => $hasil_kecerdasan['skor_A'] ?? 0, 'B' => $hasil_kecerdasan['skor_B'] ?? 0,
-        'C' => $hasil_kecerdasan['skor_C'] ?? 0, 'D' => $hasil_kecerdasan['skor_D'] ?? 0,
-        'E' => $hasil_kecerdasan['skor_E'] ?? 0, 'F' => $hasil_kecerdasan['skor_F'] ?? 0,
-        'G' => $hasil_kecerdasan['skor_G'] ?? 0, 'H' => $hasil_kecerdasan['skor_H'] ?? 0,
+        'A' => $hasil_kecerdasan['skor_A'] ?? 0,
+        'B' => $hasil_kecerdasan['skor_B'] ?? 0,
+        'C' => $hasil_kecerdasan['skor_C'] ?? 0,
+        'D' => $hasil_kecerdasan['skor_D'] ?? 0,
+        'E' => $hasil_kecerdasan['skor_E'] ?? 0,
+        'F' => $hasil_kecerdasan['skor_F'] ?? 0,
+        'G' => $hasil_kecerdasan['skor_G'] ?? 0,
+        'H' => $hasil_kecerdasan['skor_H'] ?? 0,
     ];
 
     $skor_tertinggi_kecerdasan = max($skor_kecerdasan);
@@ -266,35 +263,13 @@ if ($hasil_kecerdasan) {
 }
 
 
-// --- LOGIKA PENANGANAN TANGGAL TERAKHIR UPDATE ---
-// PERBAIKAN: Menggunakan kolom 'tgl_update' yang baru ditambahkan/diperbarui,
-// atau kolom yang ada di tabel 'siswa' untuk tanggal update.
-// Jika kolom 'tgl_update' TIDAK ADA di tabel 'siswa', gunakan kolom 'tgl_masuk' atau 'tanggal_daftar' sebagai fallback.
-$tgl_update_raw = $siswa['tgl_update'] ?? $siswa['tgl_masuk'] ?? null; // Asumsi 'tgl_update' ada, jika tidak pakai 'tgl_masuk'
-
-if ($tgl_update_raw && $tgl_update_raw !== '0000-00-00 00:00:00') {
-    $timestamp = strtotime($tgl_update_raw);
-    if ($timestamp !== false && $timestamp > 0) {
-        // Format tanggal ke format Indonesia
-        $tanggal_format_db = date('Y-m-d H:i:s', $timestamp);
-        $tgl_update_parts = explode(' ', $tanggal_format_db);
-        $tgl_update_date_parts = explode('-', $tgl_update_parts[0]);
-        $tgl_update_indo = $tgl_update_date_parts[2] . ' ' . [
-            '01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', '05' => 'Mei', '06' => 'Jun',
-            '07' => 'Jul', '08' => 'Agu', '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Des'
-        ][$tgl_update_date_parts[1]] . ' ' . $tgl_update_date_parts[0];
-        $terakhir_update = $tgl_update_indo . ' ' . substr($tgl_update_parts[1], 0, 5); // Hanya ambil jam:menit
-    } else {
-        $terakhir_update = "Tanggal Tidak Valid";
-    }
-} else {
-    $terakhir_update = "Belum Pernah Diperbarui";
-}
-
-
-// --- DATA SISWA UNTUK TAMPILAN ---
 $nama_siswa = htmlspecialchars($siswa['nama']);
 $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
+$tempat_lahir_val = htmlspecialchars($siswa['tempat_lahir'] ?? '');
+$tanggal_lahir_val = htmlspecialchars($siswa['tanggal_lahir'] ?? '');
+$agama_val = htmlspecialchars($siswa['agama'] ?? '');
+
+$riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
 ?>
 
 <!DOCTYPE html>
@@ -308,17 +283,15 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* Definisi Warna Utama */
         :root {
-            --primary-color: #2F6C6E; /* Hijau Tua Khas */
-            --secondary-color: #38A169; /* Hijau Sukses */
+            --primary-color: #2F6C6E;
+            --secondary-color: #38A169;
         }
         .primary-color { color: var(--primary-color); }
         .primary-bg { background-color: var(--primary-color); }
         .primary-border { border-color: var(--primary-color); }
         .hover-bg-primary:hover { background-color: #1F4C4E; }
         
-        /* Form Styling */
         .form-label { font-weight: 600; color: #374151; margin-bottom: 4px; display: block; font-size: 0.95rem; }
         .form-input, .form-textarea, .form-select { 
             width: 100%; 
@@ -338,13 +311,22 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             border-color: #E5E7EB;
             cursor: not-allowed;
         }
+        .collapsed {
+    display: none;
+}
 
-        /* Navbar & Mobile Menu Transitions (Konsisten dengan Dashboard) */
+.accordion-icon {
+    transition: transform 0.3s ease;
+}
+
+.accordion-icon.rotated {
+    transform: rotate(180deg);
+}
+
         .fade-slide { transition: all 0.3s ease-in-out; transform-origin: top; }
         .hidden-transition { opacity: 0; transform: scaleY(0.95); max-height: 0; overflow: hidden; pointer-events: none; }
         .visible-transition { opacity: 1; transform: scaleY(1); max-height: 500px; pointer-events: auto; }
         
-        /* Accordion Styling */
         .accordion-header {
             cursor: pointer;
             padding: 1rem;
@@ -367,7 +349,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             padding-bottom: 0;
         }
         .accordion-content:not(.collapsed) {
-            max-height: 2000px; /* Nilai besar agar konten bisa muat */
+            max-height: 2000px;
             opacity: 1;
             padding-top: 1.5rem;
         }
@@ -378,7 +360,6 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             transform: rotate(180deg);
         }
         
-        /* Modal Instruksi (Sama seperti sebelumnya) */
         #instructionModal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background-color: rgba(0, 0, 0, 0.7); z-index: 9999; 
@@ -393,7 +374,6 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             transform: scale(1); opacity: 1;
         }
 
-        /* Print Styles */
         @media print {
             .no-print { display: none !important; }
             body { background-color: white; }
@@ -453,21 +433,24 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
         }
         
         function toggleAccordion(header) {
-            const content = header.nextElementSibling;
-            const icon = header.querySelector('.accordion-icon');
-            
-            // Tutup semua yang lain (opsional)
-            document.querySelectorAll('.accordion-header').forEach(otherHeader => {
-                if (otherHeader !== header) {
-                    otherHeader.nextElementSibling.classList.add('collapsed');
-                    otherHeader.querySelector('.accordion-icon').classList.remove('rotated');
-                }
-            });
+    const currentGroup = header.closest('.accordion-group');
+    const currentContent = currentGroup.querySelector('.accordion-content');
+    const currentIcon = header.querySelector('.accordion-icon');
 
-            // Buka/tutup yang diklik
-            content.classList.toggle('collapsed');
-            icon.classList.toggle('rotated');
-        }
+    const isCollapsed = currentContent.classList.contains('collapsed');
+
+    // 1. Tutup semua accordion
+    document.querySelectorAll('.accordion-group').forEach(group => {
+        group.querySelector('.accordion-content').classList.add('collapsed');
+        group.querySelector('.accordion-icon').classList.remove('rotated');
+    });
+
+    // 2. Jika sebelumnya tertutup, buka yang diklik
+    if (isCollapsed) {
+        currentContent.classList.remove('collapsed');
+        currentIcon.classList.add('rotated');
+    }
+}
 
         function showInstructions(type, event) {
             const instructionFlag = type === 'pendidikan' ? PENDIDIKAN_FLAG : PRESTASI_FLAG;
@@ -525,6 +508,23 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
 
             sessionStorage.setItem(instructionFlag, 'true');
         }
+        
+        document.getElementById('btnExportCV').addEventListener('click', function(e) {
+            e.preventDefault();
+            fetch('cv_template.php')
+            .then(response => response.text())
+            .then(html => {
+                const printWindow = window.open('', '_blank', 'width=900,height=1200');
+                printWindow.document.open();
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.onload = function() {
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 800);
+                };
+            });
+        });
 
         function closeInstructions() {
             const modal = document.getElementById('instructionModal');
@@ -541,32 +541,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             }, 300);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.accordion-header').forEach(header => {
-                header.addEventListener('click', () => toggleAccordion(header));
-            });
-            
-            document.querySelector('input[name="url_foto"]').addEventListener('change', previewImage);
-            
-            document.getElementById('instructionModal').addEventListener('click', (e) => {
-                if (e.target.id === 'instructionModal') {
-                    closeInstructions();
-                }
-            });
-            
-            document.getElementById('riwayat_sma_smk_ma').onfocus = (e) => showInstructions('pendidikan', e);
-            document.getElementById('riwayat_smp_mts').onfocus = (e) => showInstructions('pendidikan', e);
-            document.getElementById('riwayat_sd_mi').onfocus = (e) => showInstructions('pendidikan', e);
-            document.getElementById('prestasi_pengalaman').onfocus = (e) => showInstructions('prestasi', e);
-            document.getElementById('organisasi').onfocus = (e) => showInstructions('prestasi', e);
-
-            // Buka accordion pertama secara default
-            const firstHeader = document.querySelector('.accordion-header');
-            if(firstHeader) {
-                 firstHeader.nextElementSibling.classList.remove('collapsed');
-                 firstHeader.querySelector('.accordion-icon').classList.add('rotated');
-            }
-        });
+        
     </script>
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 flex flex-col min-h-screen">
@@ -609,7 +584,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
             <i class="fas fa-id-card-alt mr-2"></i> Edit Data Profiling Siswa
         </h1>
         <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
-            Lengkapi dan perbarui biodata Anda. Kelengkapan data ini **wajib** untuk membuka akses ke semua tes.
+            Lengkapi dan perbarui biodata Anda. Kelengkapan data ini wajib untuk membuka akses ke semua tes.
         </p>
     </section>
 
@@ -629,11 +604,31 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                     <p><?php echo $pesan_error; ?></p>
                 </div>
             <?php endif; ?>
-            
+
             <div class="no-print mb-8 flex flex-wrap justify-between items-center gap-3">
-                <button type="button" onclick="window.print()" class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition font-semibold shadow-md">
-                    <i class="fas fa-print mr-2"></i> Cetak Profil
-                </button>
+                <a href="#" id="btnExportCV"
+   class="bg-blue-800 text-white px-5 py-2 rounded-lg hover:bg-blue-900 transition font-semibold shadow-md flex items-center justify-center">
+    <i class="fas fa-print mr-2"></i> Cetak/Ekspor PDF
+</a>
+<script>
+document.getElementById('btnExportCV').addEventListener('click', function(e) {
+    e.preventDefault();
+    fetch('cv_template.php')
+    .then(response => response.text())
+    .then(html => {
+        const printWindow = window.open('', '_blank', 'width=900,height=1200');
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.onload = function() {
+            setTimeout(() => {
+                printWindow.print();
+            }, 800);
+        };
+    });
+});
+</script>
+
                 <div class="text-sm text-red-700 bg-red-100 p-3 rounded-lg border border-red-400 shadow-sm">
                     <i class="fas fa-info-circle mr-2"></i> Lengkapi semua data dengan jujur.
                 </div>
@@ -678,10 +673,6 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                                 <div><span class="font-medium text-gray-600">NISN:</span> <strong class="text-gray-900"><?php echo htmlspecialchars($siswa['nisn'] ?? '-'); ?></strong></div>
                                 <div><span class="font-medium text-gray-600">Kelas & Jurusan:</span> <strong class="text-gray-900"><?php echo $kelas_jurusan; ?></strong></div>
                                 <div><span class="font-medium text-gray-600">ID Siswa (Internal):</span> <strong class="text-gray-900"><?php echo $siswa['id_siswa']; ?></strong></div>
-                                <div>
-                                    <span class="font-medium text-gray-600">Terakhir Update:</span> 
-                                    <strong class="text-gray-900"><?php echo $terakhir_update; ?></strong>
-                                </div>
                             </div>
                         </div>
 
@@ -748,8 +739,8 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                                 </div>
                                 
                                 <div class="col-span-1">
-                                    <label for="anak_ke" class="form-label"><i class="fas fa-sort-numeric-up mr-1"></i> Anak Ke</label>
-                                    <input type="number" id="anak_ke" name="anak_ke" class="form-input" value="<?php echo htmlspecialchars($siswa['anak_ke'] ?? ''); ?>" min="1" max="50" placeholder="Cth: 1">
+                                    <label for="anak_ke" class="form-label">Anak ke... dari ...</label>
+                                    <input type="text" id="anak_ke" name="anak_ke" class="form-input" value="<?php echo htmlspecialchars($siswa['anak_ke'] ?? ''); ?>" placeholder="Cth: 1 dari 3">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -764,7 +755,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                                 
                                 <div class="md:col-span-2 lg:col-span-3">
                                     <label for="riwayat_penyakit" class="form-label"><i class="fas fa-medkit mr-1"></i> Riwayat Penyakit Serius</label>
-                                    <input type="text" id="riwayat_penyakit" name="riwayat_penyakit" class="form-input" value="<?php echo htmlspecialchars($siswa['riwayat_penyakit'] ?? ''); ?>" maxlength="255" placeholder="Cth: Asma, Tipus, atau 'Tidak ada'">
+                                    <input type="text" id="riwayat_penyakit" name="riwayat_penyakit" class="form-input" value="<?php echo htmlspecialchars($siswa['riwayat_penyakit'] ?? ''); ?>" maxlength="255" placeholder="Cth: Asma, dll (jika tidak ada kosongkan saja)">
                                 </div>
                                 
                                 <div class="md:col-span-2 lg:col-span-3">
@@ -793,7 +784,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                             
                                 <div class="col-span-1">
                                     <label for="no_telp" class="form-label"><i class="fas fa-mobile-alt mr-1"></i> Nomor HP Siswa</label>
-                                    <input type="text" id="no_telp" name="no_telp" class="form-input" value="<?php echo htmlspecialchars($siswa['no_telp'] ?? ''); ?>" maxlength="20" placeholder="Cth: 08123456789">
+                                    <input type="number" id="no_telp" name="no_telp" class="form-input" value="<?php echo htmlspecialchars($siswa['no_telp'] ?? ''); ?>" maxlength="20" placeholder="Cth: 08123456789">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -894,7 +885,7 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                                 
                                 <div class="col-span-1">
                                     <label for="no_hp_ortu" class="form-label"><i class="fas fa-mobile-alt mr-1"></i> Nomor HP Orang Tua</label>
-                                    <input type="text" id="no_hp_ortu" name="no_hp_ortu" class="form-input" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" maxlength="20" placeholder="Nomor yang bisa dihubungi">
+                                    <input type="number" id="no_hp_ortu" name="no_hp_ortu" class="form-input" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" maxlength="20" placeholder="Nomor yang bisa dihubungi">
                                 </div>
                                 
                             </div>
@@ -913,54 +904,29 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                             
                                 <div class="col-span-1">
                                     <label for="status_tempat_tinggal" class="form-label"><i class="fas fa-home mr-1"></i> Status Tempat Tinggal</label>
-                                    <select id="status_tempat_tinggal" name="status_tempat_tinggal" class="form-select">
-                                        <option value="">-- Pilih Status --</option>
-                                        <?php foreach ($daftar_status_tinggal as $opt): ?>
-                                            <option value="<?php echo htmlspecialchars($opt); ?>" 
-                                                <?php echo ($siswa['status_tempat_tinggal'] == $opt) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($opt); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <input type="text" id="status_tempat_tinggal" name="status_tempat_tinggal" class="form-input" value="<?php echo htmlspecialchars($siswa['status_tempat_tinggal'] ?? ''); ?>" placeholder="Cth: Tinggal dengan Orang Tua / Kos">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="jarak_ke_sekolah" class="form-label"><i class="fas fa-route mr-1"></i> Jarak ke Sekolah</label>
-                                    <select id="jarak_ke_sekolah" name="jarak_ke_sekolah" class="form-select">
-                                        <option value="">-- Pilih Jarak --</option>
-                                        <?php foreach ($daftar_jarak as $opt): ?>
-                                            <option value="<?php echo htmlspecialchars($opt); ?>" 
-                                                <?php echo ($siswa['jarak_ke_sekolah'] == $opt) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($opt); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <input type="text" id="jarak_ke_sekolah" name="jarak_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['jarak_ke_sekolah'] ?? ''); ?>" placeholder="Cth: 5 km / 30 menit">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="transportasi_ke_sekolah" class="form-label"><i class="fas fa-bus mr-1"></i> Transportasi ke Sekolah</label>
-                                    <select id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="form-select">
-                                        <option value="">-- Pilih Transportasi --</option>
-                                        <?php foreach ($daftar_transportasi as $opt): ?>
-                                            <option value="<?php echo htmlspecialchars($opt); ?>" 
-                                                <?php echo ($siswa['transportasi_ke_sekolah'] == $opt) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($opt); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <input type="text" id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['transportasi_ke_sekolah'] ?? ''); ?>" placeholder="Cth: Sepeda Motor / Angkutan Umum">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="memiliki_hp_laptop" class="form-label"><i class="fas fa-laptop-code mr-1"></i> Kepemilikan Gadget</label>
                                     <select id="memiliki_hp_laptop" name="memiliki_hp_laptop" class="form-select">
-                                        <option value="">-- Pilih Kepemilikan --</option>
-                                        <?php foreach ($daftar_kepemilikan_gadget as $opt): ?>
-                                            <option value="<?php echo htmlspecialchars($opt); ?>" 
-                                                <?php echo ($siswa['memiliki_hp_laptop'] == $opt) ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($opt); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                            <option value="">-- Pilih Kepemilikan --</option>
+                            <?php foreach ($daftar_kepemilikan_gadget as $gadget): ?>
+                                <option value="<?php echo $gadget; ?>" <?php echo ($gadget == ($siswa['memiliki_hp_laptop'] ?? '')) ? 'selected' : ''; ?>>
+                                    <?php echo $gadget; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -1040,39 +1006,76 @@ $kelas_jurusan = htmlspecialchars($siswa['kelas'] . " " . $siswa['jurusan']);
                 </div>
                 
             </form>
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.accordion-header').forEach(header => {
+                header.addEventListener('click', () => toggleAccordion(header));
+            });
+            
+            document.querySelector('input[name="url_foto"]').addEventListener('change', previewImage);
+            
+            document.getElementById('instructionModal').addEventListener('click', (e) => {
+                if (e.target.id === 'instructionModal') {
+                    closeInstructions();
+                }
+            });
+            
+            document.getElementById('riwayat_sma_smk_ma').onfocus = (e) => showInstructions('pendidikan', e);
+            document.getElementById('riwayat_smp_mts').onfocus = (e) => showInstructions('pendidikan', e);
+            document.getElementById('riwayat_sd_mi').onfocus = (e) => showInstructions('pendidikan', e);
+            document.getElementById('prestasi_pengalaman').onfocus = (e) => showInstructions('prestasi', e);
+            document.getElementById('organisasi').onfocus = (e) => showInstructions('prestasi', e);
+
+            const firstHeader = document.querySelector('.accordion-header');
+            if(firstHeader) {
+                 firstHeader.nextElementSibling.classList.remove('collapsed');
+                 firstHeader.querySelector('.accordion-icon').classList.add('rotated');
+            }
+        });
+            </script>
+            
 
         </div>
     </section>
 
-    <div id="instructionModal" class="no-print hidden" onclick="closeInstructions()">
-        <div id="modalContent" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-yellow-700">Penting! Instruksi Pengisian Data</h3>
-                <button id="closeModalButton" onclick="closeInstructions()" class="text-gray-500 hover:text-gray-700 transition disabled:opacity-50"><i class="fas fa-times text-2xl"></i></button>
+    <div id="instructionModal" class="fixed inset-0 hidden items-center justify-center z-[9999]">
+        <div id="modalContent" class="bg-white p-6 md:p-8 rounded-xl shadow-2xl max-w-lg w-full transform scale-90 opacity-0 transition-all duration-300">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h4 class="text-xl font-bold text-gray-800 primary-color"><i class="fas fa-book-open mr-2"></i> Tata Cara Pengisian</h4>
+                <button id="closeModalButton" onclick="closeInstructions()" class="text-gray-500 hover:text-red-500 text-2xl disabled:opacity-50 disabled:cursor-wait" disabled>
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             
             <div id="PendidikanInstructions" style="display:none;">
-                <p class="mb-3">Silakan isi riwayat pendidikan Anda **secara singkat namun jelas**. Fokus pada nama sekolah dan tahun lulus (atau jurusan saat ini).</p>
-                <ul class="list-disc list-inside text-sm space-y-1 bg-yellow-50 p-3 rounded border border-yellow-200">
-                    <li>**SMA/SMK/MA:** Isi dengan nama sekolah dan jurusan (wajib). Cth: SMKN 2 Banjarmasin - RPL.</li>
-                    <li>**SMP/MTs:** Isi dengan nama sekolah dan tahun lulus. Cth: SMPN 5 Banjarmasin - Lulus 2021.</li>
-                    <li>**SD/MI:** Isi dengan nama sekolah dan tahun lulus. Cth: SDN A Yani 1 - Lulus 2018.</li>
-                </ul>
-            </div>
-            
-            <div id="PrestasiInstructions" style="display:none;">
-                <p class="mb-3">Tuliskan prestasi dan organisasi Anda. Jika banyak, pisahkan setiap item dengan baris baru (tekan Enter).</p>
-                <ul class="list-disc list-inside text-sm space-y-1 bg-yellow-50 p-3 rounded border border-yellow-200">
-                    <li>**Prestasi/Pengalaman:** Cth: Juara 2 Lomba Coding Nasional (2023), Magang di PT ABC (3 Bulan).</li>
-                    <li>**Organisasi:** Cth: OSIS - Seksi Humas (2022-2023), Pramuka - Anggota (2021-Sekarang).</li>
-                </ul>
+                <p class="text-gray-700 mb-4 text-sm font-semibold">Anda sedang mengisi Riwayat Pendidikan. Gunakan format berikut:</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <strong class="text-base text-gray-800 block mb-1">Format Riwayat Pendidikan (SD, SMP, SMK):</strong>
+                        <p class="text-sm pl-4 border-l-4 border-indigo-400">Nama Sekolah (Tahun Masuk-Tahun Lulus).<br>Contoh: SMPN 2 Banjarmasin (2020-2023)</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="mt-6 pt-3 border-t flex justify-end">
-                <button id="closeButtonFooter" onclick="closeInstructions()" class="bg-primary-color text-white px-5 py-2 rounded-lg hover-bg-primary transition font-semibold text-sm disabled:bg-gray-400 disabled:cursor-wait">
-                    Mengerti, Lanjutkan Mengisi
-                </button>
+            <div id="PrestasiInstructions" style="display:none;">
+                <p class="text-gray-700 mb-4 text-sm font-semibold">Anda sedang mengisi Prestasi atau Pengalaman/Organisasi. Perhatikan format input berikut:</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <strong class="text-base text-gray-800 block mb-1">Format Prestasi / Pengalaman / Organisasi:</strong>
+                        <p class="text-sm pl-4 border-l-4 border-indigo-400">Tuliskan setiap Prestasi/Pengalaman/Organisasi dalam baris baru.<br>Gunakan tombol Enter untuk membuat baris baru.<br><br>Contoh Prestasi:<br>Juara 1 Lomba Web Design 2024<br>Juara 3 Olimpiade Matematika 2023</p>
+                    </div>
+                    <div>
+                        <strong class="text-base text-gray-800 block mb-1">Catatan:</strong>
+                        <p class="text-sm pl-4 border-l-4 border-indigo-400">Kosongkan jika tidak memiliki riwayat.</p>
+                    </div>
+                </div>
             </div>
+
+            <button id="closeButtonFooter" onclick="closeInstructions()" class="mt-6 w-full primary-bg text-white py-2 rounded-lg font-semibold transition disabled:bg-gray-400 disabled:cursor-wait" disabled>
+                Tutup (Tunggu 5 detik...)
+            </button>
         </div>
     </div>
 
