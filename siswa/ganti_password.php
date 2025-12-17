@@ -1,9 +1,7 @@
 <?php
 session_start();
-// Pastikan path ke koneksi.php sudah benar relatif dari lokasi file ini
 include '../koneksi.php'; 
 
-// Periksa apakah pengguna sudah login sebagai siswa
 if (!isset($_SESSION['id_siswa'])) {
     header("Location: ../login.php");
     exit;
@@ -16,12 +14,11 @@ $id_column = 'id_siswa';
 $password_column = 'password';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Sanitize input
+
     $password_lama = trim($_POST['password_lama'] ?? '');
     $password_baru = trim($_POST['password_baru'] ?? '');
     $konfirmasi_password = trim($_POST['konfirmasi_password'] ?? '');
 
-    // 1. Ambil password lama dari database
     $query_get_pass = "SELECT {$password_column} FROM {$table_name} WHERE {$id_column} = ?";
     $stmt = mysqli_prepare($koneksi, $query_get_pass);
     if ($stmt) {
@@ -39,16 +36,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($hashed_password_db === null) {
         $message = '<div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg shadow-md font-medium"><i class="fas fa-times-circle mr-2"></i> User tidak ditemukan atau database error.</div>';
     } elseif (!password_verify($password_lama, $hashed_password_db)) {
-        // 2. Verifikasi password lama
+
         $message = '<div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg shadow-md font-medium"><i class="fas fa-times-circle mr-2"></i> Password Lama Salah.</div>';
     } elseif ($password_baru !== $konfirmasi_password) {
-        // 3. Verifikasi konfirmasi password
+
         $message = '<div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg shadow-md font-medium"><i class="fas fa-times-circle mr-2"></i> Konfirmasi Password tidak cocok.</div>';
     } elseif (strlen($password_baru) < 6) {
-        // 4. Verifikasi panjang password baru
+
         $message = '<div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg shadow-md font-medium"><i class="fas fa-exclamation-triangle mr-2"></i> Password baru minimal 6 karakter.</div>';
     } else {
-        // 5. Hash password baru dan update
+
         $hashed_password_new = password_hash($password_baru, PASSWORD_DEFAULT);
         
         $query_update = "UPDATE {$table_name} SET {$password_column} = ? WHERE {$id_column} = ?";
@@ -81,13 +78,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Warna utama, ganti jika perlu */
         .primary-color { color: #2F6C6E; }
         .primary-bg { background-color: #2F6C6E; }
         .primary-border { border-color: #2F6C6E; }
         .hover-bg-primary:hover { background-color: #1F4C4E; }
 
-        /* Styling Form Input yang Interaktif */
         .form-input { 
             width: 100%; 
             padding: 10px 12px; 
@@ -99,18 +94,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-input:focus {
              border-color: #2F6C6E; 
              outline: none; 
-             box-shadow: 0 0 0 2px rgba(47, 108, 110, 0.5); /* Ring focus custom */
+             box-shadow: 0 0 0 2px rgba(47, 108, 110, 0.5); 
         }
 
-        /* Transisi untuk Menu Mobile */
         .fade-slide { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: top; }
         .hidden-transition { opacity: 0; transform: scaleY(0); pointer-events: none; }
         .visible-transition { opacity: 1; transform: scaleY(1); pointer-events: auto; }
 
-        /* Custom style untuk tata cara (kolom kanan) */
         .tata-cara-bg {
-            background-color: #242A38; /* Warna gelap seperti contoh gambar */
-            color: #E5E7EB; /* Teks terang */
+            background-color: #242A38; 
+            color: #E5E7EB;/
         }
         .list-tata-cara li {
             position: relative;
@@ -121,13 +114,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             content: '•';
             position: absolute;
             left: 0;
-            color: #2F6C6E; /* Warna bullet/marker yang kontras */
+            color: #2F6C6E;
             font-size: 1.25rem;
             line-height: 1;
         }
     </style>
     <script>
-        // Fungsi untuk mengaktifkan/menonaktifkan menu mobile
         function toggleMenu() {
             const menu = document.getElementById('mobileMenu');
             const overlay = document.getElementById('menuOverlay');
@@ -136,30 +128,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             const isClosed = menu.classList.contains('hidden-transition');
 
             if (isClosed) {
-                // Tampilkan menu
                 menu.classList.remove('hidden-transition');
                 menu.classList.add('visible-transition');
                 overlay.classList.remove('hidden');
-                body.classList.add('overflow-hidden'); // Mencegah scroll body saat menu terbuka
+                body.classList.add('overflow-hidden');
             } else {
-                // Sembunyikan menu
                 menu.classList.remove('visible-transition');
                 menu.classList.add('hidden-transition');
                 overlay.classList.add('hidden');
                 body.classList.remove('overflow-hidden');
             }
         }
-        
-        // Listener untuk menutup menu saat overlay diklik
+
         document.addEventListener('DOMContentLoaded', () => {
             const overlay = document.getElementById('menuOverlay');
             if (overlay) overlay.addEventListener('click', toggleMenu);
         });
 
-        // Toggles visibility of password fields
         function togglePasswordVisibility(fieldId) {
             const field = document.getElementById(fieldId);
-            // Cari ikon yang terkait langsung setelah input field
             const icon = field.parentNode.querySelector('.password-toggle i'); 
             
             if (field.type === 'password') {
@@ -173,7 +160,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
 
-        // Auto-close success message after 5 seconds
         document.addEventListener('DOMContentLoaded', () => {
             const successMessage = document.querySelector('.auto-dismiss');
             if (successMessage) {
@@ -220,6 +206,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <i class="fas fa-sign-out-alt mr-1"></i> Logout
         </button>
     </div>
+
+    <section class="no-print text-center py-8 md:py-12 primary-bg text-white shadow-xl">
+        <h1 class="text-2xl md:text-4xl font-extrabold mb-1">
+            <i class="fas fa-key mr-2"></i> Perbarui Kata Sandi Anda
+        </h1>
+        <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
+            Perbarui kata sandi Anda untuk menjaga keamanan akun Anda.
+        </p>
+    </section>
     
     <section class="py-10 px-4 flex-grow flex items-start justify-center">
         <div class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
@@ -290,10 +285,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <i class="fas fa-info-circle mr-2"></i> Tata Cara Ganti Password
                 </h2>
                 <ul class="space-y-4 list-tata-cara text-gray-300 text-sm">
-                    <li>Masukkan **Password Lama** Anda yang masih berlaku.</li>
-                    <li>Masukkan **Password Baru** dengan panjang minimal 6 karakter.</li>
-                    <li>Masukkan kembali **Konfirmasi Password Baru** yang harus sama persis dengan Password Baru.</li>
-                    <li>Klik tombol **SIMPAN PASSWORD BARU**.</li>
+                    <li>Masukkan Password Lama Anda yang masih berlaku.</li>
+                    <li>Masukkan Password Baru dengan panjang minimal 6 karakter.</li>
+                    <li>Masukkan kembali Konfirmasi Password Baru yang harus sama persis dengan Password Baru.</li>
+                    <li>Klik tombol SIMPAN PASSWORD BARU.</li>
                     <li>Jika berhasil, Anda akan melihat notifikasi sukses. Jika gagal, periksa kembali input Anda atau pastikan Anda memasukkan Password Lama dengan benar.</li>
                 </ul>
                 <div class="mt-8 pt-4 border-t border-gray-700">
