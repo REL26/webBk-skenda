@@ -164,72 +164,150 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         * { font-family: 'Inter', sans-serif; }
-        .primary-color { color: #2F6C6E; }
-        .primary-bg { background-color: #2F6C6E; }
-        .secondary-bg { background-color: #E6EEF0; }
+:root {
+    /* PRIMARY */
+    --primary: #0F3A3A;
+    --primary-dark: #0B2E2E;
+    --primary-light: #123E44;
+
+    /* ACCENT */
+    --accent: #5FA8A1;
+    --accent-dark: #4C8E89;
+
+    /* NEUTRAL */
+    --white: #FFFFFF;
+    --gray-50: #F9FAFB;
+    --gray-200: #E5E7EB;
+
+    /* STATUS (DISESUAIKAN TEMA) */
+    --success: #4C8E89;
+    --warning: #5FA8A1;
+    --danger: #9B2C2C;
+}
         
-        .fade-slide.hidden-transition { opacity: 0; transform: translateY(-20px); pointer-events: none; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
-        .fade-slide.active-transition { opacity: 1; transform: translateY(0); pointer-events: auto; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+        .primary-gradient { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); }
+        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        
+        .fade-slide { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .fade-slide.hidden-transition { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+        .fade-slide.active-transition { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        
+        .status-badge { 
+            animation: pulse-subtle 2s ease-in-out infinite; 
+        }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .filter-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
         
         @media (min-width: 768px) {
             .sidebar { width: 260px; flex-shrink: 0; transform: translateX(0) !important; position: fixed !important; height: 100vh; top: 0; left: 0; overflow-y: auto; }
             .content-wrapper { margin-left: 260px; }
         }
         
-        .nav-item { position: relative; overflow: hidden; }
-        .nav-item::before { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 4px; background: #D9F0F4; transform: scaleY(0); transition: transform 0.3s ease; }
-        .nav-item:hover::before, .nav-item.active::before { transform: scaleY(1); }
-        .nav-item.active { background-color: #3C7F81; }
+        .nav-item { 
+            position: relative; 
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item::before { 
+            content: ''; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            height: 100%; 
+            width: 4px; 
+            background: var(--accent); 
+            transform: scaleY(0); 
+            transition: transform 0.3s ease; 
+        }
+
+        .nav-item:hover::before, 
+        .nav-item.active::before { 
+            transform: scaleY(1); 
+        }
+
+        .nav-item.active { 
+            background-color: var(--primary-light);
+        }
         
-        .modal-content-wrapper { max-height: 90vh; overflow-y: auto; }
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.2s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content-wrapper { 
+            animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 90vh; 
+            overflow-y: auto; 
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) #f1f1f1;
+        }
+        
+        .table-container::-webkit-scrollbar { height: 8px; }
+        .table-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .table-container::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
         
         @media (max-width: 767px) {
-            body {
-                overflow-x: hidden;
-            }
+            body { overflow-x: hidden; }
             .student-card { 
-                padding: 1rem; 
                 background: white; 
-                border-radius: 0.75rem; 
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-                border: 1px solid #e0e0e0;
-                width: 100%;
-                box-sizing: border-box;
-                overflow-wrap: break-word;
+                border-radius: 1rem; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.07); 
+                border-left: 4px solid var(--primary);
+                transition: all 0.3s ease;
             }
-            .table-container { 
-                display: none; 
+            .student-card:active {
+                transform: scale(0.98);
             }
-            .card-container { 
-                display: block; 
-                padding: 0;
-                width: 100%;
-            }
-            .modal-content-wrapper {
-                width: 95vw !important;
-                max-width: 95vw !important;
-                margin: 0 auto !important;
-                border-radius: 0.75rem !important;
-                max-height: 90vh;
-            }
-            main {
-                padding: 1rem !important;
-                width: 100%;
-                max-width: 100vw;
-                box-sizing: border-box;
-            }
+            .table-container { display: none; }
+            .card-container { display: block; }
+            .modal-content-wrapper { width: 95vw !important; max-width: 95vw !important; }
+            main { padding: 1rem !important; }
         }
         
         @media (min-width: 768px) {
-            .table-container { 
-                display: block; 
-            }
-            .card-container { 
-                display: none; 
-            }
+            .table-container { display: block; }
+            .card-container { display: none; }
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(47, 108, 110, 0.1);
         }
     </style>
 
@@ -270,8 +348,9 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 const isDoneBool = isDone == 1;
                 return {
                     text: isDoneBool ? 'Sudah Tes' : 'Belum Tes',
-                    bg: isDoneBool ? 'bg-green-100' : 'bg-red-100',
-                    textCol: isDoneBool ? 'text-green-700' : 'text-red-700',
+                    bg: isDoneBool ? 'bg-emerald-50' : 'bg-red-50',
+                    textCol: isDoneBool ? 'text-emerald-700' : 'text-red-700',
+                    borderCol: isDoneBool ? 'border-emerald-200' : 'border-red-200',
                     icon: isDoneBool ? 'fas fa-check-circle' : 'fas fa-times-circle'
                 };
             };
@@ -281,50 +360,45 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 
             const menuItems = {
                 biodata: {
-                    title: 'Biodata',
+                    title: 'Biodata Siswa',
                     icon: 'fas fa-address-card',
-                    color: 'primary-color',
-                    border: 'border-[#2F6C6E]',
+                    gradient: 'from-blue-500 to-blue-600',
                     url: `detail_biodata.php?id_siswa=${idSiswa}`,
-                    description: 'Lihat biodata Siswa dan Export CV',
+                    description: 'Lihat biodata lengkap dan export CV',
                     terkunci: false
                 },
                 kemampuan: {
                     title: 'Tes Kemampuan',
                     icon: 'fas fa-brain',
-                    color: 'green-600',
-                    border: 'border-[#2F6C6E]',
+                    gradient: 'from-purple-500 to-purple-600',
                     url: statusKc == 1 ? `detail_hasil_kemampuan.php?id_siswa=${idSiswa}&type=kecerdasan` : '#',
-                    description: 'Lihat laporan resmi Kemampuan dan Export PDF',
+                    description: 'Laporan kecerdasan majemuk dan export PDF',
                     status: status_kc,
                     terkunci: statusKc == 0 
                 },
                 gayabelajar: {
                     title: 'Tes Gaya Belajar',
                     icon: 'fas fa-lightbulb',
-                    color: 'yellow-600',
-                    border: 'border-[#2F6C6E]',
+                    gradient: 'from-amber-500 to-amber-600',
                     url: statusGb == 1 ? `detail_hasil_gayabelajar.php?id_siswa=${idSiswa}&type=gayabelajar` : '#',
-                    description: 'Lihat laporan resmi Gaya Belajar dan Export PDF',
+                    description: 'Laporan gaya belajar dan export PDF',
                     status: status_gb,
                     terkunci: statusGb == 0
                 },
                 kepribadian: {
-                    title: 'Tes Kepribadian (Terkunci)',
-                    icon: 'fas fa-lock',
-                    color: 'gray-700',
-                    border: 'border-[#2F6C6E]',
+                    title: 'Tes Kepribadian',
+                    icon: 'fas fa-user-circle',
+                    gradient: 'from-gray-400 to-gray-500',
                     url: '#',
-                    description: 'Data hasil tes belum tersedia',
+                    description: 'Fitur dalam pengembangan',
                     terkunci: true
                 },
                 asesmen: {
-                    title: 'Asesmen Awal BK (Terkunci)',
-                    icon: 'fas fa-lock',
-                    color: 'gray-700',
-                    border: 'border-[#2F6C6E]',
+                    title: 'Asesmen Awal BK',
+                    icon: 'fas fa-clipboard-check',
+                    gradient: 'from-gray-400 to-gray-500',
                     url: '#',
-                    description: 'Data asesmen awal belum tersedia',
+                    description: 'Fitur dalam pengembangan',
                     terkunci: true
                 }
             };
@@ -334,25 +408,34 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 
             Object.keys(menuItems).forEach(key => {
                 const item = menuItems[key];
-                const lockedClass = item.terkunci ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-xl hover:bg-gray-50 transition duration-300 cursor-pointer';
+                const lockedClass = item.terkunci ? 'opacity-60 cursor-not-allowed' : 'card-hover cursor-pointer';
                 const linkStart = item.terkunci ? '<div' : `<a href="${item.url}"`;
                 const linkEnd = item.terkunci ? '</div>' : '</a>';
 
                 const statusBadge = item.status ? 
-                    `<span class="text-xs font-medium ${item.status.bg} ${item.status.textCol} px-2 py-0.5 rounded-full ml-2 flex items-center">
-                        <i class="${item.status.icon} text-xs mr-1"></i> ${item.status.text}
+                    `<span class="text-xs font-semibold ${item.status.bg} ${item.status.textCol} border ${item.status.borderCol} px-3 py-1 rounded-full flex items-center gap-1 status-badge">
+                        <i class="${item.status.icon} text-xs"></i> ${item.status.text}
                     </span>` : '';
 
+                const lockIcon = item.terkunci ? '<i class="fas fa-lock text-gray-400 text-lg"></i>' : '';
+
                 const card = `
-                    ${linkStart} class="bg-white p-4 rounded-xl shadow-md border-t-4 ${item.border} ${lockedClass}">
-                        <div class="flex items-start justify-between">
-                            <div class="flex items-center">
-                                <i class="${item.icon} text-2xl text-${item.color} mr-3"></i>
-                                <h4 class="text-sm md:text-base font-semibold text-gray-800">${item.title}</h4>
+                    ${linkStart} class="relative overflow-hidden bg-white p-5 rounded-xl shadow-md hover:shadow-xl border border-gray-100 ${lockedClass}">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${item.gradient} opacity-5 rounded-full -mr-16 -mt-16"></div>
+                        <div class="relative flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg">
+                                    <i class="${item.icon} text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-bold text-gray-800">${item.title}</h4>
+                                    ${statusBadge}
+                                </div>
                             </div>
-                            ${statusBadge}
+                            ${lockIcon}
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">${item.description}</p>
+                        <p class="text-sm text-gray-600 relative">${item.description}</p>
+                        ${!item.terkunci ? '<div class="mt-3 text-xs font-semibold text-blue-600 flex items-center gap-1"><span>Lihat Detail</span><i class="fas fa-arrow-right"></i></div>' : ''}
                     ${linkEnd}
                 `;
                 cardsContainer.innerHTML += card;
@@ -399,6 +482,19 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             }
         }
 
+        function toggleFilters() {
+            const filterSection = document.getElementById('filterSection');
+            const filterIcon = document.getElementById('filterIcon');
+            
+            if (filterSection.classList.contains('hidden')) {
+                filterSection.classList.remove('hidden');
+                filterIcon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                filterSection.classList.add('hidden');
+                filterIcon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const mobileMenu = document.getElementById('mobileMenu');
             if (mobileMenu) mobileMenu.classList.add('hidden-transition');
@@ -410,123 +506,133 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             if (modalOverlay) modalOverlay.addEventListener('click', hideResultModal);
 
             <?php if ($is_profiling_active): ?>
-                document.getElementById('profilingSubmenuDesktop').classList.remove('hidden');
-                document.getElementById('profilingSubmenuDesktopIcon').classList.replace('fa-chevron-down', 'fa-chevron-up');
+                document.getElementById('profilingSubmenuDesktop')?.classList.remove('hidden');
+                document.getElementById('profilingSubmenuDesktopIcon')?.classList.replace('fa-chevron-down', 'fa-chevron-up');
             <?php endif; ?>
             
             checkScreenAndSetView();
         });
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 min-h-screen flex flex-col">
 
+    <!-- Mobile Header -->
     <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
-        <div>
-            <strong class="text-base font-semibold primary-color">Guru BK</strong><br>
-            <small class="text-xs text-gray-500">SMKN 2 BJM</small>
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center shadow-md">
+                <i class="fas fa-user-tie text-white"></i>
+            </div>
+            <div>
+                <strong class="text-sm font-bold text-gray-800">Guru BK</strong>
+                <p class="text-xs text-gray-500">SMKN 2 BJM</p>
+            </div>
         </div>
-        <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 z-40 hover:bg-gray-100 rounded-lg transition">
+        <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 hover:bg-gray-100 rounded-lg transition">
             <i class="fas fa-bars"></i>
         </button>
     </header>
 
     <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 md:hidden" onclick="toggleMenu()"></div>
     
-    <div id="mobileMenu" class="fade-slide hidden-transition fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
-        <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition">
-            <i class="fas fa-home mr-2"></i> Beranda
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="fade-slide hidden-transition fixed top-[64px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm max-h-[calc(100vh-64px)] overflow-y-auto">
+        <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition flex items-center gap-2">
+            <i class="fas fa-home w-5"></i> Beranda
         </a>
         <hr class="border-gray-200">
         
         <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_profiling_active ? 'bg-gray-100 font-medium' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuMobile')">
             <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
-                    <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
+                <span class="flex items-center gap-2 font-medium">
+                    <i class="fas fa-user-check w-5"></i> Data & Laporan Siswa
                 </span>
-                <i id="profilingSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
+                <i id="profilingSubmenuMobileIcon" class="fas fa-chevron-down text-xs transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
             </div>
         </div>
         <div id="profilingSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-            <a href="hasil_tes.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'hasil_tes.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-list-alt mr-2"></i> Data Hasil Persiswa
+            <a href="hasil_tes.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2 <?php echo $current_page == 'hasil_tes.php' ? 'text-blue-600 font-semibold' : ''; ?>">
+                <i class="fas fa-list-alt w-4"></i> Data Hasil Persiswa
             </a>
-            <a href="rekap_kelas.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'rekap_kelas.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-chart-bar mr-2"></i> Data Hasil Perkelas
+            <a href="rekap_kelas.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2 <?php echo $current_page == 'rekap_kelas.php' ? 'text-blue-600 font-semibold' : ''; ?>">
+                <i class="fas fa-chart-bar w-4"></i> Data Hasil Perkelas
             </a>
         </div>
         <hr class="border-gray-200">
 
         <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer" onclick="toggleSubMenu('programBkSubmenuMobile')">
             <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
-                    <i class="fas fa-calendar-alt mr-2"></i> Program BK
+                <span class="flex items-center gap-2 font-medium">
+                    <i class="fas fa-calendar-alt w-5"></i> Program BK
                 </span>
-                <i id="programBkSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
+                <i id="programBkSubmenuMobileIcon" class="fas fa-chevron-down text-xs transition-transform duration-300"></i>
             </div>
         </div>
         <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-user-friends mr-2"></i> Konseling Individu
+            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
+                <i class="fas fa-user-friends w-4"></i> Konseling Individu
             </a>
-             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Konseling Kelompok
+             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
+                <i class="fas fa-users w-4"></i> Konseling Kelompok
             </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Bimbingan Kelompok
+            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
+                <i class="fas fa-users w-4"></i> Bimbingan Kelompok
             </a>
         </div>
         <hr class="border-gray-200">
 
-        <a href="logout.php" class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-medium flex items-center justify-center">
-            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+        <a href="logout.php" class="bg-gradient-to-r from-red-500 to-red-600 text-white py-3 hover:from-red-600 hover:to-red-700 transition text-sm font-medium flex items-center justify-center gap-2">
+            <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
 
     <div class="flex flex-grow">
         
-        <aside id="sidebar" class="sidebar hidden md:flex primary-bg shadow-2xl z-40 flex-col text-white">
+        <!-- Desktop Sidebar -->
+        <aside id="sidebar" class="no-print sidebar hidden md:flex primary-gradient shadow-2xl z-40 flex-col text-white">
             <div class="px-6 py-6 border-b border-white/10">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user-tie text-lg"></i>
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg animated-icon">
+                        <i class="fas fa-user-tie text-xl text-white"></i>
                     </div>
                     <div>
-                        <strong class="text-base font-semibold block">Guru BK</strong>
+                        <strong class="text-base font-bold block">Guru BK</strong>
+                        <span class="text-xs text-white/80">SMKN 2 Banjarmasin</span>
                     </div>
                 </div>
             </div>
             
             <nav class="flex flex-col flex-grow py-4 space-y-1 px-3">
                 <a href="dashboard.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                    <i class="fas fa-home mr-3"></i> Dashboard
+                    <i class="fas fa-home mr-3 w-5"></i> Dashboard
                 </a>
                 
                 <div class="nav-item cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuDesktop')">
                     <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
                         <span class="flex items-center">
-                            <i class="fas fa-user-check mr-3"></i> Data & Laporan Siswa
+                            <i class="fas fa-user-check mr-3 w-5"></i> Data & Laporan Siswa
                         </span>
                         <i id="profilingSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
                     </div>
                 </div>
                 <div id="profilingSubmenuDesktop" class="pl-8 space-y-1 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-                    <a href="hasil_tes.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'hasil_tes.php' ? 'text-white font-semibold' : ''; ?>">
+                    <a href="hasil_tes.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'hasil_tes.php' ? 'text-white font-semibold bg-white/10' : ''; ?>">
                         <i class="fas fa-list-alt mr-3 w-4"></i> Data Hasil Persiswa
                     </a>
-                    <a href="rekap_kelas.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'rekap_kelas.php' ? 'text-white font-semibold' : ''; ?>">
+                    <a href="rekap_kelas.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'rekap_kelas.php' ? 'text-white font-semibold bg-white/10' : ''; ?>">
                         <i class="fas fa-chart-bar mr-3 w-4"></i> Data Hasil Perkelas
                     </a>
                 </div>
+                
                 <div class="nav-item cursor-pointer" onclick="toggleSubMenu('programBkSubmenuDesktop')">
                     <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
                         <span class="flex items-center">
-                            <i class="fas fa-calendar-alt mr-3"></i> Program BK
+                            <i class="fas fa-calendar-alt mr-3 w-5"></i> Program BK
                         </span>
                         <i id="programBkSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
                     </div>
                 </div>
                 <div id="programBkSubmenuDesktop" class="pl-8 space-y-1 hidden">
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingindividu.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
                     </a>
                     <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
@@ -538,270 +644,506 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 </div>
 
                  <div class="mt-auto pt-4 border-t border-white/10">
-                     <a href="logout.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200">
-                        <i class="fas fa-sign-out-alt mr-3"></i> Logout
+                     <a href="logout.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-200 hover:bg-red-600/30 rounded-lg transition duration-200">
+                        <i class="fas fa-sign-out-alt mr-3 w-5"></i> Logout
                     </a>
                 </div>
             </nav>
         </aside>
 
+       <!-- Main Content -->
        <main class="flex-grow p-4 sm:p-6 lg:p-8 content-wrapper max-w-full">
-    <h2 class="text-2xl md:text-3xl font-extrabold text-gray-800 mb-6 flex items-center">
-        <i class="fas fa-clipboard-list primary-color mr-3"></i> Data Hasil Per Siswa
-    </h2>
-    <div class="bg-white p-4 rounded-xl shadow-lg mb-6 border border-gray-200">
-        <form method="GET" action="hasil_tes.php" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             
-            <input type="hidden" name="view" value="<?php echo htmlspecialchars($view_mode); ?>">
-
-            <div> 
-                <label for="nama" class="block text-sm font-medium text-gray-700">Nama Siswa:</label>
-                <input type="text" id="nama" name="nama" placeholder="Cari berdasarkan nama..." value="<?php echo htmlspecialchars($filter_nama); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-            </div>
-    
-            <div>
-                <label for="nis" class="block text-sm font-medium text-gray-700">NIS:</label>
-                <input type="text" id="nis" name="nis" placeholder="Cari NIS..." value="<?php echo htmlspecialchars($filter_nis); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-            </div>
-    
-            <div>
-                <label for="kelas" class="block text-sm font-medium text-gray-700">Kelas:</label>
-                <select id="kelas" name="kelas" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Kelas</option>
-                    <?php foreach ($kelas_options as $k): ?>
-                        <option value="<?php echo $k; ?>" <?php echo ($filter_kelas == $k) ? 'selected' : ''; ?>>Kelas <?php echo $k; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-    
-            <div>
-                <label for="jurusan" class="block text-sm font-medium text-gray-700">Jurusan:</label>
-                <select id="jurusan" name="jurusan" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Jurusan</option>
-                    <?php foreach ($jurusan_options as $j): ?>
-                        <option value="<?php echo $j; ?>" <?php echo ($filter_jurusan == $j) ? 'selected' : ''; ?>><?php echo $j; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-    
-            <div>
-                <label for="tahun" class="block text-sm font-medium text-gray-700">Tahun Ajaran:</label>
-                <select id="tahun" name="tahun" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Tahun</option>
-                    <?php foreach ($data_tahun as $tahun): ?>
-                        <option value="<?php echo $tahun['id_tahun']; ?>" <?php echo ($filter_tahun == $tahun['id_tahun']) ? 'selected' : ''; ?>><?php echo $tahun['tahun']; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            
-            <div>
-                <label for="gender" class="block text-sm font-medium text-gray-700">Gender:</label>
-                <select id="gender" name="gender" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Gender</option>
-                    <option value="L" <?php echo ($filter_gender == 'L') ? 'selected' : ''; ?>>Laki-laki</option>
-                    <option value="P" <?php echo ($filter_gender == 'P') ? 'selected' : ''; ?>>Perempuan</option>
-                </select>
-            </div>
-    
-            <div>
-                <label for="gb_status" class="block text-sm font-medium text-gray-700">Gaya Belajar:</label>
-                <select id="gb_status" name="gb_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Status</option>
-                    <option value="done" <?php echo ($filter_gb_status == 'done') ? 'selected' : ''; ?>>Sudah Tes</option>
-                    <option value="not_done" <?php echo ($filter_gb_status == 'not_done') ? 'selected' : ''; ?>>Belum Tes</option>
-                </select>
-            </div>
-    
-            <div class="lg:col-span-1">
-                <label for="kc_status" class="block text-sm font-medium text-gray-700">Tes Kecerdasan:</label>
-                <select id="kc_status" name="kc_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                    <option value="">Semua Status</option>
-                    <option value="done" <?php echo ($filter_kc_status == 'done') ? 'selected' : ''; ?>>Sudah Tes</option>
-                    <option value="not_done" <?php echo ($filter_kc_status == 'not_done') ? 'selected' : ''; ?>>Belum Tes</option>
-                </select>
-            </div>
-    
-            <div class="sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row gap-2 pt-2">
-                <button type="submit" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-sm">
-                    <i class="fas fa-filter mr-2"></i> Terapkan Filter
-                </button>
-                <a href="hasil_tes.php?view=<?php echo htmlspecialchars($view_mode); ?>" class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-sm">
-                    <i class="fas fa-undo mr-2"></i> Reset
-                </a>
-                
-                <?php
-                $export_url = 'exportsekaligus_cv.php?' . http_build_query(array_merge($current_filters, ['action' => 'export_all_cv']));
-                ?>
-                <a href="#" 
-                   onclick="confirmExport('<?php echo htmlspecialchars($export_url); ?>', '<?php echo $total_records; ?>')"
-                   class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition duration-150 ease-in-out flex items-center justify-center text-sm"
-                   title="Mengunduh semua biodata siswa yang tampil (<?php echo $total_records; ?> Siswa) sesuai filter sebagai file ZIP.">
-                    <i class="fas fa-file-export mr-2"></i> Export Semua Biodata (<?php echo $total_records; ?>)
-                </a>
+            <!-- Page Header -->
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-12 h-12 rounded-xl primary-gradient flex items-center justify-center shadow-lg">
+                        <i class="fas fa-clipboard-list text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-gray-800">Data Hasil Per Siswa</h2>
+                        <p class="text-sm text-gray-500">Kelola dan pantau hasil tes siswa</p>
+                    </div>
                 </div>
-        </form>
-    </div>
+            </div>
 
-    <div class="table-container bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 border border-gray-300">
-                <thead class="bg-gray-100 sticky top-0">
-                    <tr>
-                        <th class="px-3 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-[50px] border border-gray-200">No</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[200px] border border-gray-200">NIS & Nama</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[150px] border border-gray-200">Kelas & Jurusan</th>
-                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[120px] border border-gray-200">Tahun Ajaran</th>
-                        <th class="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-[150px] border border-gray-200">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <?php
-                    $no = 1;
-                    if (mysqli_num_rows($result_siswa) > 0) :
-                        while ($siswa = mysqli_fetch_assoc($result_siswa)) :
-                            $is_gb_done = !empty($siswa['skor_gb_latest']);
-                            $is_kc_done = !empty($siswa['skor_kc_latest']);
-                    ?>
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500 text-center border border-gray-200"><?php echo $offset + $no++; ?></td>
-                        <td class="px-6 py-3 whitespace-nowrap border border-gray-200">
-                            <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($siswa['nama']); ?></div>
-                            <div class="text-xs text-gray-500">NIS: <?php echo htmlspecialchars($siswa['nis']); ?></div>
-                            <div class="text-xs text-gray-500 italic"><?php echo htmlspecialchars($siswa['jenis_kelamin']); ?></div>
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-700 border border-gray-200">
-                            <?php echo htmlspecialchars($siswa['kelas']) . ' ' . htmlspecialchars($siswa['jurusan']); ?>
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500 border border-gray-200">
-                            <?php echo htmlspecialchars($siswa['tahun_ajaran']); ?>
-                        </td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-center border border-gray-200">
-                            <button onclick="showResultModal('<?php echo htmlspecialchars($siswa['id_siswa']); ?>', '<?php echo htmlspecialchars($siswa['nama']); ?>', '<?php echo htmlspecialchars($siswa['nis']); ?>', '<?php echo htmlspecialchars($siswa['kelas']); ?>', '<?php echo htmlspecialchars($siswa['jurusan']); ?>', <?php echo $is_kc_done ? 1 : 0; ?>, <?php echo $is_gb_done ? 1 : 0; ?>)" 
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition duration-150 ease-in-out flex items-center justify-center text-xs mx-auto shadow-md">
-                                <i class="fas fa-search mr-1"></i> Detail
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Siswa</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-1"><?php echo number_format($total_records); ?></h3>
+                        </div>
+                        <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Halaman</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-1"><?php echo $page; ?> / <?php echo max($total_pages, 1); ?></h3>
+                        </div>
+                        <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-file-alt text-green-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-purple-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Data per Halaman</p>
+                            <h3 class="text-3xl font-bold text-gray-800 mt-1"><?php echo $limit; ?></h3>
+                        </div>
+                        <div class="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
+                            <i class="fas fa-list text-purple-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Filter Section -->
+            <div class="bg-white rounded-xl shadow-lg mb-6 border border-gray-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200 flex items-center justify-between cursor-pointer" onclick="toggleFilters()">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-filter text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Filter Data</h3>
+                            <p class="text-xs text-gray-500">Klik untuk expand/collapse</p>
+                        </div>
+                    </div>
+                    <i id="filterIcon" class="fas fa-chevron-down text-gray-400 transition-transform duration-300"></i>
+                </div>
+                
+                <div id="filterSection" class="p-6">
+                    <form method="GET" action="hasil_tes.php" class="space-y-4">
+                        
+                        <input type="hidden" name="view" value="<?php echo htmlspecialchars($view_mode); ?>">
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            <div> 
+                                <label for="nama" class="block text-sm font-semibold text-gray-700 mb-2">Nama Siswa</label>
+                                <div class="relative">
+                                    <input type="text" id="nama" name="nama" placeholder="Cari nama..." value="<?php echo htmlspecialchars($filter_nama); ?>" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                </div>
+                            </div>
+                    
+                            <div>
+                                <label for="nis" class="block text-sm font-semibold text-gray-700 mb-2">NIS</label>
+                                <div class="relative">
+                                    <input type="text" id="nis" name="nis" placeholder="Cari NIS..." value="<?php echo htmlspecialchars($filter_nis); ?>" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <i class="fas fa-id-card absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                </div>
+                            </div>
+                    
+                            <div>
+                                <label for="kelas" class="block text-sm font-semibold text-gray-700 mb-2">Kelas</label>
+                                <select id="kelas" name="kelas" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Kelas</option>
+                                    <?php foreach ($kelas_options as $k): ?>
+                                        <option value="<?php echo $k; ?>" <?php echo ($filter_kelas == $k) ? 'selected' : ''; ?>>Kelas <?php echo $k; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                    
+                            <div>
+                                <label for="jurusan" class="block text-sm font-semibold text-gray-700 mb-2">Jurusan</label>
+                                <select id="jurusan" name="jurusan" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Jurusan</option>
+                                    <?php foreach ($jurusan_options as $j): ?>
+                                        <option value="<?php echo $j; ?>" <?php echo ($filter_jurusan == $j) ? 'selected' : ''; ?>><?php echo $j; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                    
+                            <div>
+                                <label for="tahun" class="block text-sm font-semibold text-gray-700 mb-2">Tahun Ajaran</label>
+                                <select id="tahun" name="tahun" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Tahun</option>
+                                    <?php foreach ($data_tahun as $tahun): ?>
+                                        <option value="<?php echo $tahun['id_tahun']; ?>" <?php echo ($filter_tahun == $tahun['id_tahun']) ? 'selected' : ''; ?>><?php echo $tahun['tahun']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="gender" class="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
+                                <select id="gender" name="gender" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Gender</option>
+                                    <option value="L" <?php echo ($filter_gender == 'L') ? 'selected' : ''; ?>>Laki-laki</option>
+                                    <option value="P" <?php echo ($filter_gender == 'P') ? 'selected' : ''; ?>>Perempuan</option>
+                                </select>
+                            </div>
+                    
+                            <div>
+                                <label for="gb_status" class="block text-sm font-semibold text-gray-700 mb-2">Status Gaya Belajar</label>
+                                <select id="gb_status" name="gb_status" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Status</option>
+                                    <option value="done" <?php echo ($filter_gb_status == 'done') ? 'selected' : ''; ?>>Sudah Tes</option>
+                                    <option value="not_done" <?php echo ($filter_gb_status == 'not_done') ? 'selected' : ''; ?>>Belum Tes</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="kc_status" class="block text-sm font-semibold text-gray-700 mb-2">Status Kemampuan</label>
+                                <select id="kc_status" name="kc_status" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
+                                    <option value="">Semua Status</option>
+                                    <option value="done" <?php echo ($filter_kc_status == 'done') ? 'selected' : ''; ?>>Sudah Tes</option>
+                                    <option value="not_done" <?php echo ($filter_kc_status == 'not_done') ? 'selected' : ''; ?>>Belum Tes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+                            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center gap-2">
+                                <i class="fas fa-search"></i> Terapkan Filter
                             </button>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                    <?php else : ?>
-                    <tr>
-                        <td colspan="5" class="px-6 py-8 whitespace-nowrap text-center text-sm font-medium text-gray-500 border border-gray-200">
-                            <i class="fas fa-info-circle mr-2"></i> Tidak ada data siswa ditemukan dengan filter tersebut.
-                        </td>
-                    </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                            <a href="hasil_tes.php?view=<?php echo $view_mode; ?>" class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center gap-2">
+                                <i class="fas fa-redo"></i> Reset
+                            </a>
+                         <?php if ($total_records > 0): ?>
+    <div class="flex justify-start md:justify-end justify-end"> 
+        <button type="button" onclick="confirmExport('export_biodata.php?<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>)" class="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center gap-2 flex justify-end">
+            <i class="fas fa-file-archive"></i> Export Biodata (ZIP)
+        </button>
     </div>
-    
-    <div class="card-container space-y-3 w-full">
-        <?php if (!empty($data_siswa)) : ?>
-            <?php foreach ($data_siswa as $siswa) :
-                $is_gb_done = !empty($siswa['skor_gb_latest']);
-                $is_kc_done = !empty($siswa['skor_kc_latest']);
-            ?>
-            <div class="student-card cursor-pointer" 
-                    onclick="showResultModal('<?php echo htmlspecialchars($siswa['id_siswa']); ?>', '<?php echo htmlspecialchars($siswa['nama']); ?>', '<?php echo htmlspecialchars($siswa['nis']); ?>', '<?php echo htmlspecialchars($siswa['kelas']); ?>', '<?php echo htmlspecialchars($siswa['jurusan']); ?>', <?php echo $is_kc_done ? 1 : 0; ?>, <?php echo $is_gb_done ? 1 : 0; ?>)">
-                <div class="flex justify-between items-center gap-3">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-base font-semibold primary-color truncate"><?php echo htmlspecialchars($siswa['nama']); ?></div>
-                        <div class="text-xs text-gray-500 mt-0.5">NIS: <?php echo htmlspecialchars($siswa['nis']); ?> (<?php echo htmlspecialchars($siswa['jenis_kelamin']); ?>)</div>
-                        <div class="text-xs text-gray-500 mt-0.5">Kelas: <?php echo htmlspecialchars($siswa['kelas']) . ' ' . htmlspecialchars($siswa['jurusan']); ?></div>
-                        <div class="text-xs text-gray-400 mt-1">TA: <?php echo htmlspecialchars($siswa['tahun_ajaran']); ?></div>
+<?php endif; ?>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Active Filters Display -->
+            <?php 
+            $active_filters = [];
+            if (!empty($filter_nama)) $active_filters[] = ['label' => 'Nama', 'value' => $filter_nama];
+            if (!empty($filter_nis)) $active_filters[] = ['label' => 'NIS', 'value' => $filter_nis];
+            if (!empty($filter_kelas)) $active_filters[] = ['label' => 'Kelas', 'value' => $filter_kelas];
+            if (!empty($filter_jurusan)) $active_filters[] = ['label' => 'Jurusan', 'value' => $filter_jurusan];
+            if (!empty($filter_gender)) $active_filters[] = ['label' => 'Gender', 'value' => $filter_gender == 'L' ? 'Laki-laki' : 'Perempuan'];
+            if (!empty($filter_gb_status)) $active_filters[] = ['label' => 'Gaya Belajar', 'value' => $filter_gb_status == 'done' ? 'Sudah Tes' : 'Belum Tes'];
+            if (!empty($filter_kc_status)) $active_filters[] = ['label' => 'Kemampuan', 'value' => $filter_kc_status == 'done' ? 'Sudah Tes' : 'Belum Tes'];
+            
+            if (count($active_filters) > 0): ?>
+                <div class="mb-6 flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Filter Aktif:</span>
+                    <?php foreach ($active_filters as $filter): ?>
+                        <span class="filter-tag">
+                            <span class="font-semibold"><?php echo $filter['label']; ?>:</span>
+                            <span><?php echo $filter['value']; ?></span>
+                        </span>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Desktop Table View -->
+            <div class="table-container bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+                <?php if (mysqli_num_rows($result_siswa) > 0): ?>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-200">
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">No</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">NIS</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Siswa</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kelas</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Jurusan</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Gender</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Gaya Belajar</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kemampuan</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                <?php 
+                                $no = $offset + 1;
+                                while ($siswa = mysqli_fetch_assoc($result_siswa)): 
+                                    $isKecerdasanDone = !empty($siswa['skor_kc_latest']) ? 1 : 0;
+                                    $isGayaBelajarDone = !empty($siswa['skor_gb_latest']) ? 1 : 0;
+                                ?>
+                                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><?php echo $no++; ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-mono"><?php echo htmlspecialchars($siswa['nis']); ?></td>
+                                        <td class="px-6 py-4 text-sm font-semibold text-gray-900"><?php echo htmlspecialchars($siswa['nama']); ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><?php echo htmlspecialchars($siswa['kelas']); ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><?php echo htmlspecialchars($siswa['jurusan']); ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <?php if ($siswa['jenis_kelamin'] == 'L'): ?>
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                                    <i class="fas fa-mars mr-1"></i> Laki-laki
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-pink-100 text-pink-700 border border-pink-200">
+                                                    <i class="fas fa-venus mr-1"></i> Perempuan
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <?php if ($isGayaBelajarDone): ?>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                                                    <i class="fas fa-check-circle mr-1"></i> <?php echo htmlspecialchars($siswa['skor_gb_latest']); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                                                    <i class="fas fa-times-circle mr-1"></i> Belum Tes
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <?php if ($isKecerdasanDone): ?>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">
+                                                    <i class="fas fa-check-circle mr-1"></i> <?php echo htmlspecialchars($mi_mapping[$siswa['skor_kc_latest']]); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+                                                    <i class="fas fa-times-circle mr-1"></i> Belum Tes
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                            <button onclick="showResultModal(
+                                                <?php echo $siswa['id_siswa']; ?>, 
+                                                '<?php echo addslashes($siswa['nama']); ?>', 
+                                                '<?php echo addslashes($siswa['nis']); ?>', 
+                                                '<?php echo addslashes($siswa['kelas']); ?>', 
+                                                '<?php echo addslashes($siswa['jurusan']); ?>', 
+                                                <?php echo $isKecerdasanDone; ?>, 
+                                                <?php echo $isGayaBelajarDone; ?>
+                                            )" class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 gap-2">
+                                                <i class="fas fa-eye"></i> Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="flex-shrink-0 text-indigo-600 hover:text-indigo-800 p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 transition-colors">
-                        <i class="fas fa-arrow-right"></i>
+                <?php else: ?>
+                    <div class="p-12 text-center">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-inbox text-gray-400 text-3xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Tidak Ada Data</h3>
+                        <p class="text-sm text-gray-500">Tidak ada siswa ditemukan dengan filter yang dipilih</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+    
+            <!-- Mobile Card View -->
+            <div class="card-container space-y-4">
+                <?php 
+                mysqli_data_seek($result_siswa, 0);
+                if (mysqli_num_rows($result_siswa) > 0): 
+                    while ($siswa = mysqli_fetch_assoc($result_siswa)): 
+                        $isKecerdasanDone = !empty($siswa['skor_kc_latest']) ? 1 : 0;
+                        $isGayaBelajarDone = !empty($siswa['skor_gb_latest']) ? 1 : 0;
+                ?>
+                    <div class="student-card p-4" onclick="showResultModal(
+                        <?php echo $siswa['id_siswa']; ?>, 
+                        '<?php echo addslashes($siswa['nama']); ?>', 
+                        '<?php echo addslashes($siswa['nis']); ?>', 
+                        '<?php echo addslashes($siswa['kelas']); ?>', 
+                        '<?php echo addslashes($siswa['jurusan']); ?>', 
+                        <?php echo $isKecerdasanDone; ?>, 
+                        <?php echo $isGayaBelajarDone; ?>
+                    )">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-xl primary-gradient flex items-center justify-center text-white font-bold shadow-md">
+                                <?php echo strtoupper(substr($siswa['nama'], 0, 2)); ?>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-base font-bold text-gray-800 truncate"><?php echo htmlspecialchars($siswa['nama']); ?></h4>
+                                <p class="text-xs text-gray-500 mt-0.5">NIS: <?php echo htmlspecialchars($siswa['nis']); ?></p>
+                                <p class="text-xs text-gray-500">
+                                    <?php echo htmlspecialchars($siswa['kelas']); ?> <?php echo htmlspecialchars($siswa['jurusan']); ?>
+                                    • 
+                                    <?php if ($siswa['jenis_kelamin'] == 'L'): ?>
+                                        <span class="text-blue-600"><i class="fas fa-mars"></i> L</span>
+                                    <?php else: ?>
+                                        <span class="text-pink-600"><i class="fas fa-venus"></i> P</span>
+                                    <?php endif; ?>
+                                </p>
+                                <div class="flex flex-wrap gap-2 mt-3">
+                                    <?php if ($isGayaBelajarDone): ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                                            <i class="fas fa-check-circle mr-1"></i> GB: <?php echo htmlspecialchars($siswa['skor_gb_latest']); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                            <i class="fas fa-times-circle mr-1"></i> GB: Belum
+                                        </span>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($isKecerdasanDone): ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                                            <i class="fas fa-check-circle mr-1"></i> KC: <?php echo htmlspecialchars(substr($mi_mapping[$siswa['skor_kc_latest']], 0, 8)); ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                            <i class="fas fa-times-circle mr-1"></i> KC: Belum
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+                <?php else: ?>
+                    <div class="bg-white p-12 rounded-xl shadow-lg text-center border border-gray-200">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-inbox text-gray-400 text-3xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Tidak Ada Data</h3>
+                        <p class="text-sm text-gray-500">Tidak ada siswa ditemukan dengan filter yang dipilih</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+    
+            <!-- Pagination -->
+            <?php if ($total_pages > 1): ?>
+                <div class="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-sm text-gray-600 text-center sm:text-left">
+                            Menampilkan <span class="font-bold text-gray-800"><?php echo min($limit, $total_records - $offset); ?></span> dari 
+                            <span class="font-bold text-gray-800"><?php echo number_format($total_records); ?></span> total data
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <!-- First Page -->
+                            <a href="<?php echo build_pagination_url(1, $view_mode, $current_filters); ?>" 
+                               class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == 1) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                            
+                            <!-- Previous Page -->
+                            <a href="<?php echo build_pagination_url(max(1, $page - 1), $view_mode, $current_filters); ?>" 
+                               class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == 1) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                            
+                            <!-- Page Numbers -->
+                            <div class="hidden sm:flex items-center gap-2">
+                                <?php
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                for ($i = $start_page; $i <= $end_page; $i++):
+                                ?>
+                                    <a href="<?php echo build_pagination_url($i, $view_mode, $current_filters); ?>" 
+                                       class="px-4 py-2 rounded-lg border transition-all duration-200 <?php echo ($i == $page) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-700 font-bold shadow-md' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
+                                        <?php echo $i; ?>
+                                    </a>
+                                <?php endfor; ?>
+                            </div>
+                            
+                            <!-- Current Page (Mobile) -->
+                            <div class="sm:hidden px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-bold shadow-md">
+                                <?php echo $page; ?> / <?php echo $total_pages; ?>
+                            </div>
+                            
+                            <!-- Next Page -->
+                            <a href="<?php echo build_pagination_url(min($total_pages, $page + 1), $view_mode, $current_filters); ?>" 
+                               class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == $total_pages) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                            
+                            <!-- Last Page -->
+                            <a href="<?php echo build_pagination_url($total_pages, $view_mode, $current_filters); ?>" 
+                               class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == $total_pages) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <!-- Kenaikan Kelas Section -->
+            <div class="mt-8 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-lg p-6 border-2 border-orange-200">
+                <div class="flex items-start gap-4">
+                    <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-graduation-cap text-white text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                            Kenaikan Kelas Siswa
+                            <span class="px-2 py-1 bg-orange-500 text-white text-xs font-bold rounded-full">Admin</span>
+                        </h3>
+                        <p class="text-sm text-gray-700 mb-4">
+                            Fitur ini akan menaikkan kelas seluruh siswa secara otomatis. 
+                            <span class="font-semibold">Kelas X → XI, XI → XII, XII → LULUS</span>
+                        </p>
+                        <div class="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-lg mb-4">
+                            <p class="text-xs text-orange-800 flex items-start gap-2">
+                                <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                                <span><strong>Perhatian:</strong> Proses ini tidak dapat dibatalkan. Pastikan sudah melakukan backup data sebelum melanjutkan.</span>
+                            </p>
+                        </div>
+                        <form method="POST" action="proses_naik_kelas.php" onsubmit="return confirm('⚠️ KONFIRMASI KENAIKAN KELAS\n\nAnda yakin ingin menaikkan kelas SEMUA siswa?\n\n✓ Kelas X akan naik ke XI\n✓ Kelas XI akan naik ke XII\n✓ Kelas XII akan naik ke LULUS\n\nTindakan ini TIDAK DAPAT dibatalkan!\n\nKlik OK untuk melanjutkan.')">
+                            <button type="submit" class="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2">
+                                <i class="fas fa-arrow-circle-up"></i>
+                                Proses Kenaikan Kelas
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
-            <?php endforeach; ?>
-        <?php else : ?>
-            <div class="bg-white p-6 rounded-xl shadow-lg text-center text-sm font-medium text-gray-500 border border-gray-200">
-                <i class="fas fa-search-minus mr-2"></i> Tidak ada data siswa ditemukan.
-            </div>
-        <?php endif; ?>
-    </div>
-    
-    <?php if ($total_pages > 1) : ?>
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 p-4 bg-white rounded-xl shadow-lg border border-gray-200">
-            <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                Menampilkan <strong><?php echo min($limit, $total_records - $offset); ?></strong> dari total <strong><?php echo $total_records; ?></strong> siswa.
-                <span class="block sm:inline mt-1 sm:mt-0">(Per halaman: <?php echo $view_mode == 'mobile' ? '15 (Mobile)' : '40 (Desktop)'; ?>)</span>
-            </div>
-            <div class="flex items-center space-x-2">
-                <a href="<?php echo build_pagination_url(1, $view_mode, $current_filters); ?>" 
-                   class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg border <?php echo ($page == 1) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'; ?>">
-                    <i class="fas fa-angle-double-left"></i>
-                </a>
-
-                <a href="<?php echo build_pagination_url($page > 1 ? $page - 1 : 1, $view_mode, $current_filters); ?>" 
-                   class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg border <?php echo ($page == 1) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'; ?>">
-                    <i class="fas fa-angle-left"></i>
-                </a>
-
-                <span class="text-xs sm:text-sm text-gray-700 px-1"><?php echo $page; ?>/<?php echo $total_pages; ?></span>
-
-                <a href="<?php echo build_pagination_url($page < $total_pages ? $page + 1 : $total_pages, $view_mode, $current_filters); ?>" 
-                   class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg border <?php echo ($page == $total_pages) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'; ?>">
-                    <i class="fas fa-angle-right"></i>
-                </a>
-                
-                <a href="<?php echo build_pagination_url($total_pages, $view_mode, $current_filters); ?>" 
-                   class="px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-lg border <?php echo ($page == $total_pages) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-300'; ?>">
-                    <i class="fas fa-angle-double-right"></i>
-                </a>
-            </div>
-        </div>
-    <?php endif; ?>
-    
-    <div class="mt-6 bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200">
-        <h3 class="text-base sm:text-lg font-semibold mb-3 text-gray-800 flex items-center">
-            <i class="fas fa-level-up-alt primary-color mr-2"></i> Kenaikan Kelas Siswa
-        </h3>
-        <p class="text-gray-600 text-xs sm:text-sm mb-4">
-            Gunakan tombol di bawah untuk menaikkan kelas seluruh siswa sesuai jenjang.  
-            X ke XI, XI ke XII, XII ke LULUS.
-        </p>
-
-        <form method="POST" action="proses_naik_kelas.php"
-            onsubmit="return confirm('Yakin ingin menaikkan semua kelas siswa? Tindakan ini tidak bisa dibatalkan.')">
-
-            <button class="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 primary-bg text-white text-xs sm:text-sm font-semibold rounded-lg hover:bg-[#3C7F81] transition shadow-md flex items-center justify-center">
-                <i class="fas fa-arrow-up mr-2"></i> Naikkan Semua Kelas
-            </button>
-        </form>
-    </div>
-    
-</main>
-
-
+            
+        </main>
     </div>
 
+    <!-- Result Modal -->
     <div id="resultModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <div id="modalOverlay" class="fixed inset-0 bg-black/50 transition-opacity"></div>
+        <div id="modalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm modal-backdrop"></div>
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-gray-50 rounded-xl shadow-2xl w-full max-w-lg transform transition-all relative z-50 modal-content-wrapper" onclick="event.stopPropagation()">
-                <div class="flex justify-between items-center p-4 sm:p-5 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-                    <div class="flex-1 min-w-0 pr-2">
-                        <h3 id="modalTitle" class="text-base sm:text-lg font-bold primary-color truncate">Detail Hasil Tes Siswa</h3>
-                        <p id="modalSubtitle" class="text-xs text-gray-600 mt-0.5"></p>
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all relative z-50 modal-content-wrapper" onclick="event.stopPropagation()">
+                <!-- Modal Header -->
+                <div class="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 min-w-0 pr-4">
+                            <h3 id="modalTitle" class="text-xl font-bold text-white truncate">Detail Hasil Tes</h3>
+                            <p id="modalSubtitle" class="text-sm text-blue-100 mt-1"></p>
+                        </div>
+                        <button onclick="hideResultModal()" class="flex-shrink-0 text-white hover:bg-white/20 rounded-lg p-2 transition-colors duration-200">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
                     </div>
-                    <button onclick="hideResultModal()" class="flex-shrink-0 text-gray-500 hover:text-gray-800 text-xl p-2 rounded-full hover:bg-gray-100">
-                        <i class="fas fa-times"></i>
+                </div>
+                
+                <!-- Modal Body -->
+                <div class="p-6 bg-gradient-to-br from-gray-50 to-white">
+                    <div id="resultCardsContainer" class="space-y-4">
+                        <!-- Cards will be inserted here by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Modal Footer -->
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end">
+                    <button onclick="hideResultModal()" class="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+                        <i class="fas fa-times"></i> Tutup
                     </button>
                 </div>
-                <div class="p-4 sm:p-6">
-                    <div id="resultCardsContainer" class="grid grid-cols-1 gap-3 sm:gap-4">
-                        
-                    </div>
-                </div>
             </div>
         </div>
     </div>
 
-    <footer class="text-center py-4 bg-white border-t border-gray-200 text-gray-600 text-xs mt-auto content-wrapper">
-        &copy; 2025 Bimbingan Konseling SMKN 2 Banjarmasin. All rights reserved.
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6 mt-auto content-wrapper">
+        <div class="text-center">
+            <p class="text-sm text-gray-600">
+                &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
+            </p>
+        </div>
     </footer>
 </body>
 </html>
