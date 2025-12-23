@@ -35,14 +35,12 @@ if (!empty($filter_tahun)) {
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-// Deteksi device untuk menentukan limit default
 $is_mobile = false;
 if (isset($_SERVER['HTTP_USER_AGENT'])) {
     $user_agent = $_SERVER['HTTP_USER_AGENT'];
     $is_mobile = preg_match('/(android|iphone|ipad|mobile|tablet)/i', $user_agent);
 }
 
-// Set limit berdasarkan device jika tidak ada parameter limit
 if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
     $limit_per_page = (int)$_GET['limit'];
     if (!in_array($limit_per_page, [15, 20, 40])) {
@@ -164,21 +162,14 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
         * { font-family: 'Inter', sans-serif; }
 
         :root {
-    /* PRIMARY */
     --primary: #0F3A3A;
     --primary-dark: #0B2E2E;
     --primary-light: #123E44;
-
-    /* ACCENT */
     --accent: #5FA8A1;
     --accent-dark: #4C8E89;
-
-    /* NEUTRAL */
     --white: #FFFFFF;
     --gray-50: #F9FAFB;
     --gray-200: #E5E7EB;
-
-    /* STATUS (DISESUAIKAN TEMA) */
     --success: #4C8E89;
     --warning: #5FA8A1;
     --danger: #9B2C2C;
@@ -467,7 +458,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
     <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-lg primary-bg flex items-center justify-center shadow-md">
             <i class="fas fa-user-tie text-white"></i>
-        </div> <!-- ✅ INI YANG HILANG -->
+        </div>
 
     <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col transform scale-100 transition-all">
@@ -858,7 +849,6 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                         <?php endif; ?>
                         
                         <?php
-                        // Untuk mobile, tampilkan lebih sedikit halaman
                         $pages_to_show = $is_mobile ? 1 : 2;
                         $start_loop = max(1, $current_page_num - $pages_to_show);
                         $end_loop = min($total_pages, $current_page_num + $pages_to_show);
@@ -906,7 +896,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
 
     <div id="konselingModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
-            <div class="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+            <div class="sticky top-0 bg-gradient-to-r from-green-800 to-green-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
                 <h3 id="modalTitle" class="text-2xl font-bold text-white flex items-center">
                     <i class="fas fa-clipboard-list mr-3"></i> Buat Laporan Konseling
                 </h3>
@@ -999,7 +989,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                             <label for="atas_dasar" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-info-circle mr-1"></i> Atas Dasar
                             </label>
-                            <input type="text" name="atas_dasar" id="atas_dasar" required placeholder="Contoh: Inisiatif Siswa, Panggilan Ortu, dll"
+                            <input type="text" name="atas_dasar" id="atas_dasar" required placeholder="Atas dasar siapa?"
                                 class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
                         
@@ -1007,7 +997,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                             <label for="pendekatan_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-users mr-1"></i> Pendekatan Konseling
                             </label>
-                            <input type="text" name="pendekatan_konseling" id="pendekatan_konseling" required placeholder="Contoh: Client Centered, Behavioral, dll"
+                            <input type="text" name="pendekatan_konseling" id="pendekatan_konseling" required placeholder="Teknik pendekatan apa yang digunakan?"
                                 class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
 
@@ -1015,7 +1005,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                             <label for="teknik_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-tools mr-1"></i> Teknik Konseling
                             </label>
-                            <input type="text" name="teknik_konseling" id="teknik_konseling" required placeholder="Contoh: Active Listening, Reflection, Role Play, dll"
+                            <input type="text" name="teknik_konseling" id="teknik_konseling" required placeholder="Teknik konseling apa yang digunakan?"
                                 class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
                     </div>
@@ -1034,7 +1024,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                                 <i class="fas fa-user-tie mr-1"></i> Nama Guru
                             </label>
                             <input type="text" name="nama_guru" placeholder="Nama guru yang melakukan konseling" 
-                                   value="<?= htmlspecialchars($nama_pengguna) ?>"
+                                   value=""
                                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
 
