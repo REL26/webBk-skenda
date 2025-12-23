@@ -35,9 +35,24 @@ if (!empty($filter_tahun)) {
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-$limit_per_page = isset($_GET['limit']) && is_numeric($_GET['limit']) ? (int)$_GET['limit'] : 40; 
+// Deteksi device untuk menentukan limit default
+$is_mobile = false;
+if (isset($_SERVER['HTTP_USER_AGENT'])) {
+    $user_agent = $_SERVER['HTTP_USER_AGENT'];
+    $is_mobile = preg_match('/(android|iphone|ipad|mobile|tablet)/i', $user_agent);
+}
+
+// Set limit berdasarkan device jika tidak ada parameter limit
+if (isset($_GET['limit']) && is_numeric($_GET['limit'])) {
+    $limit_per_page = (int)$_GET['limit'];
+    if (!in_array($limit_per_page, [15, 20, 40])) {
+        $limit_per_page = $is_mobile ? 15 : 40;
+    }
+} else {
+    $limit_per_page = $is_mobile ? 15 : 40;
+}
+
 $current_page_num = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
-if ($limit_per_page != 20 && $limit_per_page != 40) { $limit_per_page = 40; }
 $start_from = ($current_page_num - 1) * $limit_per_page;
 if ($start_from < 0) $start_from = 0;
 
@@ -138,29 +153,39 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Siswa untuk Konseling Individu | Program BK | BK SMKN 2 Banjarmasin</title>
+    <title>Konseling Individu | Program BK | BK SMKN 2 Banjarmasin</title>
     <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
         * { font-family: 'Inter', sans-serif; }
-        .primary-bg { background-color: #2F6C6E; }
-        .primary-color { color: #2F6C6E; }
-        .data-table-report { min-width: 800px; }
-        .sticky-col { position: sticky; left: 0; z-index: 10; background-color: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
-        .data-table-report thead th.sticky-col { background-color: #2F6C6E !important; }
 
-        .modal {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            visibility: hidden;
-            opacity: 0;
-        }
-        .modal.open {
-            visibility: visible;
-            opacity: 1;
-        }
+        :root {
+    /* PRIMARY */
+    --primary: #0F3A3A;
+    --primary-dark: #0B2E2E;
+    --primary-light: #123E44;
+
+    /* ACCENT */
+    --accent: #5FA8A1;
+    --accent-dark: #4C8E89;
+
+    /* NEUTRAL */
+    --white: #FFFFFF;
+    --gray-50: #F9FAFB;
+    --gray-200: #E5E7EB;
+
+    /* STATUS (DISESUAIKAN TEMA) */
+    --success: #4C8E89;
+    --warning: #5FA8A1;
+    --danger: #9B2C2C;
+}
+        .primary-color { color: #0F3A3A; }
+        .primary-bg { background-color: #123E44; }
+        .secondary-bg { background-color: #E6EEF0; }
         
         .fade-slide {
             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
@@ -172,6 +197,104 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
             opacity: 1;
             transform: translateY(0);
             pointer-events: auto;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar {
+                width: 260px;
+                flex-shrink: 0;
+                transform: translateX(0) !important;
+                position: fixed !important;
+                height: 100vh;
+                top: 0;
+                left: 0;
+                overflow-y: auto;
+            }
+        }
+        
+        .nav-item { 
+            position: relative; 
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item::before { 
+            content: ''; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            height: 100%; 
+            width: 4px; 
+            background: var(--accent); 
+            transform: scaleY(0); 
+            transition: transform 0.3s ease; 
+        }
+
+        .nav-item:hover::before, 
+        .nav-item.active::before { 
+            transform: scaleY(1); 
+        }
+
+        .nav-item.active { 
+            background-color: var(--primary-light);
+        }
+
+        .nav-item.active > div:first-child,
+        .nav-item.active { 
+            background-color: #3C7F81 !important; 
+            color: white !important;
+        }
+
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            visibility: hidden;
+            opacity: 0;
+        }
+        .modal.open {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .data-table-report { min-width: 800px; }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+
+        .btn-action {
+            transition: all 0.2s ease;
+        }
+        .btn-action:hover {
+            transform: scale(1.05);
+        }
+
+       .stat-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(47, 108, 110, 0.1);
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.5s ease-out;
         }
     </style>
 
@@ -218,7 +341,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
 
         function openModal(id_siswa, nama_siswa, kelas, jurusan, nis, pertemuan_ke, panggilan_ke) {
             const modal = document.getElementById('konselingModal');
-            document.getElementById('modalTitle').textContent = `Buat Laporan Sesi Konseling untuk ${nama_siswa}`;
+            document.getElementById('modalTitle').textContent = `Buat Laporan Sesi Konseling - ${nama_siswa}`;
             
             document.getElementById('id_siswa').value = id_siswa;
             
@@ -246,7 +369,6 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
             document.getElementById('konselingForm').reset();
         }
 
-        // FUNGSI UNTUK MEMBUKA MODAL PDF VIEWER (Diperbarui)
         function openPdfViewerModal(pdfUrl) {
             const modal = document.getElementById('pdfViewerModal');
             const iframe = document.getElementById('pdfIframe');
@@ -254,7 +376,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
             
             document.getElementById('pdfIframeTitle').textContent = 'Laporan Konseling Individu';
             iframe.src = pdfUrl;
-            exportBtn.href = pdfUrl; // Sinkronkan URL ke tombol Ekspor/Download
+            exportBtn.href = pdfUrl;
 
             modal.classList.add('open');
             document.body.classList.add('overflow-hidden');
@@ -269,19 +391,17 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
             document.body.classList.remove('overflow-hidden');
         }
 
-
         $(document).ready(function(){
-
             $("#submitBtn").click(function(e){
                 e.preventDefault();
 
                 let form = document.getElementById("konselingForm");
                 let formData = new FormData(form);
                 const submitButton = document.getElementById('submitBtn');
-                const originalText = submitButton.textContent;
+                const originalText = submitButton.innerHTML;
 
                 submitButton.disabled = true;
-                submitButton.textContent = 'Menyimpan...';
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
 
                 $.ajax({
                     url: "laporan_individukon.php",
@@ -292,15 +412,13 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                     dataType: "json",
 
                     success: function(res){
-                        submitButton.textContent = originalText;
+                        submitButton.innerHTML = originalText;
                         submitButton.disabled = false;
                         closeModal(); 
                         
                         if(res.status === "success"){
                             if(res.pdf_url) {
                                 openPdfViewerModal(res.pdf_url);
-                                // Optional: reload halaman di background untuk update riwayat
-                                // window.location.reload(); 
                             } else {
                                 alert("Laporan konseling berhasil disimpan! Namun, gagal mendapatkan URL PDF.");
                             }
@@ -311,7 +429,7 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                     },
 
                     error: function(xhr){
-                        submitButton.textContent = originalText;
+                        submitButton.innerHTML = originalText;
                         submitButton.disabled = false;
                         
                         let errorMessage = "Terjadi error saat mengirim data (Kesalahan Jaringan/Server).";
@@ -331,50 +449,76 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                     }
                 });
             });
-
         });
-
 
         document.addEventListener('DOMContentLoaded', () => {
             const overlay = document.getElementById('menuOverlay');
             if (overlay) overlay.addEventListener('click', toggleMenu);
             
-            const tableContainer = document.querySelector('.overflow-x-auto');
-            if (tableContainer) {
-                tableContainer.addEventListener('scroll', function() {
-                    const stickyCells = this.querySelectorAll('.sticky-col');
-                    const scrollLeft = this.scrollLeft;
-                    stickyCells.forEach(cell => {
-                        cell.style.transform = `translateX(${scrollLeft}px)`;
-                    });
-                });
-            }
+            document.querySelectorAll('.animate-slide-in').forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
         });
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header class="md:hidden fixed top-0 left-0 w-full bg-white shadow-md z-50 flex items-center justify-between h-[56px] px-4">
-        <div class="flex items-center space-x-2">
-            <button onclick="toggleMenu()" class="text-gray-600 focus:outline-none">
-                <i class="fas fa-bars text-xl"></i>
-            </button>
-            <span class="text-lg font-semibold primary-color">BK SMKN 2</span>
+   <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg primary-bg flex items-center justify-center shadow-md">
+            <i class="fas fa-user-tie text-white"></i>
+        </div> <!-- ✅ INI YANG HILANG -->
+
+    <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col transform scale-100 transition-all">
+            
+            <div class="sticky top-0 bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+                <h3 id="pdfIframeTitle" class="text-2xl font-bold text-white flex items-center">
+                    <i class="fas fa-file-pdf mr-3"></i> Laporan Konseling Individu
+                </h3>
+                <button onclick="closePdfViewerModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="flex-grow overflow-hidden">
+                <iframe id="pdfIframe" src="" class="w-full h-full border-0" title="PDF Viewer"></iframe>
+            </div>
+
+            <div class="sticky bottom-0 px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-200 rounded-b-2xl">
+                <button type="button" onclick="closePdfViewerModal()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md btn-action">
+                    <i class="fas fa-arrow-left mr-2"></i> Kembali
+                </button>
+                <a id="exportPdfBtn" href="#" target="_blank" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition font-semibold shadow-md btn-action inline-flex items-center">
+                    <i class="fas fa-download mr-2"></i> Download PDF
+                </a>
+            </div>
+            
         </div>
-        <a href="dashboard.php" class="text-gray-600"><i class="fas fa-home"></i></a>
-    </header>
+    </div>
+</body>
+</html>
+             <div>
+            <strong class="text-sm font-bold text-gray-800">Guru BK</strong>
+            <p class="text-xs text-gray-500">SMKN 2 BJM</p>
+        </div>
+    </div>
 
-    <div id="menuOverlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-40 md:hidden"></div>
-
-    <div id="mobileMenu" class="fade-slide hidden fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
+    <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 hover:bg-gray-100 rounded-lg transition">
+        <i class="fas fa-bars"></i>
+    </button>
+</header>
+    <div id="menuOverlay" class="no-print hidden fixed inset-0 bg-black/50 z-20 md:hidden" onclick="toggleMenu()"></div>
+    
+    <div id="mobileMenu" class="no-print fade-slide hidden fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
         <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition">
-            <i class="fas fa-home mr-2"></i> Dashboard
+            <i class="fas fa-home mr-2"></i> Beranda
         </a>
         <hr class="border-gray-200">
         
         <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_profiling_active ? 'bg-gray-100 font-medium' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuMobile')">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
+            <div class="flex justify-between">
+                <span class="flex font-medium">
                     <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
                 </span>
                 <i id="profilingSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
@@ -391,8 +535,8 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
         <hr class="border-gray-200">
 
         <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_program_bk_active ? 'bg-gray-100 font-medium' : ''; ?>" onclick="toggleSubMenu('programBkSubmenuMobile')">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
+            <div class="flex justify-between">
+                <span class="flex font-medium">
                     <i class="fas fa-calendar-alt mr-2"></i> Program BK
                 </span>
                 <i id="programBkSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_program_bk_active ? 'fa-chevron-up' : ''; ?>"></i>
@@ -415,27 +559,28 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
             <i class="fas fa-sign-out-alt mr-2"></i> Logout
         </a>
     </div>
-
+    
     <div class="flex flex-grow">
         
-        <aside id="sidebar" class="no-print hidden md:flex primary-bg shadow-2xl z-40 flex-col text-white w-[260px] flex-shrink-0 fixed h-screen top-0 left-0 overflow-y-auto">
+        <aside id="sidebar" class="no-print sidebar hidden md:flex primary-bg shadow-2xl z-40 flex-col text-white">
             <div class="px-6 py-6 border-b border-white/10">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user-tie text-lg"></i>
+                  <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg">
+                        <i class="fas fa-user-tie text-xl text-white"></i>
                     </div>
                     <div>
-                        <span class="text-base font-semibold block"><?= htmlspecialchars($nama_pengguna) ?></span>
+                        <strong class="text-base font-bold block">Guru BK</strong>
+                        <span class="text-xs text-white/80">SMKN 2 Banjarmasin</span>
                     </div>
                 </div>
             </div>
             
             <nav class="flex flex-col flex-grow py-4 space-y-1 px-3">
-                <a href="dashboard.php" class="flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
+                <a href="dashboard.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
                     <i class="fas fa-home mr-3"></i> Dashboard
                 </a>
                 
-                <div class="cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuDesktop')">
+                <div class="nav-item cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuDesktop')">
                     <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
                         <span class="flex-item">
                             <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
@@ -452,8 +597,8 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                     </a>
                 </div>
                 
-                <div class="cursor-pointer active" onclick="toggleSubMenu('programBkSubmenuDesktop')">
-                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200 primary-bg">
+                <div class="nav-item cursor-pointer active" onclick="toggleSubMenu('programBkSubmenuDesktop')">
+                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <span class="flex-item">
                             <i class="fas fa-calendar-alt mr-2"></i> Program BK
                         </span>
@@ -473,117 +618,190 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                 </div>
 
                 <div class="mt-auto pt-4 border-t border-white/10">
-                    <a href="logout.php" class="flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200">
+                    <a href="logout.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200">
                         <i class="fas fa-sign-out-alt mr-3"></i> Logout
                     </a>
                 </div>
             </nav>
         </aside>
 
-        <main class="content-wrapper flex-grow p-4 md:p-8 w-full md:ml-[260px] pt-16 md:pt-8">
-            <div class="max-w-full">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-4 md:mb-0">
-                        <i class="fas fa-user-friends mr-2 primary-color"></i> Daftar Siswa untuk Konseling Individu
-                    </h1>
+        <main class="flex-grow p-4 sm:p-6 lg:p-8 md:ml-[260px] w-full">
+            
+            <div class="mb-8 animate-slide-in">
+                <h2 class="text-3xl font-extrabold text-gray-800 mb-2 flex items-center">
+                    <i class="fas fa-user-friends primary-color mr-3"></i> Konseling Individu
+                </h2>
+                <p class="text-gray-600">Kelola dan buat laporan konseling individu untuk siswa</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Total Siswa</p>
+                            <h3 class="text-3xl font-bold mt-2"><?php echo $row_count; ?></h3>
+                        </div>
+                        <div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="no-print bg-white p-6 rounded-lg shadow-md mb-6">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Filter Siswa</h2>
-                    <form method="GET" action="konselingindividu.php" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                        <input type="hidden" name="limit" value="<?= $limit_per_page ?>">
-
-                        <div class="md:col-span-1">
-                            <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari Nama / NIS</label>
-                            <input type="text" name="search" id="search" placeholder="Nama atau NIS Siswa" 
-                                class="w-full p-2 border border-gray-300 rounded-lg focus:ring-[#2F6C6E] focus:border-[#2F6C6E]"
-                                value="<?= htmlspecialchars($filter_search) ?>">
-                        </div>
-
+                 <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-green-500">
+                    <div class="flex items-center justify-between">
                         <div>
-                            <label for="kelas" class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-                            <select name="kelas" id="kelas" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-[#2F6C6E] focus:border-[#2F6C6E]">
-                                <option value="">Semua Kelas</option>
-                                <?php foreach($kelas_options as $kelas): ?>
-                                    <option value="<?= $kelas ?>" <?= ($filter_kelas == $kelas) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($kelas) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <p class="text-sm font-medium text-gray-600">Halaman</p>
+                            <h3 class="text-3xl font-bold mt-2"><?php echo $current_page_num; ?>/<?php echo $total_pages; ?></h3>
                         </div>
-
-                        <div>
-                            <label for="jurusan" class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
-                            <select name="jurusan" id="jurusan" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-[#2F6C6E] focus:border-[#2F6C6E]">
-                                <option value="">Semua Jurusan</option>
-                                <?php foreach($jurusan_options as $jurusan): ?>
-                                    <option value="<?= $jurusan ?>" <?= ($filter_jurusan == $jurusan) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($jurusan) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-file-alt text-green-600 text-2xl"></i>
                         </div>
-                        
-                        <div>
-                            <label for="tahun" class="block text-sm font-medium text-gray-700 mb-1">Tahun Ajaran</label>
-                            <select name="tahun" id="tahun" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-[#2F6C6E] focus:border-[#2F6C6E]">
-                                <option value="">Semua Tahun</option>
-                                <?php foreach($data_tahun as $tahun): ?>
-                                    <option value="<?= $tahun['id_tahun'] ?>" <?= ($filter_tahun == $tahun['id_tahun']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($tahun['tahun']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-200 flex items-center text-sm">
-                                <i class="fas fa-filter mr-1"></i> Terapkan Filter
-                            </button>
-                            <a href="konselingindividu.php" class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition duration-200 flex items-center text-sm">
-                                <i class="fas fa-sync-alt mr-1"></i> Reset
-                            </a>
-                        </div>
-                    </form>
+                    </div>
                 </div>
+
+                <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-purple-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Data per Halaman</p>
+                            <h3 class="text-3xl font-bold mt-2"><?php echo $limit_per_page; ?></h3>
+                        </div>
+                        <div class="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center">
+                            <i class="fas fa-list text-purple-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="no-print bg-white p-6 rounded-xl shadow-lg mb-6 border border-gray-200 animate-slide-in">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-filter primary-color mr-2"></i> Filter Pencarian Siswa
+                </h3>
+                <form method="GET" action="konselingindividu.php" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <input type="hidden" name="limit" value="<?= $limit_per_page ?>">
+
+                    <div class="md:col-span-1">
+                        <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-search mr-1"></i> Cari Nama / NIS
+                        </label>
+                        <input type="text" name="search" id="search" placeholder="Masukkan nama atau NIS" 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                            value="<?= htmlspecialchars($filter_search) ?>">
+                    </div>
+
+                    <div>
+                        <label for="kelas" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-school mr-1"></i> Kelas
+                        </label>
+                        <select name="kelas" id="kelas" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option value="">Semua Kelas</option>
+                            <?php foreach($kelas_options as $kelas): ?>
+                                <option value="<?= $kelas ?>" <?= ($filter_kelas == $kelas) ? 'selected' : '' ?>>
+                                    Kelas <?= htmlspecialchars($kelas) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="jurusan" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-graduation-cap mr-1"></i> Jurusan
+                        </label>
+                        <select name="jurusan" id="jurusan" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option value="">Semua Jurusan</option>
+                            <?php foreach($jurusan_options as $jurusan): ?>
+                                <option value="<?= $jurusan ?>" <?= ($filter_jurusan == $jurusan) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($jurusan) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="tahun" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar-alt mr-1"></i> Tahun Ajaran
+                        </label>
+                        <select name="tahun" id="tahun" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option value="">Semua Tahun</option>
+                            <?php foreach($data_tahun as $tahun): ?>
+                                <option value="<?= $tahun['id_tahun'] ?>" <?= ($filter_tahun == $tahun['id_tahun']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($tahun['tahun']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="flex space-x-2">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-200 flex items-center justify-center text-sm font-semibold shadow-md btn-action">
+                            <i class="fas fa-filter mr-2"></i> Terapkan
+                        </button>
+                        <a href="konselingindividu.php" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg transition duration-200 flex items-center justify-center text-sm font-semibold shadow-md btn-action">
+                            <i class="fas fa-sync-alt mr-2"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
                 
-                <div class="bg-white p-4 md:p-6 rounded-lg shadow-md">
-                    <div class="overflow-x-auto shadow-sm rounded-lg border border-gray-200"> 
-                        <table class="min-w-full divide-y divide-gray-200 data-table-report">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kelas & Jurusan</th>
-                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIS</th>
-                                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pertemuan Ke-</th>
-                                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Panggilan Ke-</th>
-                                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <?php if (mysqli_num_rows($result_siswa) > 0): ?>
-                                    <?php 
-                                    $no = $start_from + 1;
-                                    while($data = mysqli_fetch_assoc($result_siswa)): 
-                                        $latest_session = get_latest_session_data($koneksi, $data['id_siswa']);
-                                        $pertemuan_ke = $latest_session['pertemuan_ke'];
-                                        $panggilan_ke = $latest_session['panggilan_ke'];
-                                    ?>
-                                    <tr>
-                                        <td class="px-2 py-4 whitespace-nowrap text-center text-sm font-medium"><?= $no++ ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><?= htmlspecialchars($data['nama']) ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><?= htmlspecialchars($data['kelas']) ?> <?= htmlspecialchars($data['jurusan']) ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><?= htmlspecialchars($data['nis']) ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500"><?= $pertemuan_ke ?: '0' ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500"><?= $panggilan_ke ?: '0' ?></td>
-                                        
-                                        <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-slide-in">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 data-table-report">
+                        <thead class="primary-bg">
+                            <tr>
+                                <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">No</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Nama Siswa</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kelas & Jurusan</th>
+                                <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">NIS</th>
+                                <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Pertemuan Ke-</th>
+                                <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Panggilan Ke-</th>
+                                <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <?php if (mysqli_num_rows($result_siswa) > 0): ?>
+                                <?php 
+                                $no = $start_from + 1;
+                                while($data = mysqli_fetch_assoc($result_siswa)): 
+                                    $latest_session = get_latest_session_data($koneksi, $data['id_siswa']);
+                                    $pertemuan_ke = $latest_session['pertemuan_ke'];
+                                    $panggilan_ke = $latest_session['panggilan_ke'];
+                                ?>
+                                <tr class="hover:bg-gray-50 transition duration-150">
+                                    <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700"><?= $no++ ?></td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
+                                                    <?= strtoupper(substr($data['nama'], 0, 1)) ?>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-bold text-gray-900"><?= htmlspecialchars($data['nama']) ?></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap">
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                            <?= htmlspecialchars($data['kelas']) ?> <?= htmlspecialchars($data['jurusan']) ?>
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-medium"><?= htmlspecialchars($data['nis']) ?></td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap text-center">
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-green-100 text-green-800">
+                                            <?= $pertemuan_ke ?: '0' ?>
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap text-center">
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800">
+                                            <?= $panggilan_ke ?: '0' ?>
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <div class="flex flex-col md:flex-row gap-2 justify-center">
                                             <button 
                                                 onclick="openModal(
                                                     '<?= $data['id_siswa'] ?>', 
@@ -594,137 +812,164 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                                                     '<?= $pertemuan_ke ?>',
                                                     '<?= $panggilan_ke ?>'
                                                 )"
-                                                class="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition duration-200 text-xs">
+                                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition duration-200 text-xs font-semibold shadow-md btn-action">
                                                 <i class="fas fa-file-alt mr-1"></i> Buat Laporan
                                             </button>
-                                            <a href="riwayat_konseling.php?id_siswa=<?= $data['id_siswa'] ?>" class="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition duration-200 text-xs mt-1 md:mt-0 md:ml-1 inline-block">
-                                                <i class="fas fa-list-ul mr-1"></i> Riwayat
+                                            <a href="riwayat_konseling.php?id_siswa=<?= $data['id_siswa'] ?>" 
+                                               class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition duration-200 text-xs font-semibold shadow-md btn-action inline-flex items-center justify-center">
+                                                <i class="fas fa-history mr-1"></i> Riwayat
                                             </a>
-                                        </td>
-                                    </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
-                                            Tidak ada data siswa yang ditemukan dengan filter ini.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <?php if ($total_pages > 1): ?>
-                    <div class="no-print mt-6 flex flex-col md:flex-row justify-between items-center space-y-3 md:space-y-0">
-                        <span class="text-sm text-gray-700 text-center md:text-left">
-                            Menampilkan <?= mysqli_num_rows($result_siswa) ?> dari total <?= $row_count ?> siswa. (Halaman <?= $current_page_num ?>/<?= $total_pages ?>)
-                            <span class="block text-xs text-gray-500">(Batas: <?= $limit_per_page ?> baris)</span>
-                        </span>
-                        
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            <?php if ($current_page_num > 1): ?>
-                            <a href="<?= get_pagination_url($current_page_num - 1, $current_filters) ?>" 
-                                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <span class="sr-only">Previous</span>
-                                <i class="fas fa-chevron-left h-5 w-5"></i>
-                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="7" class="px-6 py-8 text-center">
+                                        <div class="flex flex-col items-center justify-center text-gray-500">
+                                            <i class="fas fa-search text-5xl mb-4 text-gray-300"></i>
+                                            <p class="text-lg font-semibold">Tidak ada data siswa ditemukan</p>
+                                            <p class="text-sm mt-2">Coba ubah kriteria filter pencarian Anda</p>
+                                        </div>
+                                    </td>
+                                </tr>
                             <?php endif; ?>
-                            <?php
-                            $start_loop = max(1, $current_page_num - 2);
-                            $end_loop = min($total_pages, $current_page_num + 2);
-                            
-                            if ($start_loop > 1) {
-                                echo '<a href="' . get_pagination_url(1, $current_filters) . '" class="relative hidden sm:inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>';
-                                if ($start_loop > 2) {
-                                    echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
-                                }
-                            }
-
-                            for ($i = $start_loop; $i <= $end_loop; $i++):
-                            ?>
-                            <a href="<?= get_pagination_url($i, $current_filters) ?>" 
-                                class="relative inline-flex items-center px-4 py-2 border text-sm font-medium 
-                                <?= ($i == $current_page_num) ? 'z-10 primary-bg border-opacity-70 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' ?>">
-                                <?= $i ?>
-                            </a>
-                            <?php endfor; 
-
-                            if ($end_loop < $total_pages) {
-                                if ($end_loop < $total_pages - 1) {
-                                    echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
-                                }
-                                echo '<a href="' . get_pagination_url($total_pages, $current_filters) . '" class="relative hidden sm:inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">' . $total_pages . '</a>';
-                            }
-                            ?>
-                            <?php if ($current_page_num < $total_pages): ?>
-                            <a href="<?= get_pagination_url($current_page_num + 1, $current_filters) ?>" 
-                                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                                <span class="sr-only">Next</span>
-                                <i class="fas fa-chevron-right h-5 w-5"></i>
-                            </a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
-                    <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
+
+                <?php if ($total_pages > 1): ?>
+                <div class="no-print mt-6 flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200">
+                    <div class="text-sm text-gray-700 text-center md:text-left">
+                        <p class="font-semibold">Menampilkan <span class="text-blue-600"><?= mysqli_num_rows($result_siswa) ?></span> dari <span class="text-blue-600"><?= $row_count ?></span> total siswa</p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Halaman <?= $current_page_num ?> dari <?= $total_pages ?> 
+                            <span class="hidden md:inline">(<?= $limit_per_page ?> baris per halaman)</span>
+                            <span class="md:hidden">(<?= $limit_per_page ?> data - Mode Mobile)</span>
+                        </p>
+                    </div>
+                    
+                    <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px" aria-label="Pagination">
+                        <?php if ($current_page_num > 1): ?>
+                        <a href="<?= get_pagination_url($current_page_num - 1, $current_filters) ?>" 
+                            class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-l-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php
+                        // Untuk mobile, tampilkan lebih sedikit halaman
+                        $pages_to_show = $is_mobile ? 1 : 2;
+                        $start_loop = max(1, $current_page_num - $pages_to_show);
+                        $end_loop = min($total_pages, $current_page_num + $pages_to_show);
+                        
+                        if ($start_loop > 1) {
+                            echo '<a href="' . get_pagination_url(1, $current_filters) . '" class="relative hidden sm:inline-flex items-center px-3 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition">1</a>';
+                            if ($start_loop > 2) {
+                                echo '<span class="relative inline-flex items-center px-2 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
+                            }
+                        }
+
+                        for ($i = $start_loop; $i <= $end_loop; $i++):
+                        ?>
+                        <a href="<?= get_pagination_url($i, $current_filters) ?>" 
+                            class="relative inline-flex items-center px-3 md:px-4 py-2 border text-sm font-semibold transition
+                            <?= ($i == $current_page_num) ? 'z-10 primary-bg text-white border-blue-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' ?>">
+                            <?= $i ?>
+                        </a>
+                        <?php endfor; 
+
+                        if ($end_loop < $total_pages) {
+                            if ($end_loop < $total_pages - 1) {
+                                echo '<span class="relative inline-flex items-center px-2 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>';
+                            }
+                            echo '<a href="' . get_pagination_url($total_pages, $current_filters) . '" class="relative hidden sm:inline-flex items-center px-3 md:px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition">' . $total_pages . '</a>';
+                        }
+                        ?>
+                        
+                        <?php if ($current_page_num < $total_pages): ?>
+                        <a href="<?= get_pagination_url($current_page_num + 1, $current_filters) ?>" 
+                            class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-r-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <?php endif; ?>
+                    </nav>
+                </div>
+                <?php endif; ?>
             </div>
         </main>
     </div>
     
     <footer class="no-print text-center py-4 bg-white border-t border-gray-200 text-gray-600 text-xs mt-auto md:ml-[260px]">
-        &copy; 2025 Bimbingan Konseling SMKN 2 Banjarmasin. All rights reserved.
+        &copy; 2025 Bimbingan Konseling SMKN 2 Banjarmasin.
     </footer>
 
-    <div id="konselingModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
-            <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                <h3 id="modalTitle" class="text-xl font-semibold text-gray-800">Buat Laporan Sesi Konseling</h3>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times text-xl"></i>
+    <div id="konselingModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
+            <div class="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+                <h3 id="modalTitle" class="text-2xl font-bold text-white flex items-center">
+                    <i class="fas fa-clipboard-list mr-3"></i> Buat Laporan Konseling
+                </h3>
+                <button onclick="closeModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
                 </button>
             </div>
             
-            <div class="p-6">
+            <div class="p-8">
                 <form id="konselingForm" onsubmit="return false;">
                     <input type="hidden" name="id_siswa" id="id_siswa">
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 border rounded-lg bg-gray-50">
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Nama Siswa:</p>
-                            <p id="siswa_nama" class="text-lg font-bold text-gray-900"></p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 border-2 border-green-200 rounded-xl bg-gradient-to-br from-green-50 to-blue-50">
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-gray-600 flex items-center">
+                                <i class="fas fa-user mr-2 text-green-600"></i> Nama Siswa
+                            </p>
+                            <p id="siswa_nama" class="text-xl font-bold text-gray-900"></p>
                         </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Kelas & Jurusan:</p>
-                            <p id="siswa_kelas_jurusan" class="text-lg font-bold text-gray-900"></p>
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-gray-600 flex items-center">
+                                <i class="fas fa-school mr-2 text-blue-600"></i> Kelas & Jurusan
+                            </p>
+                            <p id="siswa_kelas_jurusan" class="text-xl font-bold text-gray-900"></p>
                         </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">NIS:</p>
-                            <p id="siswa_nis" class="text-lg font-bold text-gray-900"></p>
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-gray-600 flex items-center">
+                                <i class="fas fa-id-card mr-2 text-purple-600"></i> NIS
+                            </p>
+                            <p id="siswa_nis" class="text-xl font-bold text-gray-900"></p>
                         </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-700">Sesi Berikutnya:</p>
-                            <p class="text-lg font-bold text-gray-900">
-                                Pertemuan Ke-<span id="pertemuan_display">1</span> | 
-                                Panggilan Ke-<span id="panggilan_display">1</span>
+                        <div class="space-y-1">
+                            <p class="text-sm font-medium text-gray-600 flex items-center">
+                                <i class="fas fa-calendar-check mr-2 text-orange-600"></i> Sesi Berikutnya
+                            </p>
+                            <p class="text-xl font-bold text-gray-900">
+                                Pertemuan <span id="pertemuan_display" class="text-green-600">1</span> | 
+                                Panggilan <span id="panggilan_display" class="text-blue-600">1</span>
                             </p>
                             <input type="hidden" name="pertemuan_ke" id="pertemuan_ke">
                             <input type="hidden" name="panggilan_ke" id="panggilan_ke">
                         </div>
                     </div>
 
-                    <h4 class="text-lg font-semibold mb-4 text-gray-800">Detail Pelaksanaan Konseling</h4>
+                    <h4 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b-2 border-gray-200 pb-3">
+                        <i class="fas fa-edit primary-color mr-2"></i> Detail Pelaksanaan Konseling
+                    </h4>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div>
-                            <label for="tanggal_pelaksanaan" class="block text-sm font-medium text-gray-700">Tanggal Pelaksanaan</label>
+                            <label for="tanggal_pelaksanaan" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-calendar mr-1"></i> Tanggal Pelaksanaan
+                            </label>
                             <input type="date" name="tanggal_pelaksanaan" id="tanggal_pelaksanaan" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
 
                         <div>
-                            <label for="waktu_durasi" class="block text-sm font-medium text-gray-700">Waktu/Durasi</label>
+                            <label for="waktu_durasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-clock mr-1"></i> Waktu/Durasi
+                            </label>
                             <select name="waktu_durasi" id="waktu_durasi" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                                 <option value="">Pilih Durasi</option>
                                 <?php foreach($waktu_durasi_options as $durasi): ?>
                                     <option value="<?= $durasi ?> Menit" <?= ($durasi == 45) ? 'selected' : '' ?>><?= $durasi ?> Menit</option>
@@ -733,99 +978,87 @@ $atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel'
                         </div>
 
                         <div>
-                            <label for="tempat" class="block text-sm font-medium text-gray-700">Tempat</label>
+                            <label for="tempat" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-map-marker-alt mr-1"></i> Tempat
+                            </label>
                             <input type="text" name="tempat" id="tempat" value="Ruang BK" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <label for="gejala_nampak" class="block text-sm font-medium text-gray-700">Gejala yang Nampak</label>
-                        <textarea name="gejala_nampak" id="gejala_nampak" rows="3" required
-                            class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"></textarea>
+                    <div class="mb-6">
+                        <label for="gejala_nampak" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-eye mr-1"></i> Gejala yang Nampak
+                        </label>
+                        <textarea name="gejala_nampak" id="gejala_nampak" rows="3" required placeholder="Deskripsikan gejala atau perilaku yang terlihat..."
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"></textarea>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label for="atas_dasar" class="block text-sm font-medium text-gray-700">Atas Dasar</label>
-                            <input type="text" name="atas_dasar" id="atas_dasar" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                            <label for="atas_dasar" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-info-circle mr-1"></i> Atas Dasar
+                            </label>
+                            <input type="text" name="atas_dasar" id="atas_dasar" required placeholder="Contoh: Inisiatif Siswa, Panggilan Ortu, dll"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
                         
                         <div>
-                            <label for="pendekatan_konseling" class="block text-sm font-medium text-gray-700">Pendekatan Konseling</label>
-                            <input type="text" name="pendekatan_konseling" id="pendekatan_konseling" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                            <label for="pendekatan_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-users mr-1"></i> Pendekatan Konseling
+                            </label>
+                            <input type="text" name="pendekatan_konseling" id="pendekatan_konseling" required placeholder="Contoh: Client Centered, Behavioral, dll"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="teknik_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-tools mr-1"></i> Teknik Konseling
+                            </label>
+                            <input type="text" name="teknik_konseling" id="teknik_konseling" required placeholder="Contoh: Active Listening, Reflection, Role Play, dll"
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="hasil_dicapai" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-check-circle mr-1"></i> Hasil yang Dicapai
+                        </label>
+                        <textarea name="hasil_dicapai" id="hasil_dicapai" rows="3" required placeholder="Deskripsikan hasil atau progress yang dicapai dalam sesi ini..."
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-user-tie mr-1"></i> Nama Guru
+                            </label>
+                            <input type="text" name="nama_guru" placeholder="Nama guru yang melakukan konseling" 
+                                   value="<?= htmlspecialchars($nama_pengguna) ?>"
+                                   class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
 
                         <div>
-                            <label for="teknik_konseling" class="block text-sm font-medium text-gray-700">Teknik Konseling</label>
-                            <input type="text" name="teknik_konseling" id="teknik_konseling" required
-                                class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-id-badge mr-1"></i> NIP Guru BK <span class="text-xs text-gray-500">(Opsional)</span>
+                            </label>
+                            <input type="text" name="nip_guru_bk" placeholder="Boleh dikosongkan"
+                                   class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
-
-                    </div>
-                    
-                    <div class="mt-4">
-                        <label for="hasil_dicapai" class="block text-sm font-medium text-gray-700">Hasil yang Dicapai</label>
-                        <textarea name="hasil_dicapai" id="hasil_dicapai" rows="3" required
-                            class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="mt-4 font-medium text-sm">Nama Guru:</label>
-                        <input type="text" name="nama_guru" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500" 
-                               placeholder="Isi nama guru yang melakukan laporan"
-                               value="<?= htmlspecialchars($nama_pengguna) ?>">
-                    </div>
-
-                    <div>
-                        <label class="mt-4 font-medium text-sm">NIP Guru BK/Konselor (Opsional):</label>
-                        <input type="text" name="nip_guru_bk" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500" 
-                               placeholder="Boleh dikosongkan">
                     </div>
                     
                     <input type="hidden" name="status_konseling" value="Proses">
                     <input type="hidden" name="no_input" value="AUTO-GENERATED">
 
-
-                    <div class="mt-6 pt-4 border-t flex justify-end space-x-3">
-                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">Batal</button>
-                        <button type="submit" id="submitBtn" class="px-4 py-2 primary-bg text-white rounded-lg hover:bg-[#3C7F81]">
-                            <i class="fas fa-save mr-1"></i> Simpan Laporan
+                    <div class="mt-8 pt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-end gap-3">
+                        <button type="button" onclick="closeModal()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md btn-action">
+                            <i class="fas fa-times mr-2"></i> Batal
+                        </button>
+                        <button type="submit" id="submitBtn" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition font-semibold shadow-md btn-action">
+                            <i class="fas fa-save mr-2"></i> Simpan Laporan
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
-    <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[905px] flex flex-col transform scale-100 transition-all">
-            
-            <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white z-10">
-                <h3 id="pdfIframeTitle" class="text-xl font-semibold text-gray-800">Laporan Konseling Individu</h3>
-                <div class="space-x-3 flex items-center">
-                    <button onclick="closePdfViewerModal()" class="text-gray-400 hover:text-gray-600">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="flex-grow overflow-hidden">
-                <iframe id="pdfIframe" src="" class="w-full h-[65vh] border-0" title="PDF Viewer"></iframe>
-            </div>
-
-            <div class="px-6 py-3 border-t flex justify-end space-x-3 bg-gray-50 sticky bottom-0 z-10">
-                <button type="button" onclick="closePdfViewerModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400">
-                    <i class="fas fa-arrow-left mr-1"></i> Kembali
-                </button>
-                <a id="exportPdfBtn" href="#" target="_blank" class="px-4 hidden py-2 primary-bg text-white rounded-lg hover:bg-[#3C7F81]">
-                    <i class="fas fa-file-pdf mr-1"></i> Ekspor ke PDF
-                </a>
-            </div>
-            
-        </div>
-    </div>
-    </body>
-</html>
