@@ -27,12 +27,8 @@ $gb_mapping = [
     'Visual' => 'Visual', 'Auditori' => 'Auditori', 'Kinestetik' => 'Kinestetik', '' => 'Belum Tes'
 ];
 $gb_colors = [
-    'Visual' => '#5FA8A1',
-    'Auditori' => '#4C8E89',
-    'Kinestetik' => '#123E44',
-    'Belum Tes' => '#E5E7EB'
+    'Visual' => '#FFC107', 'Auditori' => '#03A9F4', 'Kinestetik' => '#8BC34A', 'Belum Tes' => '#BDBDBD'
 ];
-
 
 $query_siswa = "
     SELECT 
@@ -100,6 +96,7 @@ $query_tahun = "SELECT id_tahun, tahun FROM tahun_ajaran ORDER BY tahun DESC";
 $result_tahun = mysqli_query($koneksi, $query_tahun);
 $data_tahun = mysqli_fetch_all($result_tahun, MYSQLI_ASSOC);
 
+
 $display_kelas = !empty($filter_kelas) ? ' Kelas ' . htmlspecialchars($filter_kelas) : '';
 $display_jurusan = !empty($filter_jurusan) ? ' Jurusan ' . htmlspecialchars($filter_jurusan) : '';
 
@@ -128,7 +125,6 @@ $get_dominant = function($counts) {
             $dominant_type[] = $type;
         }
     }
-    
     if ($max_count == 0 && ($counts['Belum Tes'] ?? 0) == $total) {
         return [
             'types' => [], 
@@ -145,8 +141,11 @@ $get_dominant = function($counts) {
 };
 
 $dominant_gb = $get_dominant($gb_counts);
+
 $total_tested_gb = $dominant_gb['total'];
+
 $gb_percentage = ($dominant_gb['count'] > 0 && $total_tested_gb > 0) ? round(($dominant_gb['count'] / $total_tested_gb) * 100) : 0;
+
 $total_siswa = count($data_siswa);
 ?>
 <!DOCTYPE html>
@@ -174,21 +173,14 @@ $total_siswa = count($data_siswa);
         }
 
 :root {
-    /* PRIMARY */
     --primary: #0F3A3A;
     --primary-dark: #0B2E2E;
     --primary-light: #123E44;
-
-    /* ACCENT */
     --accent: #5FA8A1;
     --accent-dark: #4C8E89;
-
-    /* NEUTRAL */
     --white: #FFFFFF;
     --gray-50: #F9FAFB;
     --gray-200: #E5E7EB;
-
-    /* STATUS (DISESUAIKAN TEMA) */
     --success: #4C8E89;
     --warning: #5FA8A1;
     --danger: #9B2C2C;
@@ -718,7 +710,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header class="md:hidden flex justify-between items-center px-4 py-3 glass-effect shadow-lg sticky top-0 z-30">
+    <header class="no-print md:hidden flex justify-between items-center px-4 py-3 glass-effect shadow-lg sticky top-0 z-30 ">
         <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-xl primary-gradient flex items-center justify-center shadow-lg">
                 <i class="fas fa-user-tie text-white text-lg"></i>
@@ -864,7 +856,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 </div>
             </div>
 
-            <!-- Page Header with Animation -->
             <div class="no-print mb-8">
                 <div class="flex items-center justify-between mb-4">
                     <div>
@@ -901,7 +892,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 <?php endif; ?>
             </div>
 
-            <!-- Filter Section with Modern Design -->
             <div class="no-print glass-effect p-6 rounded-2xl shadow-xl mb-8 border border-gray-200 card-hover">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-gradient-to-br  rounded-lg flex items-center justify-center shadow-md">
@@ -966,7 +956,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             
             <?php if (!empty($filter_kelas) && !empty($filter_jurusan) && !empty($filter_tahun)) : ?>
             
-                <!-- Summary Card with Export -->
                 <div class="no-print glass-effect p-6 rounded-2xl shadow-xl mb-8 border border-gray-200">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
@@ -993,37 +982,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             
                 <?php if (count($data_siswa) > 0) : ?>
                 
-                <!-- Stats Cards -->
-                <div class="no-print grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <?php 
-                    $stats = [
-                        ['type' => 'Visual', 'icon' => 'fa-eye', 'gradient' => 'from-yellow-400 to-orange-500'],
-                        ['type' => 'Auditori', 'icon' => 'fa-headphones', 'gradient' => 'from-blue-400 to-cyan-500'],
-                        ['type' => 'Kinestetik', 'icon' => 'fa-hand-rock', 'gradient' => 'from-green-400 to-emerald-500'],
-                        ['type' => 'Belum Tes', 'icon' => 'fa-hourglass-half', 'gradient' => 'from-gray-400 to-gray-500']
-                    ];
-                    
-                    foreach ($stats as $stat) :
-                        $count = $gb_counts[$stat['type']] ?? 0;
-                        $percentage = $total_siswa > 0 ? round(($count / $total_siswa) * 100) : 0;
-                    ?>
-                    <div class="stat-card glass-effect p-6 rounded-2xl shadow-lg border border-gray-200 card-hover">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="w-12 h-12 bg-gradient-to-br <?php echo $stat['gradient']; ?> rounded-xl flex items-center justify-center shadow-md">
-                                <i class="fas <?php echo $stat['icon']; ?> text-white text-xl"></i>
-                            </div>
-                            <span class="text-3xl font-bold text-gray-800"><?php echo $count; ?></span>
-                        </div>
-                        <h4 class="font-bold text-gray-700 mb-2"><?php echo $stat['type']; ?></h4>
-                        <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                            <div class="bg-gradient-to-r <?php echo $stat['gradient']; ?> h-2 rounded-full transition-all duration-1000" style="width: <?php echo $percentage; ?>%"></div>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2 font-medium"><?php echo $percentage; ?>% dari total</p>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <!-- Chart Section with Enhanced Design -->
                 <div class="no-print mb-8">
                     <div class="chart-container glass-effect p-8 rounded-2xl shadow-2xl border border-gray-200 card-hover">
                         <div class="flex items-center gap-3 mb-6">
@@ -1041,7 +999,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                     </div>
                 </div>
 
-                <!-- Summary Section with Modern Card -->
                 <div class="mt-8 report-section glass-effect p-8 rounded-2xl shadow-2xl border border-gray-200">
                     <div class="flex items-center gap-3 mb-6">
                         <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg animated-icon">
@@ -1096,10 +1053,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                                     <h5 class="font-bold text-gray-800 mb-2">Status Tes</h5>
                                     <p class="text-gray-700"><?php echo $gb_status_text; ?></p>
                                     <?php if ($gb_belum_tes > 0) : ?>
-                                    <div class="mt-3 inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-medium text-sm">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                        <span>Perlu Follow-up</span>
-                                    </div>
                                     <?php else : ?>
                                     <div class="mt-3 inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg font-medium text-sm">
                                         <i class="fas fa-check-circle"></i>
@@ -1111,8 +1064,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                         </div>
                     </div>
                 </div>
-                
-                <!-- Print Only Table -->
+
                 <div class="report-section show-on-print-only mt-6">
                     <h4 style="font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 5px;">
                         1. Hasil Tes Gaya Belajar
@@ -1186,7 +1138,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
         </main>
     </div>
 
- <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
         <div class="text-center">
             <p class="text-sm text-gray-600">
