@@ -168,21 +168,14 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         
         * { font-family: 'Inter', sans-serif; }
 :root {
-    /* PRIMARY */
     --primary: #0F3A3A;
     --primary-dark: #0B2E2E;
     --primary-light: #123E44;
-
-    /* ACCENT */
     --accent: #5FA8A1;
     --accent-dark: #4C8E89;
-
-    /* NEUTRAL */
     --white: #FFFFFF;
     --gray-50: #F9FAFB;
     --gray-200: #E5E7EB;
-
-    /* STATUS (DISESUAIKAN TEMA) */
     --success: #4C8E89;
     --warning: #5FA8A1;
     --danger: #9B2C2C;
@@ -420,24 +413,43 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 const lockIcon = item.terkunci ? '<i class="fas fa-lock text-gray-400 text-lg"></i>' : '';
 
                 const card = `
-                    ${linkStart} class="relative overflow-hidden bg-white p-5 rounded-xl shadow-md hover:shadow-xl border border-gray-100 ${lockedClass}">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${item.gradient} opacity-5 rounded-full -mr-16 -mt-16"></div>
-                        <div class="relative flex items-start justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg">
-                                    <i class="${item.icon} text-white text-xl"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-base font-bold text-gray-800">${item.title}</h4>
-                                    ${statusBadge}
-                                </div>
-                            </div>
-                            ${lockIcon}
-                        </div>
-                        <p class="text-sm text-gray-600 relative">${item.description}</p>
-                        ${!item.terkunci ? '<div class="mt-3 text-xs font-semibold text-blue-600 flex items-center gap-1"><span>Lihat Detail</span><i class="fas fa-arrow-right"></i></div>' : ''}
-                    ${linkEnd}
-                `;
+${linkStart} class="block bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition ${lockedClass}">
+    
+    <div class="flex items-start gap-4">
+        <div class="w-11 h-11 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center">
+            <i class="${item.icon} text-white text-lg"></i>
+        </div>
+
+        <div class="flex-1">
+            <h4 class="text-sm font-bold text-gray-800">
+                ${item.title}
+            </h4>
+
+            <p class="text-xs text-gray-500 mt-1">
+                ${item.description}
+            </p>
+
+            ${item.status ? `
+            <span class="inline-flex mt-2 items-center gap-1 text-xs font-semibold
+                ${item.status.bg} ${item.status.textCol}
+                border ${item.status.borderCol}
+                px-2.5 py-0.5 rounded-full">
+                <i class="${item.status.icon} text-xs"></i>
+                ${item.status.text}
+            </span>` : ''}
+        </div>
+
+        ${lockIcon}
+    </div>
+
+    ${!item.terkunci ? `
+    <div class="mt-3 text-xs font-semibold text-blue-600 flex items-center gap-1">
+        Lihat Detail <i class="fas fa-arrow-right"></i>
+    </div>` : ''}
+
+${linkEnd}
+`;
+
                 cardsContainer.innerHTML += card;
             });
         }
@@ -516,7 +528,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 min-h-screen flex flex-col">
 
-    <!-- Mobile Header -->
     <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg primary-gradient flex items-center justify-center shadow-md">
@@ -533,8 +544,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
     </header>
 
     <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 md:hidden" onclick="toggleMenu()"></div>
-    
-    <!-- Mobile Menu -->
+
     <div id="mobileMenu" class="fade-slide hidden-transition fixed top-[64px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm max-h-[calc(100vh-64px)] overflow-y-auto">
         <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition flex items-center gap-2">
             <i class="fas fa-home w-5"></i> Beranda
@@ -586,8 +596,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
     </div>
 
     <div class="flex flex-grow">
-        
-        <!-- Desktop Sidebar -->
+
         <aside id="sidebar" class="no-print sidebar hidden md:flex primary-gradient shadow-2xl z-40 flex-col text-white">
             <div class="px-6 py-6 border-b border-white/10">
                 <div class="flex items-center space-x-3">
@@ -651,10 +660,8 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             </nav>
         </aside>
 
-       <!-- Main Content -->
        <main class="flex-grow p-4 sm:p-6 lg:p-8 content-wrapper max-w-full">
-            
-            <!-- Page Header -->
+
             <div class="mb-8">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-xl primary-gradient flex items-center justify-center shadow-lg">
@@ -667,7 +674,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 </div>
             </div>
 
-            <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="stat-card p-5 rounded-xl shadow-md border-l-4 border-blue-500">
                     <div class="flex items-center justify-between">
@@ -705,8 +711,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     </div>
                 </div>
             </div>
-    
-            <!-- Filter Section -->
+
             <div class="bg-white rounded-xl shadow-lg mb-6 border border-gray-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200 flex items-center justify-between cursor-pointer" onclick="toggleFilters()">
                     <div class="flex items-center gap-3">
@@ -811,9 +816,19 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                             </a>
                          <?php if ($total_records > 0): ?>
     <div class="flex justify-start md:justify-end justify-end"> 
-        <button type="button" onclick="confirmExport('export_biodata.php?<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>)" class="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center gap-2 flex justify-end">
-            <i class="fas fa-file-archive"></i> Export Biodata (ZIP)
-        </button>
+        <button type="button" 
+    onclick="confirmExport('exportsekaligus_cv.php?action=export_all_cv&<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>)" 
+    class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 group">
+    
+    <div class="bg-white/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
+        <i class="fas fa-file-archive text-lg"></i>
+    </div>
+    
+    <div class="flex flex-col text-left leading-tight">
+        <span>Export Biodata</span>
+        <span class="text-[10px] font-medium opacity-80 uppercase tracking-wider">Format ZIP (PDF)</span>
+    </div>
+</button>
     </div>
 <?php endif; ?>
                         </div>
@@ -821,7 +836,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 </div>
             </div>
 
-            <!-- Active Filters Display -->
             <?php 
             $active_filters = [];
             if (!empty($filter_nama)) $active_filters[] = ['label' => 'Nama', 'value' => $filter_nama];
@@ -844,7 +858,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 </div>
             <?php endif; ?>
 
-            <!-- Desktop Table View -->
             <div class="table-container bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
                 <?php if (mysqli_num_rows($result_siswa) > 0): ?>
                     <div class="overflow-x-auto">
@@ -936,8 +949,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     </div>
                 <?php endif; ?>
             </div>
-    
-            <!-- Mobile Card View -->
+
             <div class="card-container space-y-4">
                 <?php 
                 mysqli_data_seek($result_siswa, 0);
@@ -1010,7 +1022,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                 <?php endif; ?>
             </div>
     
-            <!-- Pagination -->
             <?php if ($total_pages > 1): ?>
                 <div class="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1020,19 +1031,17 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                         </div>
                         
                         <div class="flex items-center gap-2">
-                            <!-- First Page -->
+
                             <a href="<?php echo build_pagination_url(1, $view_mode, $current_filters); ?>" 
                                class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == 1) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
                                 <i class="fas fa-angle-double-left"></i>
                             </a>
-                            
-                            <!-- Previous Page -->
+   
                             <a href="<?php echo build_pagination_url(max(1, $page - 1), $view_mode, $current_filters); ?>" 
                                class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == 1) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
                                 <i class="fas fa-angle-left"></i>
                             </a>
                             
-                            <!-- Page Numbers -->
                             <div class="hidden sm:flex items-center gap-2">
                                 <?php
                                 $start_page = max(1, $page - 2);
@@ -1047,18 +1056,15 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                                 <?php endfor; ?>
                             </div>
                             
-                            <!-- Current Page (Mobile) -->
                             <div class="sm:hidden px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-bold shadow-md">
                                 <?php echo $page; ?> / <?php echo $total_pages; ?>
                             </div>
-                            
-                            <!-- Next Page -->
+   
                             <a href="<?php echo build_pagination_url(min($total_pages, $page + 1), $view_mode, $current_filters); ?>" 
                                class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == $total_pages) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
                                 <i class="fas fa-angle-right"></i>
                             </a>
                             
-                            <!-- Last Page -->
                             <a href="<?php echo build_pagination_url($total_pages, $view_mode, $current_filters); ?>" 
                                class="px-3 py-2 rounded-lg border transition-all duration-200 <?php echo ($page == $total_pages) ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300 hover:border-blue-500'; ?>">
                                 <i class="fas fa-angle-double-right"></i>
@@ -1067,8 +1073,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     </div>
                 </div>
             <?php endif; ?>
-            
-            <!-- Kenaikan Kelas Section -->
+        
             <div class="mt-8 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-lg p-6 border-2 border-orange-200">
                 <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -1102,42 +1107,35 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         </main>
     </div>
 
-    <!-- Result Modal -->
-    <div id="resultModal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <div id="modalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm modal-backdrop"></div>
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all relative z-50 modal-content-wrapper" onclick="event.stopPropagation()">
-                <!-- Modal Header -->
-                <div class="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-2xl">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1 min-w-0 pr-4">
-                            <h3 id="modalTitle" class="text-xl font-bold text-white truncate">Detail Hasil Tes</h3>
-                            <p id="modalSubtitle" class="text-sm text-blue-100 mt-1"></p>
-                        </div>
-                        <button onclick="hideResultModal()" class="flex-shrink-0 text-white hover:bg-white/20 rounded-lg p-2 transition-colors duration-200">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Modal Body -->
-                <div class="p-6 bg-gradient-to-br from-gray-50 to-white">
-                    <div id="resultCardsContainer" class="space-y-4">
-                        <!-- Cards will be inserted here by JavaScript -->
-                    </div>
-                </div>
-                
-                <!-- Modal Footer -->
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-2xl flex justify-end">
-                    <button onclick="hideResultModal()" class="px-6 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
-                        <i class="fas fa-times"></i> Tutup
-                    </button>
-                </div>
+    <div id="resultModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick="hideResultModal()"></div>
+
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden relative z-50 transform transition-all border border-gray-100" onclick="event.stopPropagation()">
+        
+        <div class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h3 id="modalTitle" class="text-lg font-bold text-gray-800">Detail Hasil Tes</h3>
+                <p id="modalSubtitle" class="text-xs text-gray-500 mt-0.5 font-medium uppercase tracking-wider"></p>
             </div>
+            <button onclick="hideResultModal()" class="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-lg transition-all">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        <div class="max-h-[70vh] overflow-y-auto bg-gray-50/50 p-6">
+            <div id="resultCardsContainer" class="space-y-4">
+                </div>
+        </div>
+
+        <div class="px-6 py-4 bg-white border-t border-gray-100 flex justify-end">
+            <button onclick="hideResultModal()" 
+                class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors flex items-center gap-2 text-sm">
+                Tutup
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto content-wrapper">
         <div class="text-center">
             <p class="text-sm text-gray-600">
