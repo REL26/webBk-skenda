@@ -14,7 +14,7 @@ if (!isset($_GET['id_hasil']) || empty($_GET['id_hasil'])) {
 $id_hasil = intval($_GET['id_hasil']);
 
 $kota = "Banjarmasin";
-$nama_kepsek = "..."; 
+$nama_kepsek = "Novie Bambang Rumadi, S.T., M.Pd"; 
 $nama_guru_bk = "..."; 
 
 $query_hasil = mysqli_query($koneksi, "
@@ -303,43 +303,93 @@ $chart_data = [
 </head>
 <body class="bg-gray-50 antialiased leading-relaxed">
 
-    <div id="main-content" class="flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-2xl bg-white p-8 rounded-xl shadow-2xl">
-        <h1 class="text-3xl font-extrabold text-gray-800 text-center mb-6">Hasil Laporan Anda ditemukan!</h1>
-        <p class="text-center text-gray-500 mb-8">Informasi Anda sudah siap. Silakan pilih tindakan di bawah ini.</p>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <button id="openReportButton" class="block p-6 text-white rounded-xl shadow-lg 
-                bg-indigo-600 
-                hover:bg-indigo-700 hover:shadow-xl               
-                transition duration-150 ease-in-out
-                focus:outline-none focus:ring-4 focus:ring-indigo-300">
-                
-                <div class="flex flex-col items-center justify-center h-full">
-                    <svg class="w-11 h-11 mb-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    
-                    <h2 class="text-xl font-bold mb-1">Cek Hasil dan Pratinjau</h2>
-                    <p class="text-sm text-center opacity-90">Lihat dokumen laporan lengkap.</p>
+    <div id="main-content"
+     class="min-h-screen flex items-center justify-center px-4 py-12
+            bg-gradient-to-br from-[#0F3A3A] via-[#123E44] to-[#1F5F63]">
+
+    <div class="w-full max-w-4xl
+                bg-white/95 backdrop-blur
+                rounded-md
+                shadow-[0_30px_70px_-25px_rgba(0,0,0,0.4)]
+                px-6 py-10 sm:px-10 sm:py-14 md:px-14">
+
+        <div class="text-center mb-12">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl
+                       font-extrabold
+                       text-[#123E44]
+                       mb-4">
+                Hasil Laporan Anda Ditemukan
+            </h1>
+
+            <p class="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
+                Data hasil tes Anda telah berhasil diproses.
+                Silakan pilih tindakan yang ingin dilakukan berikut ini.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+            <button id="openReportButton"
+                    class="group relative overflow-hidden
+                           rounded-3xl
+                           px-6 py-10 sm:px-10
+                           bg-gradient-to-br from-[#5FA8A1] to-[#4C8E89]
+                           text-white
+                           shadow-xl
+                           hover:shadow-2xl
+                           transition-all duration-300">
+
+                <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition"></div>
+
+                <div class="relative flex flex-col items-center text-center">
+                    <svg class="w-14 h-14 sm:w-16 sm:h-16 mb-6"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+
+                    <h2 class="text-xl sm:text-2xl font-bold mb-2">
+                        Cek Hasil & Pratinjau
+                    </h2>
+
+                    <p class="text-sm sm:text-base opacity-90 max-w-xs">
+                        Lihat detail laporan hasil tes secara lengkap dan siap cetak.
+                    </p>
                 </div>
             </button>
-            
-            <a href="dashboard.php" class="block p-6 rounded-xl border-2 border-gray-300 
-                bg-white 
-                text-gray-700 
-                hover:bg-gray-50 hover:border-indigo-400 hover:shadow-md
-                transition duration-150 ease-in-out">
-                <div class="flex flex-col items-center justify-center h-full">
-                    <svg class="w-11 h-11 mb-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                    
-                    <h2 class="text-xl font-bold mb-1">Kembali ke Beranda</h2>
-                    <p class="text-sm text-center opacity-90">Kembali ke menu utama aplikasi.</p>
+
+            <a href="dashboard.php"
+               class="group rounded-3xl
+                      px-6 py-10 sm:px-10
+                      border-2 border-[#5FA8A1]/50
+                      bg-white
+                      text-[#123E44]
+                      hover:bg-[#5FA8A1]/10
+                      hover:border-[#5FA8A1]
+                      transition-all duration-300
+                      shadow-md hover:shadow-lg">
+
+                <div class="flex flex-col items-center text-center">
+                    <svg class="w-14 h-14 sm:w-16 sm:h-16 mb-6 text-[#5FA8A1]"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3"/>
+                    </svg>
+
+                    <h2 class="text-xl sm:text-2xl font-bold mb-2">
+                        Kembali ke Beranda
+                    </h2>
+
+                    <p class="text-sm sm:text-base opacity-80 max-w-xs">
+                        Kembali ke halaman utama dashboard Bimbingan Konseling.
+                    </p>
                 </div>
             </a>
 
         </div>
     </div>
 </div>
+
     
     <div id="report-overlay">
         

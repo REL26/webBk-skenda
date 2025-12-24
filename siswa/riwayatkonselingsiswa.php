@@ -8,6 +8,23 @@ if (!isset($_SESSION['id_siswa'])) {
 }
 
 $id_siswa = $_SESSION['id_siswa'];
+$query_notif = "
+    SELECT kk.topik_masalah, kk.tanggal_pelaksanaan, kk.id_kelompok
+    FROM kelompok kk
+    JOIN detail_kelompok pk ON kk.id_kelompok = pk.id_kelompok
+    LEFT JOIN kepuasan_kelompok kks ON kk.id_kelompok = kks.id_kelompok AND kks.id_siswa = ?
+    WHERE pk.id_siswa = ? AND kks.id_kepuasan_kelompok IS NULL
+";
+$stmt_notif = $koneksi->prepare($query_notif);
+$stmt_notif->bind_param("ii", $id_siswa, $id_siswa);
+$stmt_notif->execute();
+$result_notif = $stmt_notif->get_result();
+
+$daftar_notif_kelompok = [];
+while ($row_notif = $result_notif->fetch_assoc()) {
+    $daftar_notif_kelompok[] = $row_notif;
+}
+$stmt_notif->close();
 
 function tgl_indo($tanggal){
 	$bulan = array (
@@ -268,7 +285,7 @@ $stmt_kelompok->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riwayat Konseling Siswa | BK</title>
+    <title>Riwayat Konseling Siswa | BK SMKN 2 Banjarmasin</title>
     <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -496,7 +513,7 @@ $stmt_kelompok->close();
                 });
             });
             
-            $(document).on('change', '.rating-input', function() {
+            $(document).on('change', '.rating-input ', function() {
                 const name = $(this).attr('name');
                 const is_disabled = $(this).prop('disabled');
                 
@@ -512,7 +529,7 @@ $stmt_kelompok->close();
 </head>
 <body class="bg-[#F9FAFB] text-gray-800 min-h-screen flex flex-col">
 
- <header class="flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
+ <header class="no-print flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
         <a href="dashboard.php" class="flex items-center space-x-2">
             <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
             <div>
@@ -520,7 +537,7 @@ $stmt_kelompok->close();
                 <small class="hidden md:block text-xs text-gray-600">Bimbingan Konseling</small>
             </div>
         </a>
-        <nav class="hidden md:flex items-center space-x-6">
+        <nav class="hidden md:flex items-center space-x-6 font-sans">
             <a href="dashboard.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Beranda</a>
             <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
             <a href="riwayatkonselingsiswa.php" class="primary-color font-bold border-b-2 border-primary-color pb-1 transition underline">Riwayat</a>
@@ -553,6 +570,13 @@ $stmt_kelompok->close();
         Daftar riwayat bimbingan dan konseling yang telah Anda ikuti.
     </p>
 </section>
+
+<?php if (!empty($daftar_notif_kelompok)): ?>
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 shadow-md rounded" role="alert">
+        <p class="font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> Perhatian!</p>
+        <p>Anda memiliki <?php echo count($daftar_notif_kelompok); ?> laporan Konseling Kelompok yang belum dinilai. Mohon segera mengisi penilaian.</p>
+    </div>
+<?php endif; ?>
 
 
     <main class="flex-1 p-4 md:p-8 w-full">
@@ -602,12 +626,12 @@ $stmt_kelompok->close();
                                 </span>
                             </div>
 
-                            <div class="text-sm mb-3">
+                            <!-- <div class="text-sm mb-3">
                                 <p class="font-medium text-gray-700">Gejala Awal:</p>
                                 <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['gejala_nampak']) ?></p>
-                            </div>
+                            </div> -->
 
-                            <div class="pt-3 border-t flex justify-end space-x-3">
+                            <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
                                     $btn_class = empty($data['id_kepuasan']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text = empty($data['id_kepuasan']) ? 'Beri Penilaian' : 'Lihat Penilaian';
@@ -649,12 +673,12 @@ $stmt_kelompok->close();
                                 </span>
                             </div>
 
-                            <div class="text-sm mb-3">
+                            <!-- <div class="text-sm mb-3">
                                 <p class="font-medium text-gray-700">Topik Kelompok:</p>
                                 <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['topik_masalah']) ?></p>
-                            </div>
+                            </div> -->
 
-                            <div class="pt-3 border-t flex justify-end space-x-3">
+                            <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
                                     $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text_k = empty($data['id_kepuasan_kelompok']) ? 'Beri Penilaian' : 'Lihat Penilaian';
@@ -833,4 +857,3 @@ $stmt_kelompok->close();
 </footer>
 </body>
 </html>
-

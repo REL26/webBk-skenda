@@ -293,7 +293,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </ul>
                 <div class="mt-8 pt-4 border-t border-gray-700">
                     <p class="text-xs text-red-400 italic">
-                        *Jika Anda lupa password lama, silakan hubungi Guru BK Anda untuk proses reset password secara manual.
+                        *Jika Anda lupa password lama, silakan hubungi Admin BK melalui menu/teks "Lupa Password?" di halaman login.
                     </p>
                 </div>
             </div>

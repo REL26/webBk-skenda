@@ -9,7 +9,6 @@ if (!isset($_SESSION['id_siswa'])) {
 
 $id_siswa = $_SESSION['id_siswa'];
 
-// Ambil data siswa dengan LEFT JOIN untuk hasil tes yang mungkin NULL
 $query = mysqli_query($koneksi, "
     SELECT 
         s.*,
@@ -23,7 +22,6 @@ $query = mysqli_query($koneksi, "
 ");
 $siswa = mysqli_fetch_assoc($query);
 
-// Data untuk JavaScript
 $id_hasil_gayabelajar = $siswa['id_hasil_gb'] ?? null;
 $id_hasil_gb_js = json_encode($id_hasil_gayabelajar);
 
@@ -32,7 +30,6 @@ $id_hasil_kemampuan_js = json_encode($id_hasil_kemampuan);
 
 $nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
 
-// Cek Kelengkapan Biodata
 $is_biodata_complete = true;
 $required_fields = [
     'nama_panggilan', 'tempat_lahir', 'tanggal_lahir', 'alamat_lengkap', 'berat_badan', 
@@ -53,13 +50,10 @@ foreach ($required_fields as $field) {
     }
 }
 
-// Cek Status Tes
 $is_tes_kemampuan_done = !empty($id_hasil_kemampuan); 
 $is_tes_gayabelajar_done = $siswa['skor_visual'] !== null;
 $is_tes_kepribadian_done = !empty($siswa['hasil_tes_kepribadian']); 
 $is_tes_asesmen_done = false; 
-
-// Data Status untuk JavaScript
 $status_biodata_js = $is_biodata_complete ? 'true' : 'false';
 $status_kemampuan_js = $is_tes_kemampuan_done ? 'true' : 'false';
 $status_gayabelajar_js = $is_tes_gayabelajar_done ? 'true' : 'false';
@@ -71,27 +65,22 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | BK SMKN 2 Banjarmasin</title>
+    <title>Beranda | BK SMKN 2 Banjarmasin</title>
     <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Definisi Warna Utama */
         :root {
-            --primary-color: #2F6C6E; /* Hijau Tua Khas */
-            --secondary-color: #38A169; /* Hijau Sukses */
-            --overlay-color: rgba(47, 108, 110, 0.85); /* 85% opacity dari primary-color */
+            --primary-color: #2F6C6E; 
+            --secondary-color: #38A169; 
+            --overlay-color: rgba(47, 108, 110, 0.85); 
         }
 
         .primary-color { color: var(--primary-color); }
         .primary-bg { background-color: var(--primary-color); }
         .primary-border { border-color: var(--primary-color); }
 
-        /* Style Baru untuk Hero Section dengan Gambar Latar Belakang */
         #hero-section {
-            /* ======================================================= */
-            /* !!! GANTI 'URL_GAMBAR_LATAR_BELAKANG_ANDA' DI BAWAH !!! */
-            /* ======================================================= */
             background-image: url('https://assets-a1.kompasiana.com/items/album/2016/05/25/1459049shutterstock-140079079780x390-57452e9ef37a6148061f8f95.jpg'); 
             background-size: cover;
             background-position: center;
@@ -99,7 +88,6 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             overflow: hidden;
         }
 
-        /* Overlay Transparan Gelap */
         #hero-section::before {
             content: '';
             position: absolute;
@@ -111,13 +99,11 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             z-index: 1; 
         }
 
-        /* Pastikan konten teks berada di atas overlay */
         #hero-content {
             position: relative;
             z-index: 2;
         }
         
-        /* Transisi Smooth untuk Menu Mobile */
         .fade-slide {
             transition: all 0.3s ease-in-out;
             transform-origin: top;
@@ -135,15 +121,13 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             max-height: 500px; 
             pointer-events: auto;
         }
-        
-        /* Kartu Tes */
+
         .test-card {
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: 1px solid #E5E7EB; 
             position: relative;
         }
 
-        /* Efek Hover untuk Kartu yang Bisa Diakses */
         .card-active:hover {
             transform: translateY(-8px);
             box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
@@ -153,8 +137,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             transform: scale(1.05);
             color: var(--primary-color);
         }
-        
-        /* Status Selesai */
+
         .test-card-done {
             background-color: #F0FFF4; 
             border: 2px solid var(--secondary-color); 
@@ -181,7 +164,6 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
-        /* Status Terkunci */
         .test-card-locked, .test-card-biodata-locked {
             filter: grayscale(80%);
             opacity: 0.7;
@@ -207,7 +189,6 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     </style>
 
     <script>
-        // Fungsi untuk mengaktifkan/menonaktifkan menu mobile
         function toggleMenu() {
             const menu = document.getElementById('mobileMenu');
             const overlay = document.getElementById('menuOverlay');
@@ -240,11 +221,9 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 const testName = card.dataset.testName;
                 const cardElement = card.querySelector('.test-card');
 
-                // Tentukan URL/Aksi Berdasarkan Status
                 let finalUrl = card.getAttribute('href'); 
 
                 if (isTestDone) {
-                    // Update Link ke Halaman Hasil Jika Sudah Selesai
                     if (testName === 'Tes Gaya Belajar' && ID_HASIL_GAYABELAJAR) {
                         finalUrl = 'hasil_gayabelajar.php?id_hasil=' + ID_HASIL_GAYABELAJAR;
                         card.setAttribute('href', finalUrl);
@@ -253,7 +232,6 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                         card.setAttribute('href', finalUrl);
                     }
                     
-                    // Tambahkan Interaksi Konfirmasi Hasil untuk Tes yang "Sudah Selesai"
                     card.addEventListener('click', e => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -263,15 +241,11 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                     });
                     
                 } else if (!IS_BIODATA_COMPLETE && !cardElement.classList.contains('test-card-locked')) {
-                    // Blokir Tes Jika Biodata Belum Lengkap (kecuali yang sudah locked)
                     cardElement.classList.add('test-card-biodata-locked');
                 } else if (!cardElement.classList.contains('test-card-locked')) {
-                     // Tambahkan kelas hover untuk kartu yang aktif
                     cardElement.classList.add('card-active');
                 }
 
-
-                // Tambahkan Interaksi Peringatan Akses Terkunci
                 if (cardElement.classList.contains('test-card-biodata-locked')) {
                     card.addEventListener('click', e => {
                         e.preventDefault();
@@ -279,8 +253,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                         alert('Akses terkunci! Anda wajib melengkapi data di menu "Data Profiling" terlebih dahulu.');
                     });
                 }
-                
-                // Tambahkan Interaksi Peringatan Coming Soon
+    
                 if (cardElement.classList.contains('test-card-locked')) {
                      card.addEventListener('click', e => {
                         e.preventDefault();
@@ -331,10 +304,10 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         
         <div id="hero-content" class="max-w-4xl mx-auto px-4">
             <h1 class="text-3xl md:text-5xl font-extrabold mb-3 md:mb-4">
-                <i class="fas fa-hand-wave mr-2"></i> Selamat Datang, Contoh 1
+                <i class="fas fa-hand-wave mr-2"></i> Selamat Datang, <?php echo htmlspecialchars($nama_siswa); ?>!
             </h1>
             <p class="text-lg md:text-xl font-light mb-8 md:mb-10">
-                Halo **<?php echo htmlspecialchars($nama_siswa); ?>**, temukan potensi terbaik dan arah masa depan Anda di sini!
+                Halo <?php echo htmlspecialchars($nama_siswa); ?>, temukan potensi terbaik dan arah masa depan Anda di sini!
             </p>
 
 
@@ -352,7 +325,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 <div class="pt-1"><i class="fas fa-lock mr-3 text-3xl"></i></div>
                 <div>
                     <p class="font-bold text-lg">AKSES TES TERKUNCI!</p>
-                    <p class="text-sm">Anda **wajib** melengkapi semua data di menu 
+                    <p class="text-sm">Anda wajib melengkapi semua data di menu 
                         <a href="data_profiling.php" class="font-extrabold underline text-red-700 hover:text-red-800 transition">Data Profiling</a> sebelum dapat memulai tes minat bakat.
                     </p>
                 </div>
