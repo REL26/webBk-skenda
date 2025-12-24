@@ -1,29 +1,41 @@
 <?php
+// ... (Logic PHP Anda di atas tetap TIDAK diubah)
 session_start();
 include '../koneksi.php';
 
+// Cek sesi login guru dan parameter id_siswa
 if (!isset($_SESSION['id_guru']) || !isset($_GET['id_siswa'])) {
     header("Location: hasil_tes.php");
     exit;
 }
 
-$id_siswa = mysqli_real_escape_string($koneksi, $_GET['id_siswa']);
+$id_siswa     = mysqli_real_escape_string($koneksi, $_GET['id_siswa']);
 $pesan_sukses = "";
-$pesan_error = "";
-$target_dir = "../uploads/foto_siswa/";
+$pesan_error  = "";
+$target_dir   = "../uploads/foto_siswa/";
 
-$current_page = basename($_SERVER['PHP_SELF']);
-$is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.php', 'detail_biodata.php']);
+// Penentuan halaman aktif (hanya digunakan jika ada menu/sidebar)
+$current_page           = basename($_SERVER['PHP_SELF']);
+$is_profiling_active  = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.php', 'detail_biodata.php']);
 
+// Buat direktori upload jika belum ada
 if (!is_dir($target_dir)) {
     if (!mkdir($target_dir, 0777, true)) {
         $pesan_error .= "Gagal membuat direktori upload: " . $target_dir;
     }
 }
 
+// Data List untuk Dropdown/Select
 $daftar_agama = ['Islam', 'Kristen Protestan', 'Kristen Katolik', 'Hindu', 'Buddha', 'Konghucu'];
 $daftar_kepemilikan_gadget = ['HP Saja', 'Laptop Saja', 'Keduanya', 'Tidak Ada'];
+$daftar_status_tinggal = ['Bersama Orang Tua', 'Kost', 'Asrama', 'Lainnya'];
+$daftar_jarak = ['< 1 km', '1 - 5 km', '6 - 10 km', '> 10 km'];
+$daftar_transportasi = ['Jalan Kaki', 'Kendaraan Pribadi', 'Angkutan Umum', 'Antar Jemput'];
+$daftar_fasilitas_internet = ['Pribadi (HP/Modem)', 'WiFi Rumah', 'WiFi Sekolah', 'Tidak Ada'];
+$daftar_fasilitas_belajar = ['Meja Belajar', 'Ruang Khusus', 'Tidak Ada'];
+$daftar_buku_pelajaran = ['Semua Dimiliki', 'Sebagian Dimiliki', 'Minim/Tidak Ada'];
 
+// --- 1. Ambil Data Siswa (dan Gaya Belajar) ---
 $query_siswa = mysqli_query($koneksi, "
     SELECT 
         s.*,
@@ -40,6 +52,7 @@ if (!$siswa) {
     die("Data siswa tidak ditemukan.");
 }
 
+// --- 2. Ambil Data Hasil Tes Kecerdasan (yang terbaru) ---
 $query_kecerdasan = mysqli_query($koneksi, "
     SELECT *
     FROM hasil_kecerdasan
@@ -49,6 +62,7 @@ $query_kecerdasan = mysqli_query($koneksi, "
 ");
 $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
+// --- 3. Hitung Gaya Belajar Dominan ---
 $gaya_belajar = "Belum Mengisi";
 if ($siswa['skor_visual'] !== null) {
     $skor_v = $siswa['skor_visual'];
@@ -64,7 +78,20 @@ if ($siswa['skor_visual'] !== null) {
     $gaya_belajar = implode(" & ", $tipe_dominan);
 }
 
+// --- 4. Hitung Kecerdasan Majemuk Dominan ---
 $hasil_tes_kemampuan_calculated = "Belum Mengisi";
+$skor_kecerdasan = [];
+$map_kecerdasan = [
+    'A' => 'Linguistik (Bahasa)',
+    'B' => 'Logis-Matematis',
+    'C' => 'Spasial-Visual',
+    'D' => 'Kinestetik-Jasmani',
+    'E' => 'Musikal',
+    'F' => 'Interpersonal',
+    'G' => 'Intrapersonal',
+    'H' => 'Naturalis',
+];
+
 if ($hasil_kecerdasan) {
     $skor_kecerdasan = [
         'A' => $hasil_kecerdasan['skor_A'] ?? 0,
@@ -102,7 +129,11 @@ if ($hasil_kecerdasan) {
         if (!empty($tipe_dominan_kecerdasan)) {
             $hasil_tes_kemampuan_calculated = implode(" & ", $tipe_dominan_kecerdasan);
         } else {
-            $hasil_tes_kemampuan_calculated = implode(" & ", $kode_tertinggi) . " (Keterangan tipe belum terdaftar)";
+            $tipe_dominan_kecerdasan_raw = [];
+            foreach ($kode_tertinggi as $kode) {
+                $tipe_dominan_kecerdasan_raw[] = $map_kecerdasan[$kode] ?? $kode;
+            }
+            $hasil_tes_kemampuan_calculated = implode(" & ", $tipe_dominan_kecerdasan_raw);
         }
         
     } else {
@@ -110,61 +141,64 @@ if ($hasil_kecerdasan) {
     }
 }
 
+// --- 5. Proses Update Data (POST Request) ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    $nama_panggilan     = mysqli_real_escape_string($koneksi, $_POST['nama_panggilan'] ?? '');
-    $jenis_kelamin      = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin'] ?? '');
-    $tempat_lahir       = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir'] ?? '');
-    $tanggal_lahir      = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir'] ?? '');
-    $agama              = mysqli_real_escape_string($koneksi, $_POST['agama'] ?? '');
-    $tinggi_badan       = mysqli_real_escape_string($koneksi, $_POST['tinggi_badan'] ?? '');
-    $berat_badan        = mysqli_real_escape_string($koneksi, $_POST['berat_badan'] ?? '');
-    $alamat_lengkap     = mysqli_real_escape_string($koneksi, $_POST['alamat_lengkap'] ?? '');
-    $no_telp            = mysqli_real_escape_string($koneksi, $_POST['no_telp'] ?? '');
-    $email              = mysqli_real_escape_string($koneksi, $_POST['email'] ?? '');
-    $instagram          = mysqli_real_escape_string($koneksi, $_POST['instagram'] ?? '');
-    $hobi_kegemaran     = mysqli_real_escape_string($koneksi, $_POST['hobi_kegemaran'] ?? '');
-    $tentang_saya_singkat = mysqli_real_escape_string($koneksi, $_POST['tentang_saya_singkat'] ?? '');
-    $riwayat_sma_smk_ma = mysqli_real_escape_string($koneksi, $_POST['riwayat_sma_smk_ma'] ?? '');
-    $riwayat_smp_mts    = mysqli_real_escape_string($koneksi, $_POST['riwayat_smp_mts'] ?? '');
-    $riwayat_sd_mi      = mysqli_real_escape_string($koneksi, $_POST['riwayat_sd_mi'] ?? '');
-    $prestasi_pengalaman = mysqli_real_escape_string($koneksi, $_POST['prestasi_pengalaman'] ?? '');
-    $organisasi         = mysqli_real_escape_string($koneksi, $_POST['organisasi'] ?? '');
-    $anak_ke            = mysqli_real_escape_string($koneksi, $_POST['anak_ke'] ?? '');
-    $suku               = mysqli_real_escape_string($koneksi, $_POST['suku'] ?? '');
-    $cita_cita          = mysqli_real_escape_string($koneksi, $_POST['cita_cita'] ?? '');
-    $riwayat_penyakit   = mysqli_real_escape_string($koneksi, $_POST['riwayat_penyakit'] ?? '');
-    $nama_ayah          = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
-    $pekerjaan_ayah     = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
-    $nama_ibu           = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
-    $pekerjaan_ibu      = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
-    $no_hp_ortu         = mysqli_real_escape_string($koneksi, $_POST['no_hp_ortu'] ?? '');
-    $status_tempat_tinggal = mysqli_real_escape_string($koneksi, $_POST['status_tempat_tinggal'] ?? '');
-    $jarak_ke_sekolah   = mysqli_real_escape_string($koneksi, $_POST['jarak_ke_sekolah'] ?? '');
-    $transportasi_ke_sekolah = mysqli_real_escape_string($koneksi, $_POST['transportasi_ke_sekolah'] ?? '');
-    $memiliki_hp_laptop = mysqli_real_escape_string($koneksi, $_POST['memiliki_hp_laptop'] ?? '');
-    $fasilitas_internet = mysqli_real_escape_string($koneksi, $_POST['fasilitas_internet'] ?? '');
-    $fasilitas_belajar_dirumah = mysqli_real_escape_string($koneksi, $_POST['fasilitas_belajar_dirumah'] ?? '');
-    $buku_pelajaran_dimiliki = mysqli_real_escape_string($koneksi, $_POST['buku_pelajaran_dimiliki'] ?? '');
-    $bahasa_sehari_hari = mysqli_real_escape_string($koneksi, $_POST['bahasa_sehari_hari'] ?? '');
-    $bahasa_asing_dikuasai = mysqli_real_escape_string($koneksi, $_POST['bahasa_asing_dikuasai'] ?? '');
-    $pelajaran_disenangi = mysqli_real_escape_string($koneksi, $_POST['pelajaran_disenangi'] ?? '');
-    $pelajaran_tdk_disenangi = mysqli_real_escape_string($koneksi, $_POST['pelajaran_tdk_disenangi'] ?? '');
-    $tempat_curhat      = mysqli_real_escape_string($koneksi, $_POST['tempat_curhat'] ?? '');
-    $kelebihan_diri     = mysqli_real_escape_string($koneksi, $_POST['kelebihan_diri'] ?? '');
-    $kekurangan_diri    = mysqli_real_escape_string($koneksi, $_POST['kekurangan_diri'] ?? '');
+    // Ambil dan bersihkan data dari POST
+    $nama_panggilan             = mysqli_real_escape_string($koneksi, $_POST['nama_panggilan'] ?? '');
+    $jenis_kelamin              = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin'] ?? '');
+    $tempat_lahir               = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir'] ?? '');
+    $tanggal_lahir              = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir'] ?? '');
+    $agama                      = mysqli_real_escape_string($koneksi, $_POST['agama'] ?? '');
+    $tinggi_badan               = mysqli_real_escape_string($koneksi, $_POST['tinggi_badan'] ?? '');
+    $berat_badan                = mysqli_real_escape_string($koneksi, $_POST['berat_badan'] ?? '');
+    $alamat_lengkap             = mysqli_real_escape_string($koneksi, $_POST['alamat_lengkap'] ?? '');
+    $no_telp                    = mysqli_real_escape_string($koneksi, $_POST['no_telp'] ?? '');
+    $email                      = mysqli_real_escape_string($koneksi, $_POST['email'] ?? '');
+    $instagram                  = mysqli_real_escape_string($koneksi, $_POST['instagram'] ?? '');
+    $hobi_kegemaran             = mysqli_real_escape_string($koneksi, $_POST['hobi_kegemaran'] ?? '');
+    $tentang_saya_singkat       = mysqli_real_escape_string($koneksi, $_POST['tentang_saya_singkat'] ?? '');
+    $riwayat_sma_smk_ma         = mysqli_real_escape_string($koneksi, $_POST['riwayat_sma_smk_ma'] ?? '');
+    $riwayat_smp_mts            = mysqli_real_escape_string($koneksi, $_POST['riwayat_smp_mts'] ?? '');
+    $riwayat_sd_mi              = mysqli_real_escape_string($koneksi, $_POST['riwayat_sd_mi'] ?? '');
+    $prestasi_pengalaman        = mysqli_real_escape_string($koneksi, $_POST['prestasi_pengalaman'] ?? '');
+    $organisasi                 = mysqli_real_escape_string($koneksi, $_POST['organisasi'] ?? '');
+    $anak_ke                    = mysqli_real_escape_string($koneksi, $_POST['anak_ke'] ?? '');
+    $suku                       = mysqli_real_escape_string($koneksi, $_POST['suku'] ?? '');
+    $cita_cita                  = mysqli_real_escape_string($koneksi, $_POST['cita_cita'] ?? '');
+    $riwayat_penyakit           = mysqli_real_escape_string($koneksi, $_POST['riwayat_penyakit'] ?? '');
+    $nama_ayah                  = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
+    $pekerjaan_ayah             = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
+    $nama_ibu                   = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
+    $pekerjaan_ibu              = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
+    $no_hp_ortu                 = mysqli_real_escape_string($koneksi, $_POST['no_hp_ortu'] ?? '');
+    $status_tempat_tinggal      = mysqli_real_escape_string($koneksi, $_POST['status_tempat_tinggal'] ?? '');
+    $jarak_ke_sekolah           = mysqli_real_escape_string($koneksi, $_POST['jarak_ke_sekolah'] ?? '');
+    $transportasi_ke_sekolah    = mysqli_real_escape_string($koneksi, $_POST['transportasi_ke_sekolah'] ?? '');
+    $memiliki_hp_laptop         = mysqli_real_escape_string($koneksi, $_POST['memiliki_hp_laptop'] ?? '');
+    $fasilitas_internet         = mysqli_real_escape_string($koneksi, $_POST['fasilitas_internet'] ?? '');
+    $fasilitas_belajar_dirumah  = mysqli_real_escape_string($koneksi, $_POST['fasilitas_belajar_dirumah'] ?? '');
+    $buku_pelajaran_dimiliki    = mysqli_real_escape_string($koneksi, $_POST['buku_pelajaran_dimiliki'] ?? '');
+    $bahasa_sehari_hari         = mysqli_real_escape_string($koneksi, $_POST['bahasa_sehari_hari'] ?? '');
+    $bahasa_asing_dikuasai      = mysqli_real_escape_string($koneksi, $_POST['bahasa_asing_dikuasai'] ?? '');
+    $pelajaran_disenangi        = mysqli_real_escape_string($koneksi, $_POST['pelajaran_disenangi'] ?? '');
+    $pelajaran_tdk_disenangi    = mysqli_real_escape_string($koneksi, $_POST['pelajaran_tdk_disenangi'] ?? '');
+    $tempat_curhat              = mysqli_real_escape_string($koneksi, $_POST['tempat_curhat'] ?? '');
+    $kelebihan_diri             = mysqli_real_escape_string($koneksi, $_POST['kelebihan_diri'] ?? '');
+    $kekurangan_diri            = mysqli_real_escape_string($koneksi, $_POST['kekurangan_diri'] ?? '');
 
     $url_foto_baru = $siswa['url_foto'];
 
+    // Proses Upload Foto
     if (isset($_FILES['url_foto']) && $_FILES['url_foto']['error'] == 0) {
-        $file_name = $_FILES['url_foto']['name'];
-        $file_tmp = $_FILES['url_foto']['tmp_name'];
-        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        $new_file_name = "foto_" . $siswa['nis'] . "_" . time() . "." . $file_ext;
-        $upload_path = $target_dir . $new_file_name;
+        $file_name          = $_FILES['url_foto']['name'];
+        $file_tmp           = $_FILES['url_foto']['tmp_name'];
+        $file_ext           = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $new_file_name      = "foto_" . $siswa['nis'] . "_" . time() . "." . $file_ext;
+        $upload_path        = $target_dir . $new_file_name;
 
         $allowed_extensions = array("jpg", "jpeg", "png");
-        $max_file_size = 5 * 1024 * 1024;
+        $max_file_size      = 5 * 1024 * 1024; // 5MB
 
         if (!in_array($file_ext, $allowed_extensions)) {
             $pesan_error .= "Ekstensi file tidak diizinkan. Hanya JPG, JPEG, PNG. ";
@@ -172,6 +206,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $pesan_error .= "Ukuran file terlalu besar. Maksimal 5MB. ";
         } else {
             if (move_uploaded_file($file_tmp, $upload_path)) {
+                // Hapus foto lama jika ada
                 if (!empty($siswa['url_foto']) && file_exists('../' . $siswa['url_foto'])) {
                     @unlink('../' . $siswa['url_foto']); 
                 }
@@ -182,56 +217,59 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
+    // Eksekusi Update ke Database
     if (empty($pesan_error)) {
         $update_query = "
             UPDATE siswa SET
-                nama_panggilan = '$nama_panggilan',
-                jenis_kelamin = '$jenis_kelamin',
-                tempat_lahir = '$tempat_lahir',
-                tanggal_lahir = '$tanggal_lahir',
-                agama = '$agama',
-                tinggi_badan = " . (empty($tinggi_badan) ? 'NULL' : "'$tinggi_badan'") . ",
-                berat_badan = " . (empty($berat_badan) ? 'NULL' : "'$berat_badan'") . ",
-                alamat_lengkap = '$alamat_lengkap',
-                no_telp = '$no_telp',
-                email = '$email',
-                instagram = '$instagram',
-                hobi_kegemaran = '$hobi_kegemaran',
-                tentang_saya_singkat = '$tentang_saya_singkat',
-                riwayat_sma_smk_ma = '$riwayat_sma_smk_ma',
-                riwayat_smp_mts = '$riwayat_smp_mts',
-                riwayat_sd_mi = '$riwayat_sd_mi',
-                prestasi_pengalaman = '$prestasi_pengalaman',
-                organisasi = '$organisasi',
-                url_foto = '$url_foto_baru',
-                anak_ke = '$anak_ke',
-                suku = '$suku',
-                cita_cita = '$cita_cita',
-                riwayat_penyakit = '$riwayat_penyakit',
-                nama_ayah = '$nama_ayah',
-                pekerjaan_ayah = '$pekerjaan_ayah',
-                nama_ibu = '$nama_ibu',
-                pekerjaan_ibu = '$pekerjaan_ibu',
-                no_hp_ortu = '$no_hp_ortu',
-                status_tempat_tinggal = '$status_tempat_tinggal',
-                jarak_ke_sekolah = '$jarak_ke_sekolah',
-                transportasi_ke_sekolah = '$transportasi_ke_sekolah',
-                memiliki_hp_laptop = '$memiliki_hp_laptop',
-                fasilitas_internet = '$fasilitas_internet',
-                fasilitas_belajar_dirumah = '$fasilitas_belajar_dirumah',
-                buku_pelajaran_dimiliki = '$buku_pelajaran_dimiliki',
-                bahasa_sehari_hari = '$bahasa_sehari_hari',
-                bahasa_asing_dikuasai = '$bahasa_asing_dikuasai',
-                pelajaran_disenangi = '$pelajaran_disenangi',
-                pelajaran_tdk_disenangi = '$pelajaran_tdk_disenangi',
-                tempat_curhat = '$tempat_curhat',
-                kelebihan_diri = '$kelebihan_diri',
-                kekurangan_diri = '$kekurangan_diri'
+                nama_panggilan              = '$nama_panggilan',
+                jenis_kelamin               = '$jenis_kelamin',
+                tempat_lahir                = '$tempat_lahir',
+                tanggal_lahir               = '$tanggal_lahir',
+                agama                       = '$agama',
+                tinggi_badan                = " . (empty($tinggi_badan) ? 'NULL' : "'$tinggi_badan'") . ",
+                berat_badan                 = " . (empty($berat_badan) ? 'NULL' : "'$berat_badan'") . ",
+                alamat_lengkap              = '$alamat_lengkap',
+                no_telp                     = '$no_telp',
+                email                       = '$email',
+                instagram                   = '$instagram',
+                hobi_kegemaran              = '$hobi_kegemaran',
+                tentang_saya_singkat        = '$tentang_saya_singkat',
+                riwayat_sma_smk_ma          = '$riwayat_sma_smk_ma',
+                riwayat_smp_mts             = '$riwayat_smp_mts',
+                riwayat_sd_mi               = '$riwayat_sd_mi',
+                prestasi_pengalaman         = '$prestasi_pengalaman',
+                organisasi                  = '$organisasi',
+                url_foto                    = '$url_foto_baru',
+                anak_ke                     = '$anak_ke',
+                suku                        = '$suku',
+                cita_cita                   = '$cita_cita',
+                riwayat_penyakit            = '$riwayat_penyakit',
+                nama_ayah                   = '$nama_ayah',
+                pekerjaan_ayah              = '$pekerjaan_ayah',
+                nama_ibu                    = '$nama_ibu',
+                pekerjaan_ibu               = '$pekerjaan_ibu',
+                no_hp_ortu                  = '$no_hp_ortu',
+                status_tempat_tinggal       = '$status_tempat_tinggal',
+                jarak_ke_sekolah            = '$jarak_ke_sekolah',
+                transportasi_ke_sekolah     = '$transportasi_ke_sekolah',
+                memiliki_hp_laptop          = '$memiliki_hp_laptop',
+                fasilitas_internet          = '$fasilitas_internet',
+                fasilitas_belajar_dirumah   = '$fasilitas_belajar_dirumah',
+                buku_pelajaran_dimiliki     = '$buku_pelajaran_dimiliki',
+                bahasa_sehari_hari          = '$bahasa_sehari_hari',
+                bahasa_asing_dikuasai       = '$bahasa_asing_dikuasai',
+                pelajaran_disenangi         = '$pelajaran_disenangi',
+                pelajaran_tdk_disenangi     = '$pelajaran_tdk_disenangi',
+                tempat_curhat               = '$tempat_curhat',
+                kelebihan_diri              = '$kelebihan_diri',
+                kekurangan_diri             = '$kekurangan_diri'
             WHERE id_siswa = '$id_siswa'
         ";
 
         if (mysqli_query($koneksi, $update_query)) {
             $pesan_sukses = "Data profil siswa berhasil diperbarui.";
+            
+            // Re-fetch data setelah update (untuk memastikan data di form terbaru)
             $query_siswa = mysqli_query($koneksi, "
                 SELECT 
                     s.*,
@@ -253,6 +291,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ");
             $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
+            // Re-calculate Gaya Belajar
             $gaya_belajar = "Belum Mengisi";
             if ($siswa['skor_visual'] !== null) {
                 $skor_v = $siswa['skor_visual'];
@@ -268,7 +307,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $gaya_belajar = implode(" & ", $tipe_dominan);
             }
 
+            // Re-calculate Kecerdasan Majemuk
             $hasil_tes_kemampuan_calculated = "Belum Mengisi";
+            $skor_kecerdasan = [];
             if ($hasil_kecerdasan) {
                 $skor_kecerdasan = [
                     'A' => $hasil_kecerdasan['skor_A'] ?? 0,
@@ -306,7 +347,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     if (!empty($tipe_dominan_kecerdasan)) {
                         $hasil_tes_kemampuan_calculated = implode(" & ", $tipe_dominan_kecerdasan);
                     } else {
-                        $hasil_tes_kemampuan_calculated = implode(" & ", $kode_tertinggi) . " (Keterangan tipe belum terdaftar)";
+                        $tipe_dominan_kecerdasan_raw = [];
+                        foreach ($kode_tertinggi as $kode) {
+                            $tipe_dominan_kecerdasan_raw[] = $map_kecerdasan[$kode] ?? $kode;
+                        }
+                        $hasil_tes_kemampuan_calculated = implode(" & ", $tipe_dominan_kecerdasan_raw);
                     }
                     
                 } else {
@@ -320,8 +365,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
+// Tentukan URL foto untuk ditampilkan
 $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://www.gravatar.com/avatar/?d=mp&s=200';
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -332,312 +379,732 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
         * {
             font-family: 'Inter', sans-serif;
         }
-        
-        .primary-color {
-            color: #2F6C6E;
+
+        :root {
+            --primary: #0F3A3A;
+            --primary-dark: #0B2E2E;
+            --primary-light: #123E44;
+            --accent: #5FA8A1;
+            --accent-dark: #4C8E89;
+            --accent-light: #7BC4BE;
+            --white: #FFFFFF;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-700: #374151;
+            --success: #10B981;
+            --danger: #EF4444;
         }
-        .primary-bg {
-            background-color: #2F6C6E;
+
+        body {
+            background: #0F3A3A;
+            min-height: 100vh;
         }
         
-        .fade-slide {
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        /* Header Animation */
+        header {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Card Hover Effects */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Photo Container with Glow Effect */
+        .photo-container {
+            position: relative;
+            animation: fadeInScale 0.6s ease-out;
+        }
+
+        .photo-container::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            background: linear-gradient(45deg, var(--accent), var(--accent-light), var(--primary));
+            border-radius: 1rem;
             opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: -1;
         }
-        .fade-slide.active-transition {
-            opacity: 1;
+
+        .photo-container:hover::before {
+            opacity: 0.7;
+        }
+
+        @keyframes rotate {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Profile Stats Animation */
+        .stat-card {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            animation: slideUp 0.6s ease-out backwards;
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Tab Navigation */
+        .nav-item {
+            position: relative;
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            background: var(--accent);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav-item:hover {
+            background: var(--gray-100);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(95, 168, 161, 0.1) 0%, rgba(95, 168, 161, 0.05) 100%);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-item.active::before {
+            width: 100%;
+        }
+
+        /* Mobile Tab Scroll */
+        .mobile-tabs {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .mobile-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mobile-tab-item {
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .mobile-tab-item.active {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(95, 168, 161, 0.3);
+        }
+
+        /* Input Focus Effects */
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(95, 168, 161, 0.1);
+            transform: translateY(-1px);
+        }
+
+        input, textarea, select {
+            transition: all 0.3s ease;
+        }
+
+        /* Button Ripple Effect */
+        .btn-primary {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(95, 168, 161, 0.4);
+        }
+
+        .btn-primary:active {
             transform: translateY(0);
-            pointer-events: auto;
         }
 
-        @media (min-width: 768px) {
-            .sidebar {
-                width: 260px;
-                flex-shrink: 0;
-                transform: translateX(0) !important;
-                position: fixed !important;
-                height: 100vh;
+        .btn-danger {
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Tooltip */
+        .tooltip-container {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .tooltip {
+            visibility: hidden;
+            width: 280px;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            text-align: left;
+            border-radius: 12px;
+            padding: 12px 16px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 0.75rem;
+            line-height: 1.5;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip-container:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+            bottom: 130%;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: var(--primary) transparent transparent transparent;
+        }
+
+        /* Tab Content Animation */
+        .tab-content {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Alert Animation */
+        .alert-animate {
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Section Headers */
+        .section-header {
+            position: relative;
+            padding-left: 16px;
+        }
+
+        .section-header::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
+            border-radius: 2px;
+        }
+
+        /* Form Section Divider */
+        .form-divider {
+            position: relative;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .form-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gray-200), transparent);
+        }
+
+        .form-divider span {
+            background: white;
+            padding: 0 1rem;
+            position: relative;
+            color: var(--gray-700);
+            font-weight: 600;
+        }
+
+        /* Progress Indicator */
+        .progress-ring {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Sticky Sidebar Enhancement */
+        .sticky-sidebar {
+            position: sticky;
+            top: 5.5rem;
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive Design Enhancements */
+        @media (max-width: 768px) {
+            .sticky-sidebar {
+                position: relative;
                 top: 0;
-                left: 0;
-                overflow-y: auto;
             }
-            .content-wrapper {
-                margin-left: 260px;
-            }
-        }
-        
-        .nav-item { position: relative; overflow: hidden; }
-        .nav-item::before { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 4px; background: #D9F0F4; transform: scaleY(0); transition: transform 0.3s ease; }
-        .nav-item:hover::before, .nav-item.active::before { transform: scaleY(1); }
-        .nav-item.active { background-color: #3C7F81; }
 
-        @media (min-width: 1024px) {
-            .sticky-element {
-                position: sticky;
-                top: 24px;
+            .nav-item {
+                padding: 10px 16px;
             }
         }
 
+        /* Icon Animation */
+        .icon-bounce {
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-dark);
+        }
     </style>
 
     <script>
-        function toggleMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('menuOverlay');
-            const body = document.body;
-
-            if (mobileMenu.classList.contains('active-transition')) {
-                mobileMenu.classList.remove('active-transition');
-                overlay.classList.add('hidden');
-                setTimeout(() => {
-                    mobileMenu.classList.add('hidden');
-                    body.classList.remove('overflow-hidden');
-                }, 300);
-
-            } else {
-                mobileMenu.classList.remove('hidden');
-                setTimeout(() => {
-                    mobileMenu.classList.add('active-transition');
-                }, 10);
-                overlay.classList.remove('hidden');
-                body.classList.add('overflow-hidden');
-            }
-        }
-        
-        function toggleSubMenu(menuId) {
-            const submenu = document.getElementById(menuId);
-            const icon = document.getElementById(menuId + 'Icon');
-            if (submenu) {
-                 if (submenu.classList.contains('hidden')) {
-                    submenu.classList.remove('hidden');
-                    if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                } else {
-                    submenu.classList.add('hidden');
-                    if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        function previewImage(event) {
+            const input = event.target;
+            const preview = document.getElementById('previewFoto');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.add('photo-container');
                 }
+                reader.readAsDataURL(input.files[0]);
             }
         }
+
+        function changeTab(tabId) {
+            // Sembunyikan semua konten tab
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {
+                content.classList.add('hidden');
+                content.style.opacity = 0;
+            });
+
+            // Hapus status active dari semua nav item
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Tampilkan konten tab yang dipilih
+            const selectedContent = document.getElementById(tabId);
+            if (selectedContent) {
+                selectedContent.classList.remove('hidden');
+                setTimeout(() => {
+                    selectedContent.style.opacity = 1;
+                }, 10);
+            }
+
+            // Atur status active pada nav item yang dipilih
+            const selectedNav = document.querySelector(`.nav-item[onclick="changeTab('${tabId}')"]`);
+            if (selectedNav) {
+                selectedNav.classList.add('active');
+            }
+            
+            // Atur status active pada nav item di sidebar mobile/tablet
+            const mobileNavItems = document.querySelectorAll('.mobile-tab-item');
+            mobileNavItems.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const selectedMobileNav = document.querySelector(`.mobile-tab-item[onclick="changeTab('${tabId}')"]`);
+            if (selectedMobileNav) {
+                selectedMobileNav.classList.add('active');
+                // Scroll ke item yang aktif
+                selectedMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+
+        // Jalankan saat halaman dimuat untuk tab pertama
+        document.addEventListener('DOMContentLoaded', () => {
+            changeTab('data-pribadi');
+            
+            // Animasi untuk alert
+            const alerts = document.querySelectorAll('.alert-animate');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.animation = 'slideInRight 0.5s ease-out';
+                }, 100);
+            });
+        });
     </script>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
-        <div>
-            <strong class="text-base font-semibold primary-color">Guru BK</strong><br>
-            <small class="text-xs text-gray-500">SMKN 2 BJM</small>
-        </div>
-        <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 z-40 hover:bg-gray-100 rounded-lg transition">
-            <i class="fas fa-bars"></i>
-        </button>
+<body class="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen">
+
+    <!-- Header -->
+    <header class="top-0 left-0 w-full shadow-lg z-30 flex items-center justify-between h-16 px-6 sticky">
+        <a href="#" class="flex items-center space-x-3 group">
+            <div class="relative">
+                <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-10 w-10 transition-transform group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-0 group-hover:opacity-20 transition-opacity"></div>
+            </div>
+            <div>
+                <span class="text-xl font-bold gradient-text block">Detail Siswa</span>
+            </div>
+        </a>
+        <a href="hasil_tes.php" class="btn-danger px-5 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm font-semibold flex items-center shadow-lg">
+            <i class="fas fa-arrow-left mr-2"></i> Kembali
+        </a>
     </header>
-
-    <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 md:hidden" onclick="toggleMenu()"></div>
     
-    <div id="mobileMenu" class="fade-slide hidden-transition fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
-        <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition">
-            <i class="fas fa-home mr-2"></i> Beranda
-        </a>
-        <hr class="border-gray-200">
-        
-        <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_profiling_active ? 'bg-gray-100 font-medium' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuMobile')">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
-                    <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
-                </span>
-                <i id="profilingSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
-            </div>
-        </div>
-        <div id="profilingSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-            <a href="hasil_tes.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'hasil_tes.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-list-alt mr-2"></i> Data Hasil Persiswa
-            </a>
-            <a href="rekap_kelas.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'rekap_kelas.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-chart-bar mr-2"></i> Data Hasil Perkelas
-            </a>
-        </div>
-        <hr class="border-gray-200">
-
-        <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer" onclick="toggleSubMenu('programBkSubmenuMobile')">
-            <div class="flex items-center justify-between">
-                <span class="flex items-center font-medium">
-                    <i class="fas fa-calendar-alt mr-2"></i> Program BK
-                </span>
-                <i id="programBkSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
-            </div>
-        </div>
-        <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-user-friends mr-2"></i> Konseling Individu
-            </a>
-             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Konseling Kelompok
-            </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Bimbingan Kelompok
-            </a>
-        </div>
-        <hr class="border-gray-200">
-
-        <a href="logout.php" class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-medium flex items-center justify-center">
-            <i class="fas fa-sign-out-alt mr-2"></i> Logout
-        </a>
-    </div>
-
-    <div class="flex flex-grow">
-        
-        <aside id="sidebar" class="sidebar hidden md:flex primary-bg shadow-2xl z-40 flex-col text-white">
-            <div class="px-6 py-6 border-b border-white/10">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user-tie text-lg"></i>
-                    </div>
-                    <div>
-                        <strong class="text-base font-semibold block">Guru BK</strong>
-                    </div>
-                </div>
+    <div class="p-4 md:p-8"> 
+        <div class="max-w-7xl mx-auto">
+            
+            <!-- Page Title -->
+            <div class="mb-8">
+                <h2 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2">
+                    <i class="fas fa-user-graduate text-teal-600 mr-3"></i>
+                    <?php echo htmlspecialchars($siswa['nama']); ?>
+                </h2>
+                <p class="text-gray-600 ml-12">NIS: <?php echo htmlspecialchars($siswa['nis']); ?> • <?php echo htmlspecialchars($siswa['kelas'] . " - " . $siswa['jurusan']); ?></p>
             </div>
             
-            <nav class="flex flex-col flex-grow py-4 space-y-1 px-3">
-                <a href="dashboard.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                    <i class="fas fa-home mr-3"></i> Dashboard
-                </a>
-                
-                <div class="nav-item cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuDesktop')">
-                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                        <span class="flex items-center">
-                            <i class="fas fa-user-check mr-3"></i> Data & Laporan Siswa
-                        </span>
-                        <i id="profilingSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
-                    </div>
-                </div>
-                <div id="profilingSubmenuDesktop" class="pl-8 space-y-1 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-                    <a href="hasil_tes.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'hasil_tes.php' ? 'text-white font-semibold' : ''; ?>">
-                        <i class="fas fa-list-alt mr-3 w-4"></i> Data Hasil Persiswa
-                    </a>
-                    <a href="rekap_kelas.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'rekap_kelas.php' ? 'text-white font-semibold' : ''; ?>">
-                        <i class="fas fa-chart-bar mr-3 w-4"></i> Data Hasil Perkelas
-                    </a>
-                </div>
-                <div class="nav-item cursor-pointer" onclick="toggleSubMenu('programBkSubmenuDesktop')">
-                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                        <span class="flex items-center">
-                            <i class="fas fa-calendar-alt mr-3"></i> Program BK
-                        </span>
-                        <i id="programBkSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
-                    </div>
-                </div>
-                <div id="programBkSubmenuDesktop" class="pl-8 space-y-1 hidden">
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
-                    </a>
-                    <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-users mr-3 w-4"></i> Bimbingan Kelompok
-                    </a>
-                </div>
-
-                 <div class="mt-auto pt-4 border-t border-white/10">
-                     <a href="logout.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200">
-                        <i class="fas fa-sign-out-alt mr-3"></i> Logout
-                    </a>
-                </div>
-            </nav>
-        </aside>
-
-        <main class="flex-grow p-4 sm:p-6 lg:p-8 content-wrapper max-w-full">
-            <h1 class="text-2xl md:text-3xl font-bold color-black mb-6">BIODATA SISWA</h1>
-            
+            <!-- Alert Messages -->
             <?php if ($pesan_sukses): ?>
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md" role="alert">
-                <p class="font-bold">Sukses!</p>
-                <p><?php echo $pesan_sukses; ?></p>
+            <div class="alert-animate bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-800 p-5 mb-6 rounded-xl shadow-lg" role="alert">
+                <div class="flex items-start">
+                    <i class="fas fa-check-circle text-2xl text-green-500 mr-4 mt-1"></i>
+                    <div>
+                        <p class="font-bold text-lg">Berhasil!</p>
+                        <p class="text-sm mt-1"><?php echo $pesan_sukses; ?></p>
+                    </div>
+                </div>
             </div>
             <?php endif; ?>
 
             <?php if ($pesan_error): ?>
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-md" role="alert">
-                <p class="font-bold">Error!</p>
-                <p><?php echo $pesan_error; ?></p>
+            <div class="alert-animate bg-gradient-to-r from-red-50 to-rose-50 border-l-4 border-red-500 text-red-800 p-5 mb-6 rounded-xl shadow-lg" role="alert">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-2xl text-red-500 mr-4 mt-1"></i>
+                    <div>
+                        <p class="font-bold text-lg">Terjadi Kesalahan!</p>
+                        <p class="text-sm mt-1"><?php echo $pesan_error; ?></p>
+                    </div>
+                </div>
             </div>
             <?php endif; ?>
 
             <form method="POST" enctype="multipart/form-data" action="detail_biodata.php?id_siswa=<?php echo $id_siswa; ?>">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     
-                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border border-gray-200 h-fit sticky-element">
-                        <h4 class="text-lg font-bold primary-color mb-4 border-b pb-2 flex items-center">
-                            <i class="fas fa-camera mr-2"></i> Foto Profil
-                        </h4>
-                        <div class="flex flex-col items-center">
-                            <img src="<?php echo $url_foto_display; ?>" alt="Foto Siswa" class="w-64 h-64 object-cover rounded-xl shadow-lg border-4 border-[#2F6C6E] mb-4" id="previewFoto">
-                            <label for="url_foto" class="cursor-pointer bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition flex items-center shadow-md">
-                                <i class="fas fa-cloud-upload-alt mr-2"></i> Ubah Foto
-                            </label>
-                            <input type="file" name="url_foto" id="url_foto" class="hidden" accept="image/jpeg,image/png" onchange="previewImage(event)">
-                            <p class="text-xs text-gray-500 mt-2">Max 5MB (JPG, JPEG, PNG)</p>
+                    <!-- Sidebar -->
+                    <div class="lg:col-span-1 space-y-6 sticky-sidebar">
+                        
+                        <!-- Photo Card -->
+                        <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 card-hover">
+                            <h4 class="text-lg font-bold text-gray-800 mb-5 section-header flex items-center">
+                                <i class="fas fa-camera text-teal-600 mr-2"></i> Foto Profil
+                            </h4>
+                            <div class="flex flex-col items-center">
+                                <div class="photo-container mb-5">
+                                    <img src="<?php echo $url_foto_display; ?>" alt="Foto Siswa" class="w-48 h-48 md:w-56 md:h-56 object-cover rounded-2xl shadow-2xl border-4 border-white ring-4 ring-teal-100" id="previewFoto">
+                                </div>
+                                <label for="url_foto" class="cursor-pointer btn-primary text-white text-sm font-semibold py-3 px-6 rounded-xl flex items-center shadow-lg">
+                                    <i class="fas fa-cloud-upload-alt mr-2"></i> Ubah Foto
+                                </label>
+                                <input type="file" name="url_foto" id="url_foto" class="hidden" accept="image/jpeg,image/png" onchange="previewImage(event)">
+                                <p class="text-xs text-gray-500 mt-3 text-center">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Max 5MB (JPG, PNG)
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Profile Stats -->
+                        <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 card-hover">
+                            <h4 class="text-lg font-bold text-gray-800 mb-5 section-header flex items-center">
+                                <i class="fas fa-chart-line text-teal-600 mr-2"></i> Hasil Profiling
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="stat-card p-4 rounded-xl text-white shadow-lg">
+                                    <p class="text-sm font-medium opacity-90 mb-1">Gaya Belajar</p>
+                                    <p class="font-bold text-lg"><?php echo htmlspecialchars($gaya_belajar); ?></p>
+                                </div>
+                                <div class="stat-card p-4 rounded-xl text-white shadow-lg tooltip-container">
+                                    <p class="text-sm font-medium opacity-90 mb-1 flex items-center">
+                                        Kecerdasan Majemuk
+                                        <i class="fas fa-info-circle ml-2 cursor-pointer"></i>
+                                    </p>
+                                    <p class="font-bold text-lg"><?php echo htmlspecialchars($hasil_tes_kemampuan_calculated); ?></p>
+                                    
+                                    <div class="tooltip">
+                                        <h5 class="font-bold mb-3 text-sm">📊 Detail Skor Kecerdasan</h5>
+                                        <div class="space-y-2">
+                                        <?php 
+                                            foreach ($skor_kecerdasan as $kode => $skor) {
+                                                $nama = $map_kecerdasan[$kode] ?? 'Tidak Dikenal';
+                                                $persen = $skor > 0 ? ($skor / max($skor_kecerdasan) * 100) : 0;
+                                                echo "<div class='flex justify-between items-center text-xs'>";
+                                                echo "<span class='font-medium'>$nama</span>";
+                                                echo "<span class='font-bold text-teal-300'>$skor</span>";
+                                                echo "</div>";
+                                                echo "<div class='w-full bg-white bg-opacity-20 rounded-full h-1.5'>";
+                                                echo "<div class='bg-teal-300 h-1.5 rounded-full' style='width: {$persen}%'></div>";
+                                                echo "</div>";
+                                            }
+                                        ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="lg:col-span-2 space-y-6">
+                    <!-- Main Content -->
+                    <div class="lg:col-span-3">
 
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
+                        <!-- Desktop Tab Navigation -->
+                        <div class="hidden md:flex bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-8">
+                            <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('data-pribadi')">
                                 <i class="fas fa-user-circle mr-2"></i> Data Pribadi
+                            </button>
+                            <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('riwayat-pendidikan')">
+                                <i class="fas fa-graduation-cap mr-2"></i> Riwayat
+                            </button>
+                            <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('data-orang-tua')">
+                                <i class="fas fa-users mr-2"></i> Orang Tua
+                            </button>
+                            <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('data-pendukung')">
+                                <i class="fas fa-home mr-2"></i> Pendukung
+                            </button>
+                            <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('profil-psikologis')">
+                                <i class="fas fa-brain mr-2"></i> Psikologis
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Tab Navigation -->
+                        <div class="md:hidden mb-6 overflow-x-auto mobile-tabs bg-white border border-gray-100 shadow-xl rounded-2xl p-2">
+                            <div class="inline-flex space-x-2">
+                                <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('data-pribadi')">
+                                    <i class="fas fa-user-circle mr-1"></i> Pribadi
+                                </button>
+                                <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('riwayat-pendidikan')">
+                                    <i class="fas fa-graduation-cap mr-1"></i> Riwayat
+                                </button>
+                                <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('data-orang-tua')">
+                                    <i class="fas fa-users mr-1"></i> Orang Tua
+                                </button>
+                                <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('data-pendukung')">
+                                    <i class="fas fa-home mr-1"></i> Pendukung
+                                </button>
+                                <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('profil-psikologis')">
+                                    <i class="fas fa-brain mr-1"></i> Psikologis
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Data Pribadi -->
+                        <div id="data-pribadi" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8">
+                            <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
+                                <i class="fas fa-user-circle text-teal-600 mr-3"></i> Data Pribadi
                             </h3>
+                            
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="nama" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                                    <input type="text" id="nama" value="<?php echo htmlspecialchars($siswa['nama'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm bg-gray-100 cursor-not-allowed" readonly>
-                                </div>
-                                <div>
-                                    <label for="nis" class="block text-sm font-medium text-gray-700">NIS</label>
-                                    <input type="text" id="nis" value="<?php echo htmlspecialchars($siswa['nis'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm bg-gray-100 cursor-not-allowed" readonly>
-                                </div>
-                                <div>
-                                    <label for="kelas_jurusan" class="block text-sm font-medium text-gray-700">Kelas / Jurusan</label>
-                                    <input type="text" id="kelas_jurusan" value="<?php echo htmlspecialchars($siswa['kelas'] . " / " . $siswa['jurusan']); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm bg-gray-100 cursor-not-allowed" readonly>
-                                </div>
-                                <div>
-                                    <label for="tahun_ajaran" class="block text-sm font-medium text-gray-700">Tahun Ajaran</label>
-                                    <input type="text" id="tahun_ajaran" value="<?php echo htmlspecialchars($siswa['tahun_ajaran'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-sm bg-gray-100 cursor-not-allowed" readonly>
+                                <!-- Read-only fields with enhanced styling -->
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-id-card text-teal-600 mr-2"></i>Nama Lengkap
+                                    </label>
+                                    <input type="text" value="<?php echo htmlspecialchars($siswa['nama'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
                                 </div>
                                 
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-hashtag text-teal-600 mr-2"></i>NIS
+                                    </label>
+                                    <input type="text" value="<?php echo htmlspecialchars($siswa['nis'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
+                                </div>
+                                
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-school text-teal-600 mr-2"></i>Kelas / Jurusan
+                                    </label>
+                                    <input type="text" value="<?php echo htmlspecialchars($siswa['kelas'] . " / " . $siswa['jurusan']); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
+                                </div>
+                                
+                                <div class="relative">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-calendar-alt text-teal-600 mr-2"></i>Tahun Ajaran
+                                    </label>
+                                    <input type="text" value="<?php echo htmlspecialchars($siswa['tahun_ajaran'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
+                                </div>
+
+                                <!-- Editable fields -->
                                 <div class="md:col-span-2">
-                                    <label for="nama_panggilan" class="block text-sm font-medium text-gray-700">Nama Panggilan</label>
-                                    <input type="text" name="nama_panggilan" id="nama_panggilan" value="<?php echo htmlspecialchars($siswa['nama_panggilan'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: Budi">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-user-tag text-teal-600 mr-2"></i>Nama Panggilan
+                                    </label>
+                                    <input type="text" name="nama_panggilan" value="<?php echo htmlspecialchars($siswa['nama_panggilan'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Contoh: Budi">
                                 </div>
 
                                 <div>
-                                    <label for="jenis_kelamin" class="block text-sm font-medium text-gray-700">Jenis Kelamin</label>
-                                    <select name="jenis_kelamin" id="jenis_kelamin" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                                        <option value="">-- Pilih Jenis Kelamin --</option>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-venus-mars text-teal-600 mr-2"></i>Jenis Kelamin
+                                    </label>
+                                    <select name="jenis_kelamin" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih --</option>
                                         <option value="L" <?php echo ($siswa['jenis_kelamin'] == 'L') ? 'selected' : ''; ?>>Laki-laki</option>
                                         <option value="P" <?php echo ($siswa['jenis_kelamin'] == 'P') ? 'selected' : ''; ?>>Perempuan</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label for="tempat_lahir" class="block text-sm font-medium text-gray-700">Tempat Lahir</label>
-                                    <input type="text" name="tempat_lahir" id="tempat_lahir" value="<?php echo htmlspecialchars($siswa['tempat_lahir'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: Banjarmasin">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-map-marker-alt text-teal-600 mr-2"></i>Tempat Lahir
+                                    </label>
+                                    <input type="text" name="tempat_lahir" value="<?php echo htmlspecialchars($siswa['tempat_lahir'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Banjarmasin">
                                 </div>
                                 
                                 <div>
-                                    <label for="tanggal_lahir" class="block text-sm font-medium text-gray-700">Tanggal Lahir</label>
-                                    <input type="date" name="tanggal_lahir" id="tanggal_lahir" value="<?php echo htmlspecialchars($siswa['tanggal_lahir'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-birthday-cake text-teal-600 mr-2"></i>Tanggal Lahir
+                                    </label>
+                                    <input type="date" name="tanggal_lahir" value="<?php echo htmlspecialchars($siswa['tanggal_lahir'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
                                 </div>
                                 
                                 <div>
-                                    <label for="agama" class="block text-sm font-medium text-gray-700">Agama</label>
-                                    <select name="agama" id="agama" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-pray text-teal-600 mr-2"></i>Agama
+                                    </label>
+                                    <select name="agama" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
                                         <option value="">-- Pilih Agama --</option>
                                         <?php foreach ($daftar_agama as $agama): ?>
                                         <option value="<?php echo $agama; ?>" <?php echo ($siswa['agama'] == $agama) ? 'selected' : ''; ?>><?php echo $agama; ?></option>
@@ -646,258 +1113,574 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </div>
 
                                 <div>
-                                    <label for="tinggi_badan" class="block text-sm font-medium text-gray-700">Tinggi Badan (cm)</label>
-                                    <input type="number" name="tinggi_badan" id="tinggi_badan" value="<?php echo htmlspecialchars($siswa['tinggi_badan'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: 170">
-                                </div>
-                                
-                                <div>
-                                    <label for="berat_badan" class="block text-sm font-medium text-gray-700">Berat Badan (kg)</label>
-                                    <input type="number" name="berat_badan" id="berat_badan" value="<?php echo htmlspecialchars($siswa['berat_badan'] ?? ''); ?>" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: 60">
-                                </div>
-                                
-                                <div>
-                                    <label for="anak_ke" class="block text-sm font-medium text-gray-700">Anak Ke- (dari jumlah bersaudara)</label>
-                                    <input type="text" id="anak_ke" name="anak_ke" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['anak_ke'] ?? ''); ?>" placeholder="Cth: 2 dari 3">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-ruler-vertical text-teal-600 mr-2"></i>Tinggi Badan (cm)
+                                    </label>
+                                    <input type="number" name="tinggi_badan" value="<?php echo htmlspecialchars($siswa['tinggi_badan'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="165">
                                 </div>
 
                                 <div>
-                                    <label for="suku" class="block text-sm font-medium text-gray-700">Suku</label>
-                                    <input type="text" id="suku" name="suku" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['suku'] ?? ''); ?>" placeholder="Cth: Banjar / Jawa">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-weight text-teal-600 mr-2"></i>Berat Badan (kg)
+                                    </label>
+                                    <input type="number" name="berat_badan" value="<?php echo htmlspecialchars($siswa['berat_badan'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="55">
                                 </div>
                                 
-                                <div class="md:col-span-2">
-                                    <label for="cita_cita" class="block text-sm font-medium text-gray-700">Cita-Cita / Tujuan</label>
-                                    <input type="text" id="cita_cita" name="cita_cita" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['cita_cita'] ?? ''); ?>" placeholder="Cth: Programmer / Kuliah ke luar negeri">
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="riwayat_penyakit" class="block text-sm font-medium text-gray-700">Riwayat Penyakit (Serius/Kronis)</label>
-                                    <textarea id="riwayat_penyakit" name="riwayat_penyakit" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Kosongkan jika tidak ada/tidak punya"><?php echo htmlspecialchars($siswa['riwayat_penyakit'] ?? ''); ?></textarea>
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label for="alamat_lengkap" class="block text-sm font-medium text-gray-700">Alamat Lengkap</label>
-                                    <textarea name="alamat_lengkap" id="alamat_lengkap" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Masukkan alamat lengkap (Jalan, RT/RW, Kelurahan, Kecamatan, Kota/Kabupaten)"><?php echo htmlspecialchars($siswa['alamat_lengkap'] ?? ''); ?></textarea>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-flag text-teal-600 mr-2"></i>Suku
+                                    </label>
+                                    <input type="text" name="suku" value="<?php echo htmlspecialchars($siswa['suku'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Banjar">
                                 </div>
                                 
-                                <div class="md:col-span-2">
-                                    <label for="tentang_saya_singkat" class="block text-sm font-medium text-gray-700">Tentang Saya Singkat (Personal Branding)</label>
-                                    <textarea name="tentang_saya_singkat" id="tentang_saya_singkat" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Jelaskan diri Anda dalam 2-3 kalimat..."><?php echo htmlspecialchars($siswa['tentang_saya_singkat'] ?? ''); ?></textarea>
-                                </div>
-                                
-                                <div class="md:col-span-2">
-                                    <label for="hobi_kegemaran" class="block text-sm font-medium text-gray-700">Hobi & Kegemaran</label>
-                                    <textarea name="hobi_kegemaran" id="hobi_kegemaran" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: Membaca novel, bermain futsal, melukis."><?php echo htmlspecialchars($siswa['hobi_kegemaran'] ?? ''); ?></textarea>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-child text-teal-600 mr-2"></i>Anak Ke-
+                                    </label>
+                                    <input type="text" name="anak_ke" value="<?php echo htmlspecialchars($siswa['anak_ke'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="1/3">
                                 </div>
 
-                            </div>
-                        </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-notes-medical text-teal-600 mr-2"></i>Riwayat Penyakit
+                                    </label>
+                                    <textarea name="riwayat_penyakit" rows="2" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Alergi, penyakit kronis, dll"><?php echo htmlspecialchars($siswa['riwayat_penyakit'] ?? ''); ?></textarea>
+                                </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
-                                <i class="fas fa-users mr-2"></i> Data Orang Tua & Keluarga
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <h4 class="text-lg font-semibold text-gray-700 border-b pb-2">Ayah</h4>
-                                    <div>
-                                        <label for="nama_ayah" class="block text-sm font-medium text-gray-700">Nama Ayah</label>
-                                        <input type="text" id="nama_ayah" name="nama_ayah" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['nama_ayah'] ?? ''); ?>" placeholder="Nama Ayah Kandung/Wali">
-                                    </div>
-                                    <div>
-                                        <label for="pekerjaan_ayah" class="block text-sm font-medium text-gray-700">Pekerjaan Ayah</label>
-                                        <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" placeholder="Contoh: Wiraswasta">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-map-marked-alt text-teal-600 mr-2"></i>Alamat Lengkap
+                                    </label>
+                                    <textarea name="alamat_lengkap" rows="3" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Alamat lengkap saat ini"><?php echo htmlspecialchars($siswa['alamat_lengkap'] ?? ''); ?></textarea>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <div class="form-divider">
+                                        <span><i class="fas fa-phone mr-2"></i>Informasi Kontak</span>
                                     </div>
                                 </div>
                                 
-                                <div class="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                    <h4 class="text-lg font-semibold text-gray-700 border-b pb-2">Ibu</h4>
-                                    <div>
-                                        <label for="nama_ibu" class="block text-sm font-medium text-gray-700">Nama Ibu</label>
-                                        <input type="text" id="nama_ibu" name="nama_ibu" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['nama_ibu'] ?? ''); ?>" placeholder="Nama Ibu Kandung/Wali">
-                                    </div>
-                                    <div>
-                                        <label for="pekerjaan_ibu" class="block text-sm font-medium text-gray-700">Pekerjaan Ibu</label>
-                                        <input type="text" id="pekerjaan_ibu" name="pekerjaan_ibu" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['pekerjaan_ibu'] ?? ''); ?>" placeholder="Contoh: Ibu Rumah Tangga">
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-mobile-alt text-teal-600 mr-2"></i>Nomor HP Siswa
+                                    </label>
+                                    <input type="tel" name="no_telp" value="<?php echo htmlspecialchars($siswa['no_telp'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="08123456789">
                                 </div>
-
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-envelope text-teal-600 mr-2"></i>Email Siswa
+                                    </label>
+                                    <input type="email" name="email" value="<?php echo htmlspecialchars($siswa['email'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="nama@mail.com">
+                                </div>
+                                
                                 <div class="md:col-span-2">
-                                    <label for="no_hp_ortu" class="block text-sm font-medium text-gray-700">No. HP Orang Tua / Wali</label>
-                                    <input type="text" id="no_hp_ortu" name="no_hp_ortu" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" placeholder="Cth: 0812xxxxxxxx">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fab fa-instagram text-teal-600 mr-2"></i>Instagram
+                                    </label>
+                                    <input type="text" name="instagram" value="<?php echo htmlspecialchars($siswa['instagram'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="@username">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
-                                <i class="fas fa-map-marker-alt mr-2"></i> Data Tempat Tinggal & Fasilitas
+                        <!-- Tab: Riwayat Pendidikan -->
+                        <div id="riwayat-pendidikan" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
+                            <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
+                                <i class="fas fa-graduation-cap text-teal-600 mr-3"></i> Riwayat Pendidikan & Prestasi
                             </h3>
+                            
+                            <div class="space-y-6">
+                                <div class="bg-gradient-to-r from-teal-50 to-cyan-50 p-5 rounded-xl border-l-4 border-teal-500">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-school text-teal-600 mr-2"></i>Asal SD/MI
+                                    </label>
+                                    <input type="text" name="riwayat_sd_mi" value="<?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="SDN 1 Melati">
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-cyan-50 to-blue-50 p-5 rounded-xl border-l-4 border-cyan-500">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-school text-cyan-600 mr-2"></i>Asal SMP/MTs
+                                    </label>
+                                    <input type="text" name="riwayat_smp_mts" value="<?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="SMPN 5 Anggrek">
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-l-4 border-blue-500">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-school text-blue-600 mr-2"></i>Asal SMA/SMK/MA (Jika Pindah)
+                                    </label>
+                                    <input type="text" name="riwayat_sma_smk_ma" value="<?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="Kosongkan jika dari SMP/MTs">
+                                </div>
+                                
+                                <div class="form-divider">
+                                    <span><i class="fas fa-trophy mr-2"></i>Prestasi & Organisasi</span>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-medal text-yellow-600 mr-2"></i>Prestasi & Pengalaman
+                                    </label>
+                                    <textarea name="prestasi_pengalaman" rows="5" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Juara lomba, pengalaman magang, sertifikat, dll"><?php echo htmlspecialchars($siswa['prestasi_pengalaman'] ?? ''); ?></textarea>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-users-cog text-purple-600 mr-2"></i>Riwayat Organisasi
+                                    </label>
+                                    <textarea name="organisasi" rows="3" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="OSIS, Pramuka, komunitas, dll"><?php echo htmlspecialchars($siswa['organisasi'] ?? ''); ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab: Data Orang Tua -->
+                        <div id="data-orang-tua" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
+                            <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
+                                <i class="fas fa-users text-teal-600 mr-3"></i> Data Orang Tua/Wali
+                            </h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-md">
+                                    <h4 class="font-bold text-blue-800 mb-4 flex items-center text-lg">
+                                        <i class="fas fa-male text-2xl mr-3"></i> Data Ayah
+                                    </h4>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Ayah</label>
+                                            <input type="text" name="nama_ayah" value="<?php echo htmlspecialchars($siswa['nama_ayah'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-3 text-sm bg-white" placeholder="Nama Lengkap Ayah">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
+                                            <input type="text" name="pekerjaan_ayah" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-3 text-sm bg-white" placeholder="Wiraswasta, PNS, dll">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-pink-200 shadow-md">
+                                    <h4 class="font-bold text-pink-800 mb-4 flex items-center text-lg">
+                                        <i class="fas fa-female text-2xl mr-3"></i> Data Ibu
+                                    </h4>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Ibu</label>
+                                            <input type="text" name="nama_ibu" value="<?php echo htmlspecialchars($siswa['nama_ibu'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 p-3 text-sm bg-white" placeholder="Nama Lengkap Ibu">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
+                                            <input type="text" name="pekerjaan_ibu" value="<?php echo htmlspecialchars($siswa['pekerjaan_ibu'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 p-3 text-sm bg-white" placeholder="IRT, Guru, dll">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="md:col-span-2 mt-4">
+                                    <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200">
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-phone-volume text-green-600 mr-2"></i>Nomor HP Orang Tua/Wali
+                                        </label>
+                                        <input type="tel" name="no_hp_ortu" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 p-3 text-sm bg-white" placeholder="0812xxxxxxxx">
+                                        <p class="text-xs text-gray-600 mt-2"><i class="fas fa-info-circle mr-1"></i>Nomor yang aktif dan dapat dihubungi</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tab: Data Pendukung -->
+                        <div id="data-pendukung" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
+                            <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
+                                <i class="fas fa-home text-teal-600 mr-3"></i> Data Pendukung Belajar
+                            </h3>
+                            
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label for="status_tempat_tinggal" class="block text-sm font-medium text-gray-700">Status Tempat Tinggal</label>
-                                    <input type="text" id="status_tempat_tinggal" name="status_tempat_tinggal" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['status_tempat_tinggal'] ?? ''); ?>" placeholder="Cth: Rumah Sendiri / Kost / Kontrak">
-                                </div>
-                                <div>
-                                    <label for="jarak_ke_sekolah" class="block text-sm font-medium text-gray-700">Jarak ke Sekolah (km)</label>
-                                    <input type="text" id="jarak_ke_sekolah" name="jarak_ke_sekolah" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['jarak_ke_sekolah'] ?? ''); ?>" placeholder="Cth: 2 km / >5 km">
-                                </div>
-                                <div>
-                                    <label for="transportasi_ke_sekolah" class="block text-sm font-medium text-gray-700">Transportasi ke Sekolah</label>
-                                    <input type="text" id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['transportasi_ke_sekolah'] ?? ''); ?>" placeholder="Cth: Sepeda Motor / Angkutan Umum / Jalan Kaki">
-                                </div>
-                                <div>
-                                    <label for="memiliki_hp_laptop" class="block text-sm font-medium text-gray-700">Kepemilikan Gadget (HP/Laptop)</label>
-                                    <select name="memiliki_hp_laptop" id="memiliki_hp_laptop" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm">
-                                        <option value="">-- Pilih Kepemilikan --</option>
-                                        <?php foreach ($daftar_kepemilikan_gadget as $gadget): ?>
-                                            <option value="<?php echo $gadget; ?>" <?php echo ($siswa['memiliki_hp_laptop'] == $gadget) ? 'selected' : ''; ?>><?php echo $gadget; ?></option>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-house-user text-teal-600 mr-2"></i>Status Tempat Tinggal
+                                    </label>
+                                    <select name="status_tempat_tinggal" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih Status --</option>
+                                        <?php foreach ($daftar_status_tinggal as $status): ?>
+                                        <option value="<?php echo $status; ?>" <?php echo ($siswa['status_tempat_tinggal'] == $status) ? 'selected' : ''; ?>><?php echo $status; ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                
                                 <div>
-                                    <label for="fasilitas_internet" class="block text-sm font-medium text-gray-700">Fasilitas Internet di Rumah</label>
-                                    <input type="text" id="fasilitas_internet" name="fasilitas_internet" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['fasilitas_internet'] ?? ''); ?>" placeholder="Cth: Ada (Wifi) / Tidak Ada">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-route text-teal-600 mr-2"></i>Jarak ke Sekolah
+                                    </label>
+                                    <select name="jarak_ke_sekolah" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih Jarak --</option>
+                                        <?php foreach ($daftar_jarak as $jarak): ?>
+                                        <option value="<?php echo $jarak; ?>" <?php echo ($siswa['jarak_ke_sekolah'] == $jarak) ? 'selected' : ''; ?>><?php echo $jarak; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
+                                
                                 <div>
-                                    <label for="fasilitas_belajar_dirumah" class="block text-sm font-medium text-gray-700">Fasilitas Belajar di Rumah</label>
-                                    <input type="text" id="fasilitas_belajar_dirumah" name="fasilitas_belajar_dirumah" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['fasilitas_belajar_dirumah'] ?? ''); ?>" placeholder="Cth: Meja Belajar, Ruangan Sendiri">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-bus text-teal-600 mr-2"></i>Transportasi
+                                    </label>
+                                    <select name="transportasi_ke_sekolah" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih Transportasi --</option>
+                                        <?php foreach ($daftar_transportasi as $transportasi): ?>
+                                        <option value="<?php echo $transportasi; ?>" <?php echo ($siswa['transportasi_ke_sekolah'] == $transportasi) ? 'selected' : ''; ?>><?php echo $transportasi; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-laptop text-teal-600 mr-2"></i>Kepemilikan Gadget
+                                    </label>
+                                    <select name="memiliki_hp_laptop" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih --</option>
+                                        <?php foreach ($daftar_kepemilikan_gadget as $gadget): ?>
+                                        <option value="<?php echo $gadget; ?>" <?php echo ($siswa['memiliki_hp_laptop'] == $gadget) ? 'selected' : ''; ?>><?php echo $gadget; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-wifi text-teal-600 mr-2"></i>Fasilitas Internet
+                                    </label>
+                                    <select name="fasilitas_internet" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih Akses --</option>
+                                        <?php foreach ($daftar_fasilitas_internet as $internet): ?>
+                                        <option value="<?php echo $internet; ?>" <?php echo ($siswa['fasilitas_internet'] == $internet) ? 'selected' : ''; ?>><?php echo $internet; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-chair text-teal-600 mr-2"></i>Fasilitas Belajar
+                                    </label>
+                                    <select name="fasilitas_belajar_dirumah" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih Fasilitas --</option>
+                                        <?php foreach ($daftar_fasilitas_belajar as $belajar): ?>
+                                        <option value="<?php echo $belajar; ?>" <?php echo ($siswa['fasilitas_belajar_dirumah'] == $belajar) ? 'selected' : ''; ?>><?php echo $belajar; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
                                 <div class="md:col-span-2">
-                                    <label for="buku_pelajaran_dimiliki" class="block text-sm font-medium text-gray-700">Buku Pelajaran yang Dimiliki</label>
-                                    <textarea id="buku_pelajaran_dimiliki" name="buku_pelajaran_dimiliki" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Contoh: Buku Paket, Buku LKS, Buku Catatan"><?php echo htmlspecialchars($siswa['buku_pelajaran_dimiliki'] ?? ''); ?></textarea>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-book text-teal-600 mr-2"></i>Kepemilikan Buku Pelajaran
+                                    </label>
+                                    <select name="buku_pelajaran_dimiliki" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm">
+                                        <option value="">-- Pilih --</option>
+                                        <?php foreach ($daftar_buku_pelajaran as $buku): ?>
+                                        <option value="<?php echo $buku; ?>" <?php echo ($siswa['buku_pelajaran_dimiliki'] == $buku) ? 'selected' : ''; ?>><?php echo $buku; ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
-                                <div>
-                                    <label for="bahasa_sehari_hari" class="block text-sm font-medium text-gray-700">Bahasa Sehari-hari</label>
-                                    <input type="text" id="bahasa_sehari_hari" name="bahasa_sehari_hari" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['bahasa_sehari_hari'] ?? ''); ?>" placeholder="Cth: Indonesia, Banjar">
-                                </div>
-                                <div>
-                                    <label for="bahasa_asing_dikuasai" class="block text-sm font-medium text-gray-700">Bahasa Asing yang Dikuasai</label>
-                                    <input type="text" id="bahasa_asing_dikuasai" name="bahasa_asing_dikuasai" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['bahasa_asing_dikuasai'] ?? ''); ?>" placeholder="Cth: Inggris, Jepang">
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
-                                <i class="fas fa-bullseye mr-2"></i> Preferensi Belajar & Diri
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="pelajaran_disenangi" class="block text-sm font-medium text-gray-700">Pelajaran yang Disenangi</label>
-                                    <input type="text" id="pelajaran_disenangi" name="pelajaran_disenangi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['pelajaran_disenangi'] ?? ''); ?>" placeholder="Cth: Matematika, Olahraga, Produktif">
-                                </div>
-                                <div>
-                                    <label for="pelajaran_tdk_disenangi" class="block text-sm font-medium text-gray-700">Pelajaran yang Tidak Disenangi</label>
-                                    <input type="text" id="pelajaran_tdk_disenangi" name="pelajaran_tdk_disenangi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['pelajaran_tdk_disenangi'] ?? ''); ?>" placeholder="Cth: Sejarah, Bahasa Inggris">
-                                </div>
                                 <div class="md:col-span-2">
-                                    <label for="tempat_curhat" class="block text-sm font-medium text-gray-700">Tempat Curhat / Berbagi Cerita</label>
-                                    <textarea id="tempat_curhat" name="tempat_curhat" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Cth: Orang Tua, Teman Dekat, Pacar, Tidak Ada"><?php echo htmlspecialchars($siswa['tempat_curhat'] ?? ''); ?></textarea>
+                                    <div class="form-divider">
+                                        <span><i class="fas fa-language mr-2"></i>Kemampuan Bahasa</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="kelebihan_diri" class="block text-sm font-medium text-gray-700">Kelebihan yang Dimiliki</label>
-                                    <textarea id="kelebihan_diri" name="kelebihan_diri" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Cth: Disiplin, Mudah bergaul, Cepat tanggap..."><?php echo htmlspecialchars($siswa['kelebihan_diri'] ?? ''); ?></textarea>
+                                
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-comments text-teal-600 mr-2"></i>Bahasa Sehari-hari
+                                    </label>
+                                    <input type="text" name="bahasa_sehari_hari" value="<?php echo htmlspecialchars($siswa['bahasa_sehari_hari'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Banjar, Indonesia">
                                 </div>
-                                <div>
-                                    <label for="kekurangan_diri" class="block text-sm font-medium text-gray-700">Kekurangan yang Dimiliki</label>
-                                    <textarea id="kekurangan_diri" name="kekurangan_diri" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Cth: Kurang percaya diri, Sering menunda, Pelupa..."><?php echo htmlspecialchars($siswa['kekurangan_diri'] ?? ''); ?></textarea>
+                                
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-globe text-teal-600 mr-2"></i>Bahasa Asing yang Dikuasai
+                                    </label>
+                                    <textarea name="bahasa_asing_dikuasai" rows="2" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Inggris (Menengah), Jepang (Dasar)"><?php echo htmlspecialchars($siswa['bahasa_asing_dikuasai'] ?? ''); ?></textarea>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
-                                <i class="fas fa-graduation-cap mr-2"></i> Riwayat Pendidikan
+                        <!-- Tab: Profil Psikologis -->
+                        <div id="profil-psikologis" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
+                            <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
+                                <i class="fas fa-brain text-teal-600 mr-3"></i> Profil Psikologis & Minat
                             </h3>
-                            <div class="space-y-4">
-                                <div>
-                                    <label for="riwayat_sma_smk_ma" class="block text-sm font-medium text-gray-700">Riwayat SMA/SMK/MA</label>
-                                    <input type="text" id="riwayat_sma_smk_ma" name="riwayat_sma_smk_ma" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?>" placeholder="Contoh: SMKN 2 Banjarmasin (2023-Sekarang)">
+                            
+                            <div class="space-y-6">
+                                <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border-l-4 border-purple-500">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-star text-purple-600 mr-2"></i>Cita-cita
+                                    </label>
+                                    <input type="text" name="cita_cita" value="<?php echo htmlspecialchars($siswa['cita_cita'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-purple-500 focus:ring focus:ring-purple-200 p-3 text-sm bg-white" placeholder="Programmer, Designer, dll">
                                 </div>
+                                
                                 <div>
-                                    <label for="riwayat_smp_mts" class="block text-sm font-medium text-gray-700">Riwayat SMP/MTs</label>
-                                    <input type="text" id="riwayat_smp_mts" name="riwayat_smp_mts" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?>" placeholder="Contoh: SMPN 1 Banjarmasin (2020-2023)">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-heart text-red-600 mr-2"></i>Hobi & Kegemaran
+                                    </label>
+                                    <textarea name="hobi_kegemaran" rows="3" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Gaming, membaca, olahraga, dll"><?php echo htmlspecialchars($siswa['hobi_kegemaran'] ?? ''); ?></textarea>
                                 </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="bg-green-50 p-4 rounded-xl border-2 border-green-200">
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-thumbs-up text-green-600 mr-2"></i>Pelajaran Disenangi
+                                        </label>
+                                        <input type="text" name="pelajaran_disenangi" value="<?php echo htmlspecialchars($siswa['pelajaran_disenangi'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 p-3 text-sm bg-white" placeholder="Matematika, Fisika">
+                                    </div>
+                                    
+                                    <div class="bg-red-50 p-4 rounded-xl border-2 border-red-200">
+                                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                            <i class="fas fa-thumbs-down text-red-600 mr-2"></i>Pelajaran Kurang Disenangi
+                                        </label>
+                                        <input type="text" name="pelajaran_tdk_disenangi" value="<?php echo htmlspecialchars($siswa['pelajaran_tdk_disenangi'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 p-3 text-sm bg-white" placeholder="Sejarah, Seni">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-divider">
+                                    <span><i class="fas fa-user-circle mr-2"></i>Tentang Diri</span>
+                                </div>
+                                
                                 <div>
-                                    <label for="riwayat_sd_mi" class="block text-sm font-medium text-gray-700">Riwayat SD/MI</label>
-                                    <input type="text" id="riwayat_sd_mi" name="riwayat_sd_mi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" value="<?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?>" placeholder="Contoh: SDN 1 Banjarmasin (2014-2020)">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-pen-fancy text-teal-600 mr-2"></i>Deskripsi Singkat
+                                    </label>
+                                    <textarea name="tentang_saya_singkat" rows="4" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm" placeholder="Ceritakan tentang diri Anda dalam beberapa kalimat..."><?php echo htmlspecialchars($siswa['tentang_saya_singkat'] ?? ''); ?></textarea>
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-emerald-50 to-green-50 p-6 rounded-xl border-2 border-emerald-200">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-plus-circle text-emerald-600 mr-2"></i>Kelebihan Diri
+                                    </label>
+                                    <textarea name="kelebihan_diri" rows="3" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-emerald-500 focus:ring focus:ring-emerald-200 p-3 text-sm bg-white" placeholder="Teliti, kerja sama tim, cepat belajar"><?php echo htmlspecialchars($siswa['kelebihan_diri'] ?? ''); ?></textarea>
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-6 rounded-xl border-2 border-orange-200">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-exclamation-circle text-orange-600 mr-2"></i>Kekurangan Diri
+                                    </label>
+                                    <textarea name="kekurangan_diri" rows="3" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-orange-500 focus:ring focus:ring-orange-200 p-3 text-sm bg-white" placeholder="Kurang percaya diri, sering menunda"><?php echo htmlspecialchars($siswa['kekurangan_diri'] ?? ''); ?></textarea>
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        <i class="fas fa-user-friends text-blue-600 mr-2"></i>Tempat Curhat
+                                    </label>
+                                    <input type="text" name="tempat_curhat" value="<?php echo htmlspecialchars($siswa['tempat_curhat'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-3 text-sm bg-white" placeholder="Orang tua, sahabat, kakak">
                                 </div>
                             </div>
                         </div>
-
-                        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-                            <h3 class="text-xl font-bold text-gray-700 primary-color mb-6 border-b pb-2 flex items-center">
-                                <i class="fas fa-award mr-2"></i> Prestasi & Organisasi
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="prestasi_pengalaman" class="block text-sm font-medium text-gray-700">Prestasi dan Pengalaman</label>
-                                    <textarea id="prestasi_pengalaman" name="prestasi_pengalaman" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Tuliskan prestasi atau pengalaman, pisahkan dengan baris baru. (Kosongkan jika tidak ada/tidak punya)"><?php echo htmlspecialchars($siswa['prestasi_pengalaman'] ?? ''); ?></textarea>
+                        
+                        <!-- Submit Button -->
+                        <div class="mt-10 pt-8 border-t-2 border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-8 rounded-2xl shadow-xl">
+                            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div class="flex items-start space-x-4">
+                                    <div class="bg-teal-100 p-3 rounded-xl">
+                                        <i class="fas fa-info-circle text-teal-600 text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 text-lg mb-1">Simpan Perubahan</h4>
+                                        <p class="text-sm text-gray-600">Pastikan semua data telah terisi dengan benar sebelum menyimpan</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="organisasi" class="block text-sm font-medium text-gray-700">Organisasi di Sekolah / Eksternal</label>
-                                    <textarea id="organisasi" name="organisasi" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2 border text-sm" placeholder="Tuliskan daftar organisasi yang diikuti, pisahkan dengan baris baru. (Kosongkan jika tidak ada/tidak punya)"><?php echo htmlspecialchars($siswa['organisasi'] ?? ''); ?></textarea>
-                                </div>
+                                <button type="submit" class="w-full md:w-auto btn-primary text-white font-bold py-4 px-8 rounded-xl shadow-2xl text-lg flex items-center justify-center space-x-3 group">
+                                    <i class="fas fa-save group-hover:scale-110 transition-transform"></i>
+                                    <span>Simpan Data</span>
+                                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                </button>
                             </div>
                         </div>
-                        </div>
-                </div>
-
-                <div class="mt-8 flex flex-col sm:flex-row justify-between sm:justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-                    <button type="submit" class="w-full sm:w-auto primary-bg text-white px-8 py-3 rounded-lg font-bold hover:bg-[#3C7F81] transition flex items-center justify-center text-sm sm:text-base">
-                        <i class="fas fa-save mr-2"></i> SIMPAN PERUBAHAN
-                    </button>
+                        
+                    </div>
                     
-                    <a href="cv_template.php" id="btnExportCV" data-idsiswa="<?php echo $id_siswa; ?>" class="w-full sm:w-auto bg-green-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-600 transition flex items-center justify-center text-sm sm:text-base">
-                        <i class="fas fa-file-pdf mr-2"></i> EKSPOR (PDF)
-                    </a>
-                    <script>
-document.getElementById('btnExportCV').addEventListener('click', function(e) {
-    e.preventDefault();
-
-    const idSiswa = this.getAttribute('data-idsiswa'); 
-
-    const urlExport = `cv_template.php?id_siswa=${idSiswa}`;
-
-    fetch(urlExport) 
-    .then(response => response.text())
-    .then(html => {
-        const printWindow = window.open('', '_blank', 'width=900,height=1200');
-        printWindow.document.open();
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.onload = function() {
-            setTimeout(() => {
-                printWindow.print();
-            }, 800);
-        };
-    });
-});
-</script>
-
-                    <a href="hasil_tes.php" class="w-full sm:w-auto bg-gray-500 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-600 transition flex items-center justify-center text-sm sm:text-base">
-                        <i class="fas fa-angle-left mr-2"></i> KEMBALI
-                    </a>
                 </div>
             </form>
-        </main>
+        </div>
     </div>
 
-    <footer class="text-center py-4 bg-white border-t border-gray-200 text-gray-600 text-xs mt-auto md:ml-[260px]">
-        &copy; 2025 Bimbingan Konseling SMKN 2 Banjarmasin. All rights reserved.
-    </footer>
+    <!-- Floating Action Button (Mobile) -->
+    <div class="fixed bottom-6 right-6 md:hidden z-40">
+        <button type="button" onclick="document.querySelector('form').scrollIntoView({behavior: 'smooth', block: 'end'})" class="bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 icon-bounce">
+            <i class="fas fa-arrow-down text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Back to Top Button -->
+    <button id="backToTop" class="hidden fixed bottom-6 left-6 bg-gray-800 text-white p-4 rounded-full shadow-2xl hover:bg-gray-900 transition-all duration-300 hover:scale-110 z-40">
+        <i class="fas fa-arrow-up text-xl"></i>
+    </button>
+
     <script>
-function previewImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('previewFoto').src = e.target.result;
+        // Back to Top functionality
+        const backToTopBtn = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTopBtn.classList.remove('hidden');
+            } else {
+                backToTopBtn.classList.add('hidden');
+            }
+        });
+
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Form validation visual feedback
+        const inputs = document.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                if (this.value.trim() !== '' && !this.readOnly) {
+                    this.classList.add('border-green-400');
+                    this.classList.remove('border-gray-300');
+                } else if (!this.readOnly) {
+                    this.classList.remove('border-green-400');
+                    this.classList.add('border-gray-300');
+                }
+            });
+        });
+
+        // Smooth scroll for mobile tabs
+        const mobileTabsContainer = document.querySelector('.mobile-tabs');
+        if (mobileTabsContainer) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            mobileTabsContainer.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - mobileTabsContainer.offsetLeft;
+                scrollLeft = mobileTabsContainer.scrollLeft;
+            });
+
+            mobileTabsContainer.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+
+            mobileTabsContainer.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+
+            mobileTabsContainer.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - mobileTabsContainer.offsetLeft;
+                const walk = (x - startX) * 2;
+                mobileTabsContainer.scrollLeft = scrollLeft - walk;
+            });
         }
-        reader.readAsDataURL(file);
-    }
-}
-</script>
+
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const alerts = document.querySelectorAll('.alert-animate');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateX(100px)';
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 500);
+                }, 5000);
+            });
+        });
+
+        // Add loading state to submit button
+        const form = document.querySelector('form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalBtnContent = submitBtn.innerHTML;
+
+        form.addEventListener('submit', () => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `
+                <svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Menyimpan...</span>
+            `;
+        });
+
+        // Enhanced tooltip for mobile
+        if (window.innerWidth < 768) {
+            const tooltipContainers = document.querySelectorAll('.tooltip-container');
+            tooltipContainers.forEach(container => {
+                container.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const tooltip = this.querySelector('.tooltip');
+                    const allTooltips = document.querySelectorAll('.tooltip');
+                    
+                    allTooltips.forEach(t => {
+                        if (t !== tooltip) {
+                            t.style.visibility = 'hidden';
+                            t.style.opacity = '0';
+                        }
+                    });
+                    
+                    if (tooltip.style.visibility === 'visible') {
+                        tooltip.style.visibility = 'hidden';
+                        tooltip.style.opacity = '0';
+                    } else {
+                        tooltip.style.visibility = 'visible';
+                        tooltip.style.opacity = '1';
+                    }
+                });
+            });
+
+            document.addEventListener('click', () => {
+                const allTooltips = document.querySelectorAll('.tooltip');
+                allTooltips.forEach(tooltip => {
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.style.opacity = '0';
+                });
+            });
+        }
+
+        // Progress indicator for form completion
+        function updateProgressIndicator() {
+            const allInputs = document.querySelectorAll('input:not([readonly]), textarea, select');
+            let filledInputs = 0;
+            
+            allInputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    filledInputs++;
+                }
+            });
+            
+            const progress = Math.round((filledInputs / allInputs.length) * 100);
+            
+            // You can add a progress bar element if needed
+            console.log(`Form completion: ${progress}%`);
+        }
+
+        // Update progress on input change
+        document.querySelectorAll('input, textarea, select').forEach(input => {
+            input.addEventListener('change', updateProgressIndicator);
+        });
+
+        // Initialize progress
+        updateProgressIndicator();
+
+        // Animate cards on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all cards
+        document.querySelectorAll('.card-hover').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            observer.observe(card);
+        });
+    </script>
 </body>
 </html>
