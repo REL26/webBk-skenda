@@ -108,7 +108,6 @@ $start_number = $offset + 1;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Tetapkan warna utama: teal/hijau gelap */
         :root {
             --primary-color: #2F6C6E;
             --primary-dark: #1E4647;
@@ -118,8 +117,6 @@ $start_number = $offset + 1;
         * { font-family: 'Inter', sans-serif; }
         .primary-bg { background-color: var(--primary-color); }
         .primary-color { color: var(--primary-color); }
-
-        /* Style untuk kolom lengket (Sticky Column) */
         .sticky-col { 
             position: sticky; 
             left: 0; 
@@ -127,17 +124,16 @@ $start_number = $offset + 1;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1); 
         }
         .data-table-report thead th.sticky-col { 
-            background-color: var(--primary-dark) !important; /* Warna Header yang lebih gelap */
-            z-index: 20; /* Pastikan di atas thead yang lain saat digulir */
+            background-color: var(--primary-dark) !important; 
+            z-index: 20; 
         }
         .data-table-report tbody td.sticky-col {
             background-color: white; 
         }
         .data-table-report tbody tr:nth-child(even) td.sticky-col {
-            background-color: #f9fafb; /* gray-50 */
+            background-color: #f9fafb;
         }
 
-        /* Styling Modal: Lebih interaktif */
         .modal {
             transition: opacity 0.3s ease, visibility 0.3s ease;
             visibility: hidden;
@@ -155,19 +151,17 @@ $start_number = $offset + 1;
             transform: scale(1);
         }
 
-        /* Style untuk kolom rating yang dipilih */
         .rating-cell {
             transition: background-color 0.15s ease, border-color 0.15s ease;
             cursor: default;
         }
         .rating-cell.selected-rating {
-            background-color: #ecfdf5; /* green-50 */
-            color: #047857; /* green-700 */
+            background-color: #ecfdf5; 
+            color: #047857; 
             font-weight: 700;
-            border: 2px solid #34d399; /* green-400 */
+            border: 2px solid #34d399;
         }
 
-        /* Responsif: Sembunyikan kolom prioritas rendah di Mobile */
         @media (max-width: 768px) {
             .hide-on-mobile {
                 display: none !important;
@@ -179,26 +173,21 @@ $start_number = $offset + 1;
         const limit_desktop = <?= $limit_desktop ?>;
         const limit_mobile = <?= $limit_mobile ?>;
 
-        // Fungsi untuk membuka Modal Kepuasan Siswa
         function openKepuasanModal(id_konseling, p_ke, r1, r2, r3, r4, tanggal, nama_siswa) {
             const modal = document.getElementById('kepuasanModal');
             const modalContent = modal.querySelector('.modal-content');
-            
-            // Set data siswa di modal
+
             document.getElementById('modalNamaSiswa').textContent = nama_siswa;
             document.getElementById('kepuasanModalTitle').textContent = `Kepuasan Siswa (Sesi Ke-${p_ke})`;
             
             const isFilled = (parseInt(r1) > 0);
             
             const statusElement = document.getElementById('statusKepuasan');
-            // Format tanggal Indonesia
             const tglDisplay = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Belum diisi';
             document.getElementById('tanggalDiisi').textContent = tglDisplay;
             document.getElementById('tanggalIsiCetak').textContent = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '...';
-
-            // Reset semua cell rating
             document.querySelectorAll('#kepuasanTable td.rating-cell').forEach(cell => {
-                cell.innerHTML = '<i class="far fa-circle text-xl text-gray-300"></i>'; // Default: Ikon Lingkaran
+                cell.innerHTML = '<i class="far fa-circle text-xl text-gray-300"></i>'; 
                 cell.classList.remove('selected-rating');
             });
 
@@ -206,17 +195,15 @@ $start_number = $offset + 1;
             if (isFilled) {
                 statusElement.innerHTML = `<span class="text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i> Sudah Diisi</span>`;
                 
-                // Function untuk menyorot cell yang dipilih
                 function highlightRating(aspectNum, ratingValue) {
-                    const ratingId = `aspek${aspectNum}_${ratingValue}`; // e.g., 'aspek1_3' for SM
+                    const ratingId = `aspek${aspectNum}_${ratingValue}`;
                     const cell = document.getElementById(ratingId);
                     if (cell) {
-                        cell.innerHTML = '<i class="fas fa-check-circle text-xl"></i>'; // Ikon cek yang jelas
+                        cell.innerHTML = '<i class="fas fa-check-circle text-xl"></i>'; 
                         cell.classList.add('selected-rating');
                     }
                 }
-                
-                // Map rating values to their column IDs (3=SM, 2=M, 1=KM)
+
                 highlightRating(1, r1);
                 highlightRating(2, r2);
                 highlightRating(3, r3);
@@ -231,48 +218,43 @@ $start_number = $offset + 1;
             modalContent.classList.add('scale-100');
         }
 
-        // Fungsi untuk menutup Modal Kepuasan Siswa
         function closeKepuasanModal() {
             const modal = document.getElementById('kepuasanModal');
             const modalContent = modal.querySelector('.modal-content');
             
             modalContent.classList.remove('scale-100');
-            
-            // Tunggu transisi selesai sebelum menghilangkan visibilitas
+
             setTimeout(() => {
                 modal.classList.remove('open');
                 document.body.classList.remove('overflow-hidden');
             }, 300);
         }
 
-        // Fungsi untuk membuka Modal PDF Viewer
         function openPdfViewerModal(pdfPath, title) {
             const modal = document.getElementById('pdfViewerModal');
             const modalContent = modal.querySelector('.modal-content');
             const iframe = document.getElementById('pdfIframe');
             
             document.getElementById('pdfIframeTitle').textContent = title;
-            // Handle path relative to root directory, assuming '..' is one level up from the current script.
+
             const pathSegments = window.location.pathname.split('/');
-            pathSegments.pop(); // Remove current script name
+            pathSegments.pop(); 
             const currentDir = pathSegments.join('/');
             const pdfUrl = pdfPath.startsWith('..') ? `${currentDir}/${pdfPath.replace('../', '')}` : pdfPath;
-            iframe.src = pdfUrl;
+            iframe.src = pdfPath;
 
             modal.classList.add('open');
             document.body.classList.add('overflow-hidden');
             modalContent.classList.add('scale-100');
         }
-        
-        // Fungsi untuk menutup Modal PDF Viewer
+
         function closePdfViewerModal() {
             const modal = document.getElementById('pdfViewerModal');
             const modalContent = modal.querySelector('.modal-content');
             const iframe = document.getElementById('pdfIframe');
             
             modalContent.classList.remove('scale-100');
-            
-            // Tunggu transisi selesai
+
             setTimeout(() => {
                 iframe.src = ''; 
                 modal.classList.remove('open');
@@ -283,8 +265,7 @@ $start_number = $offset + 1;
         document.addEventListener('DOMContentLoaded', () => {
             const currentLimit = <?= $limit ?>;
             const urlParams = new URLSearchParams(window.location.search);
-            
-            // Logic Responsif Limit (Dipertahankan)
+
             function determineLimit() {
                 if (window.innerWidth < 640 && currentLimit !== limit_mobile) return limit_mobile;
                 if (window.innerWidth >= 640 && currentLimit !== limit_desktop) return limit_desktop;
@@ -298,7 +279,6 @@ $start_number = $offset + 1;
                 window.location.replace('?' + urlParams.toString());
             }
 
-            // Fungsi Penutup Modal Global (Esc Key)
             document.addEventListener('keydown', (e) => {
                 if (e.key === "Escape") {
                     if (document.getElementById('kepuasanModal').classList.contains('open')) {
@@ -605,7 +585,7 @@ $start_number = $offset + 1;
     </div>
     
     <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-7xl flex flex-col transform modal-content max-h-[95vh]">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-7xl flex flex-col transform modal-content max-h-[205vh]">
             
             <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 primary-bg text-white z-10 rounded-t-xl">
                 <h3 id="pdfIframeTitle" class="text-xl font-bold flex items-center">
@@ -617,8 +597,8 @@ $start_number = $offset + 1;
             </div>
             
             <div class="flex-grow overflow-hidden p-2">
-                <iframe id="pdfIframe" src="" class="w-full h-full border border-gray-300 rounded-lg" title="PDF Viewer"></iframe>
-            </div>
+    <iframe id="pdfIframe" src="" class="w-full h-full border border-gray-300 rounded-lg" title="PDF Viewer" style="min-height: 55vh;"></iframe>
+</div>
 
             <div class="px-6 py-3 border-t flex justify-end space-x-3 bg-gray-50 sticky bottom-0 z-10 rounded-b-xl">
                 <button type="button" onclick="closePdfViewerModal()" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-semibold transition duration-150 shadow-md">

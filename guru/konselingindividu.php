@@ -144,7 +144,6 @@ function get_pagination_url($page, $filters) {
 }
 
 $waktu_durasi_options = [15, 30, 45, 60];
-$atas_dasar_options = ['Inisiatif Siswa', 'Panggilan Ortu', 'Rujukan Guru Mapel', 'Panggilan Guru BK', 'Lainnya'];
 ?>
 <!DOCTYPE html>
 <html lang="id">

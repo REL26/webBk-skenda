@@ -848,7 +848,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         </select>
                     </div>
 
-                    <div class="flex space-x-2">
+                    <div class="flex space-x-2 overflow-y-hidden">
                         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-200 flex items-center justify-center text-sm font-semibold shadow-md btn-action">
                             <i class="fas fa-filter mr-2"></i> Terapkan
                         </button>
@@ -867,7 +867,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
         <p class="text-sm text-blue-700 leading-relaxed">Minimal 2 siswa harus dipilih untuk membuat laporan konseling kelompok.</p>
     </div>
     
-    <a href="riwayat_kelompok.php" class="w-full md:w-auto bg-[#0F3A3A] text-white px-4 py-2 rounded-lg hover:bg-[#123E44] transition duration-200 flex items-center justify-center text-sm font-medium shadow-md whitespace-nowrap">
+    <a href="riwayat_kelompok.php" class="w-full md:w-auto bg-[#0F3A3A] text-white px-4 py-3 rounded-lg hover:bg-[#123E44] transition duration-200 flex items-center justify-center text-sm font-medium shadow-md whitespace-nowrap">
     <i class="fas fa-list-ul mr-2 text-[#5FA8A1]"></i> Riwayat Kelompok
 </a>
     
@@ -877,7 +877,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
             disabled 
             class="w-full md:w-auto px-6 py-3 bg-gray-400 text-white rounded-lg flex items-center justify-center text-sm font-bold shadow transition-all duration-200 cursor-not-allowed whitespace-nowrap">
         <i class="fas fa-file-alt mr-2"></i> 
-        <span>Buat Laporan Kelompok (<span id="selectedCountDisplay">0</span>)</span>
+        <span>Buat Laporan Kelompok</span>
     </button>
 </div>
 
@@ -1019,127 +1019,129 @@ $waktu_durasi_options = [15, 30, 45, 60];
     
 
     <div id="konselingGroupModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
-            <div class="sticky top-0 bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
-                <h3 id="modalTitleGroup" class="text-2xl font-bold text-white flex items-center">
-                    <i class="fas fa-users-cog mr-3"></i> Buat Laporan Konseling Kelompok
-                </h3>
-                <button onclick="closeModalGroup()" class="text-white hover:text-gray-200 transition">
-                    <i class="fas fa-times text-2xl"></i>
-                </button>
-            </div>
-            
-            <div class="p-8">
-                <form id="konselingFormGroup" onsubmit="return false;">
-                    <input type="hidden" name="id_siswa" id="selected_student_ids_input">
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8 p-6 border-2 border-blue-200 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 mb-2 flex items-center">
-                                <i class="fas fa-users mr-2 text-blue-600"></i> Daftar Siswa Terpilih
-                            </p>
-                            <div id="selectedStudentsInModal" class="flex flex-wrap gap-2 p-3 bg-white border border-blue-200 rounded-lg">
-                            </div>
-                        </div>
-                    </div>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
+        <div class="sticky top-0 bg-gradient-to-r from-green-800 to-green-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+            <h3 id="modalTitleGroup" class="text-2xl font-bold text-white flex items-center">
+                <i class="fas fa-users-cog mr-3"></i> Buat Laporan Konseling Kelompok
+            </h3>
+            <button onclick="closeModalGroup()" class="text-white hover:text-gray-200 transition">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-8">
+            <form id="konselingFormGroup" onsubmit="return false;">
+    <input type="hidden" name="selected_student_ids" id="selected_student_ids_input">
+    <input type="hidden" name="status_konseling" value="Terlaksana">
+    <input type="hidden" name="tempat" value="Ruang BK">
 
-                    <h4 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b-2 border-gray-200 pb-3">
-                        <i class="fas fa-edit primary-color mr-2"></i> Detail Pelaksanaan Konseling Kelompok
-                    </h4>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div>
-                            <label for="tanggal_pelaksanaan" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-calendar mr-1"></i> Tanggal Pelaksanaan
-                            </label>
-                            <input type="date" name="tanggal_pelaksanaan" id="tanggal_pelaksanaan" required
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                        </div>
-
-                        <div>
-                            <label for="waktu_durasi" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-clock mr-1"></i> Waktu/Durasi
-                            </label>
-                            <select name="waktu_durasi" id="waktu_durasi" required
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                                <option value="">Pilih Durasi</option>
-                                <?php foreach($waktu_durasi_options as $durasi): ?>
-                                    <option value="<?= $durasi ?> Menit" <?= ($durasi == 45) ? 'selected' : '' ?>><?= $durasi ?> Menit</option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="pertemuan_ke" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-list-ol mr-1"></i> Pertemuan Ke-
-                            </label>
-                            <input type="number" name="pertemuan_ke" id="pertemuan_ke" value="1" min="1" required
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="topik_masalah" class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-comments mr-1"></i> Topik/Masalah yang Dibahas
-                        </label>
-                        <textarea name="topik_masalah" id="topik_masalah" rows="3" required placeholder="Deskripsikan topik atau masalah yang dibahas dalam konseling kelompok..."
-                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label for="sumber_masalah" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-search mr-1"></i> Sumber Masalah
-                            </label>
-                            <input type="text" name="sumber_masalah" id="sumber_masalah" required placeholder="Contoh: Akademik, Sosial, dll"
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                        </div>
-                        <div>
-                            <label for="teknik_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-tools mr-1"></i> Teknik Konseling
-                            </label>
-                            <input type="text" name="teknik_konseling" id="teknik_konseling" required placeholder="Contoh: Diskusi Kelompok, Role Play, dll"
-                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-6">
-                        <label for="hasil_dicapai" class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-check-circle mr-1"></i> Hasil yang Dicapai
-                        </label>
-                        <textarea name="hasil_dicapai" id="hasil_dicapai" rows="3" required placeholder="Deskripsikan hasil atau progress yang dicapai dalam sesi konseling kelompok ini..."
-                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
-                    </div>
-
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-user-tie mr-1"></i> Nama Guru BK
-                        </label>
-                        <input type="text" name="nama_guru_bk" placeholder="Nama guru yang melakukan konseling" 
-                               value="<?= htmlspecialchars($nama_pengguna) ?>"
-                               class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                    </div>
-
-                    <input type="hidden" name="status_konseling" value="Proses">
-                    <input type="hidden" name="no_input" value="AUTO-GENERATED">
-
-                    <div class="mt-8 pt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-end gap-3">
-                        <button type="button" onclick="closeModalGroup()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md btn-action">
-                            <i class="fas fa-times mr-2"></i> Batal
-                        </button>
-                        <button type="submit" id="submitGroupBtn" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition font-semibold shadow-md btn-action">
-                            <i class="fas fa-save mr-2"></i> Simpan Laporan
-                        </button>
-                    </div>
-                </form>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8 p-6 border-2 border-green-200 rounded-xl bg-gradient-to-br from-green-50 to-indigo-50">
+        <div>
+            <p class="text-sm font-medium text-gray-600 mb-2 flex items-center">
+                <i class="fas fa-users mr-2 text-blue-600"></i> Daftar Siswa Terpilih
+            </p>
+            <div id="selectedStudentsInModal" class="flex flex-wrap gap-2 p-3 bg-white border border-blue-200 rounded-lg">
+                </div>
         </div>
     </div>
+
+    <h4 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b-2 border-gray-200 pb-3">
+        <i class="fas fa-edit primary-color mr-2"></i> Detail Pelaksanaan Konseling Kelompok
+    </h4>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div>
+            <label for="tanggal_pelaksanaan" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-calendar mr-1"></i> Tanggal Pelaksanaan
+            </label>
+            <input type="date" name="tanggal_pelaksanaan" id="tanggal_pelaksanaan" required
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+
+        <div>
+            <label for="waktu_durasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-clock mr-1"></i> Waktu/Durasi
+            </label>
+            <select name="waktu_durasi" id="waktu_durasi" required
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <option value="">Pilih Durasi</option>
+                <?php 
+                $waktu_durasi_options = [30, 45, 60, 90];
+                foreach($waktu_durasi_options as $durasi): 
+                ?>
+                    <option value="<?= $durasi ?> Menit" <?= ($durasi == 45) ? 'selected' : '' ?>><?= $durasi ?> Menit</option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div>
+            <label for="pertemuan_ke" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-list-ol mr-1"></i> Pertemuan Ke-
+            </label>
+            <input type="number" name="pertemuan_ke" id="pertemuan_ke" value="1" min="1" required
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+    </div>
+
+    <!-- <div class="mb-6">
+        <label for="proses_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-comments mr-1"></i> Topik/Masalah yang Dibahas
+        </label>
+        <textarea name="topik_masalah" id="proses_layanan" rows="3" required placeholder="Deskripsikan topik atau masalah yang dibahas..."
+            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+    </div> -->
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+            <label for="catatan_khusus" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-search mr-1"></i> Teknik Pendekatan
+            </label>
+            <input type="text" name="pendekatan" id="catatan_khusus" required placeholder="Teknik pendekatan yang digunakan..."
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+        <div>
+            <label for="teknik_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
+                <i class="fas fa-tools mr-1"></i> Teknik Konseling
+            </label>
+            <input type="text" name="teknik" id="teknik_konseling" required placeholder="Teknik yang digunakan selama sesi konseling..."
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+        </div>
+    </div>
+    
+    <div class="mb-6">
+        <label for="hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-check-circle mr-1"></i> Hasil yang Dicapai
+        </label>
+        <textarea name="hasil_yang_dicapai" id="hasil_layanan" rows="3" required placeholder="Deskripsikan proses dan hasil progress yang dicapai..."
+            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+    </div>
+
+    <div class="mb-6">
+        <label for="guru_pembimbing" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-user-tie mr-1"></i> Nama Guru BK
+        </label>
+        <input type="text" name="guru_pembimbing" id="guru_pembimbing" required placeholder="Masukkan nama guru yang melakukan sesi konseling..."
+               value=""
+               class="w-full p-3 border-2 border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+    </div>
+
+    <div class="mt-8 pt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-end gap-3">
+        <button type="button" onclick="closeModalGroup()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md">
+            <i class="fas fa-times mr-2"></i> Batal
+        </button>
+        <button type="submit" id="submitGroupBtn" class="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition font-semibold shadow-md">
+            <i class="fas fa-save mr-2"></i> Simpan Laporan
+        </button>
+    </div>
+</form>
+        </div>
+    </div>
+</div>
 
     <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col transform scale-100 transition-all">
             
-            <div class="sticky top-0 bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+            <div class="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
                 <h3 id="pdfIframeTitle" class="text-2xl font-bold text-white flex items-center">
                     <i class="fas fa-file-pdf mr-3"></i> Laporan Konseling Kelompok
                 </h3>
@@ -1156,7 +1158,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                 <button type="button" onclick="closePdfViewerModal()" class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md btn-action">
                     <i class="fas fa-arrow-left mr-2"></i> Kembali
                 </button>
-                <a id="exportPdfBtn" href="#" target="_blank" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition font-semibold shadow-md btn-action inline-flex items-center">
+                <a id="exportPdfBtn" href="#" target="_blank" class="hidden px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition font-semibold shadow-md btn-action inline-flex items-center">
                     <i class="fas fa-download mr-2"></i> Download PDF
                 </a>
             </div>

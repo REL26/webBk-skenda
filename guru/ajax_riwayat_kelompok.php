@@ -21,8 +21,6 @@ if (!is_numeric($id_kelompok) || $id_kelompok <= 0) {
 
 try {
     if ($action === 'get_report_full_detail') {
-        
-        // 1. Ambil Detail Laporan Kelompok
         $query_report = "
             SELECT 
                 tanggal_pelaksanaan, pertemuan_ke, waktu_durasi, tempat, 
@@ -43,8 +41,6 @@ try {
             echo json_encode(['status' => 'error', 'message' => 'Laporan kelompok tidak ditemukan.']);
             exit;
         }
-
-        // 2. Ambil Daftar Siswa yang Terlibat
         $query_siswa = "
             SELECT 
                 s.nama, s.kelas, s.jurusan, s.nis
@@ -62,8 +58,6 @@ try {
         $result_siswa = $stmt_siswa->get_result();
         $siswa_data = $result_siswa->fetch_all(MYSQLI_ASSOC);
         $stmt_siswa->close();
-
-        // Gabungkan dan kirim response
         echo json_encode([
             'status' => 'success', 
             'data' => [
@@ -73,15 +67,18 @@ try {
         ]);
         
     } elseif ($action === 'get_kepuasan') {
-        // Logika untuk Kepuasan Siswa (Tidak Berubah)
+
         $query = "
             SELECT 
-                s.nama,
-                kk.aspek_penerimaan,
-                kk.aspek_kemudahan_curhat,
-                kk.aspek_kepercayaan,
-                kk.aspek_pemecahan_masalah,
-                kk.tanggal_isi
+    s.nama,
+    s.kelas,
+    s.jurusan,
+    kk.aspek_penerimaan,
+    kk.aspek_kemudahan_curhat,
+    kk.aspek_kepercayaan,
+    kk.aspek_pemecahan_masalah,
+    kk.tanggal_isi
+
             FROM 
                 detail_kelompok dk
             JOIN 

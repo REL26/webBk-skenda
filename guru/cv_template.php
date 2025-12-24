@@ -107,8 +107,7 @@ if (!empty($siswa['tanggal_lahir'])) {
     $tanggal_lahir_formatted = 'Belum terisi';
 }
 
-// LOGIKA BARU MENGGUNAKAN URL ABSOLUT
-$app_base_url = "http://localhost/websitebk-skenda/"; // PASTIKAN NAMA FOLDER ANDA BENAR
+$app_base_url = "http://localhost/websitebk-skenda/"; 
 
 $email_siswa = $siswa['email'] ?? '';
 $email_hash = md5(strtolower(trim($email_siswa)));
@@ -116,9 +115,8 @@ $gravatar_url = "https://www.gravatar.com/avatar/{$email_hash}?s=200&d=mp";
 
 $url_foto = $gravatar_url;
 if ($siswa['url_foto']) {
-    // Check file existence in the server's file system (relative path)
+
     if (file_exists('../' . $siswa['url_foto'])) {
-        // Gunakan URL absolute untuk DomPDF
         $url_foto = $app_base_url . $siswa['url_foto']; 
     }
 }
@@ -151,7 +149,6 @@ $tipe_kemampuan = htmlspecialchars($hasil_tes_kemampuan_calculated);
 <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
-/* ... CSS Anda yang panjang dan detail ... */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
     background: #f4f4f4; 
@@ -235,21 +232,19 @@ body {
     width: 20px;
     margin-right: 8px;
 }
-
-/* PERBAIKAN UTAMA: GANTI GRID KE FLEX */
 .cv-body {
     padding: 40px 50px;
-    display: flex; /* GANTI DARI grid KE flex */
-    gap: 45px; /* DomPDF mungkin mengabaikannya, tapi biarkan saja */
+    display: flex; 
+    gap: 45px; 
     color: #333;
     flex-grow: 1;
 }
 .left-content {
-    width: 38%; /* Atur lebar kolom kiri secara eksplisit */
+    width: 38%; 
     flex-shrink: 0;
 }
 .right-content {
-    width: 62%; /* Atur lebar kolom kanan secara eksplisit */
+    width: 62%; 
     flex-grow: 1;
 }
 
@@ -459,14 +454,14 @@ body {
 .cv-body {
     padding: 25px 30px !important;
     gap: 25px !important;
-    display: flex !important; /* Pastikan flex untuk print */
+    display: flex !important; 
 }
 .left-content {
-    width: 38% !important; /* Atur lebar secara eksplisit untuk print */
+    width: 38% !important; 
     flex-shrink: 0 !important;
 }
 .right-content {
-    width: 62% !important; /* Atur lebar secara eksplisit untuk print */
+    width: 62% !important; 
     flex-grow: 1 !important;
 }
 

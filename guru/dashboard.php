@@ -9,7 +9,7 @@ if (!isset($_SESSION['id_guru'])) {
 $id_guru = (int) $_SESSION['id_guru'];
 $query_guru = mysqli_query($koneksi, "SELECT nama FROM guru WHERE id_guru = $id_guru LIMIT 1");
 $guru = mysqli_fetch_assoc($query_guru);
-$nama_pengguna = isset($guru['nama']) ? $guru['nama'] : 'Guru';
+$nama_pengguna = isset($guru['nama']) ? $guru['nama'] : '';
 
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.php']);
@@ -28,7 +28,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         
         * { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* === GARIS PINGGIR MENU SIDEBAR === */
 .nav-item {
     position: relative;
     overflow: hidden;
@@ -40,14 +39,13 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
     position: absolute;
     left: 0;
     top: 0;
-    width: 4px;              /* tebal garis */
+    width: 4px;             
     height: 100%;
-    background: #5FA8A1;     /* warna garis */
+    background: #5FA8A1;     
     transform: scaleY(0);
     transition: transform 0.3s ease;
 }
 
-/* muncul saat hover & aktif */
 .nav-item:hover::before,
 .nav-item.active::before {
     transform: scaleY(1);
@@ -63,8 +61,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 }
 
         .primary-color { color: #2F6C6E; }
-        
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #2F6C6E; border-radius: 10px; }
@@ -266,7 +262,7 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                                 Halo, <span class="primary-color"><?php echo htmlspecialchars($nama_pengguna); ?></span>!
                             </h1>
                             <p class="mt-2 text-slate-500 max-w-lg">
-                                Siap membantu siswa hari ini? Pantau perkembangan dan hasil profiling siswa SMKN 2 Banjarmasin di sini.
+                                Siap membantu siswa hari ini? Pantau perkembangan siswa SMKN 2 Banjarmasin di sini.
                             </p>
                         </div>
                         <div class="hidden lg:block">
@@ -330,7 +326,6 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         </main>
     </div>
 
-    <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
         <div class="text-center">
             <p class="text-sm text-gray-600">

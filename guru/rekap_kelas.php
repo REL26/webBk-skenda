@@ -822,7 +822,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                     </div>
                 </div>
                 <div id="programBkSubmenuDesktop" class="pl-8 space-y-1 hidden">
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="konselingindividu.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
                     </a>
                     <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">

@@ -1,18 +1,16 @@
 <?php
 session_start();
-// Sesuaikan path ini jika file koneksi Anda berada di lokasi berbeda
+
 include '../koneksi.php'; 
 
 header('Content-Type: application/json');
 
-// Keamanan: Cek otorisasi pengguna
 if (!isset($_SESSION['id_guru'])) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized. Harap login kembali.']);
     exit;
 }
 
-// Cek metode dan data POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['ids'])) {
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Permintaan tidak valid.']);
@@ -20,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['ids'])) {
 }
 
 $ids_string = $_POST['ids'];
-// Bersihkan dan validasi ID, pastikan hanya angka integer
+
 $ids = array_filter(array_map('intval', explode(',', $ids_string)));
 
 if (empty($ids)) {
@@ -29,8 +27,6 @@ if (empty($ids)) {
 }
 
 $ids_list = implode(',', $ids);
-
-// Query database untuk mengambil semua data siswa yang terpilih
 $query = "
     SELECT 
         id_siswa, 

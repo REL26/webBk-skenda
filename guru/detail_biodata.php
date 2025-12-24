@@ -1,9 +1,6 @@
 <?php
-// ... (Logic PHP Anda di atas tetap TIDAK diubah)
 session_start();
 include '../koneksi.php';
-
-// Cek sesi login guru dan parameter id_siswa
 if (!isset($_SESSION['id_guru']) || !isset($_GET['id_siswa'])) {
     header("Location: hasil_tes.php");
     exit;
@@ -14,18 +11,15 @@ $pesan_sukses = "";
 $pesan_error  = "";
 $target_dir   = "../uploads/foto_siswa/";
 
-// Penentuan halaman aktif (hanya digunakan jika ada menu/sidebar)
 $current_page           = basename($_SERVER['PHP_SELF']);
 $is_profiling_active  = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.php', 'detail_biodata.php']);
 
-// Buat direktori upload jika belum ada
 if (!is_dir($target_dir)) {
     if (!mkdir($target_dir, 0777, true)) {
         $pesan_error .= "Gagal membuat direktori upload: " . $target_dir;
     }
 }
 
-// Data List untuk Dropdown/Select
 $daftar_agama = ['Islam', 'Kristen Protestan', 'Kristen Katolik', 'Hindu', 'Buddha', 'Konghucu'];
 $daftar_kepemilikan_gadget = ['HP Saja', 'Laptop Saja', 'Keduanya', 'Tidak Ada'];
 $daftar_status_tinggal = ['Bersama Orang Tua', 'Kost', 'Asrama', 'Lainnya'];
@@ -35,7 +29,6 @@ $daftar_fasilitas_internet = ['Pribadi (HP/Modem)', 'WiFi Rumah', 'WiFi Sekolah'
 $daftar_fasilitas_belajar = ['Meja Belajar', 'Ruang Khusus', 'Tidak Ada'];
 $daftar_buku_pelajaran = ['Semua Dimiliki', 'Sebagian Dimiliki', 'Minim/Tidak Ada'];
 
-// --- 1. Ambil Data Siswa (dan Gaya Belajar) ---
 $query_siswa = mysqli_query($koneksi, "
     SELECT 
         s.*,
@@ -52,7 +45,6 @@ if (!$siswa) {
     die("Data siswa tidak ditemukan.");
 }
 
-// --- 2. Ambil Data Hasil Tes Kecerdasan (yang terbaru) ---
 $query_kecerdasan = mysqli_query($koneksi, "
     SELECT *
     FROM hasil_kecerdasan
@@ -62,7 +54,6 @@ $query_kecerdasan = mysqli_query($koneksi, "
 ");
 $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
-// --- 3. Hitung Gaya Belajar Dominan ---
 $gaya_belajar = "Belum Mengisi";
 if ($siswa['skor_visual'] !== null) {
     $skor_v = $siswa['skor_visual'];
@@ -78,7 +69,6 @@ if ($siswa['skor_visual'] !== null) {
     $gaya_belajar = implode(" & ", $tipe_dominan);
 }
 
-// --- 4. Hitung Kecerdasan Majemuk Dominan ---
 $hasil_tes_kemampuan_calculated = "Belum Mengisi";
 $skor_kecerdasan = [];
 $map_kecerdasan = [
@@ -141,10 +131,9 @@ if ($hasil_kecerdasan) {
     }
 }
 
-// --- 5. Proses Update Data (POST Request) ---
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
-    // Ambil dan bersihkan data dari POST
+
     $nama_panggilan             = mysqli_real_escape_string($koneksi, $_POST['nama_panggilan'] ?? '');
     $jenis_kelamin              = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin'] ?? '');
     $tempat_lahir               = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir'] ?? '');
@@ -189,7 +178,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $url_foto_baru = $siswa['url_foto'];
 
-    // Proses Upload Foto
     if (isset($_FILES['url_foto']) && $_FILES['url_foto']['error'] == 0) {
         $file_name          = $_FILES['url_foto']['name'];
         $file_tmp           = $_FILES['url_foto']['tmp_name'];
@@ -198,15 +186,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $upload_path        = $target_dir . $new_file_name;
 
         $allowed_extensions = array("jpg", "jpeg", "png");
-        $max_file_size      = 5 * 1024 * 1024; // 5MB
-
+        $max_file_size      = 5 * 1024 * 1024; 
         if (!in_array($file_ext, $allowed_extensions)) {
             $pesan_error .= "Ekstensi file tidak diizinkan. Hanya JPG, JPEG, PNG. ";
         } elseif ($_FILES['url_foto']['size'] > $max_file_size) {
             $pesan_error .= "Ukuran file terlalu besar. Maksimal 5MB. ";
         } else {
             if (move_uploaded_file($file_tmp, $upload_path)) {
-                // Hapus foto lama jika ada
+
                 if (!empty($siswa['url_foto']) && file_exists('../' . $siswa['url_foto'])) {
                     @unlink('../' . $siswa['url_foto']); 
                 }
@@ -217,7 +204,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // Eksekusi Update ke Database
     if (empty($pesan_error)) {
         $update_query = "
             UPDATE siswa SET
@@ -268,8 +254,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         if (mysqli_query($koneksi, $update_query)) {
             $pesan_sukses = "Data profil siswa berhasil diperbarui.";
-            
-            // Re-fetch data setelah update (untuk memastikan data di form terbaru)
+
             $query_siswa = mysqli_query($koneksi, "
                 SELECT 
                     s.*,
@@ -291,7 +276,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ");
             $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
-            // Re-calculate Gaya Belajar
             $gaya_belajar = "Belum Mengisi";
             if ($siswa['skor_visual'] !== null) {
                 $skor_v = $siswa['skor_visual'];
@@ -307,7 +291,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $gaya_belajar = implode(" & ", $tipe_dominan);
             }
 
-            // Re-calculate Kecerdasan Majemuk
             $hasil_tes_kemampuan_calculated = "Belum Mengisi";
             $skor_kecerdasan = [];
             if ($hasil_kecerdasan) {
@@ -365,7 +348,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// Tentukan URL foto untuk ditampilkan
 $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://www.gravatar.com/avatar/?d=mp&s=200';
 ?>
 
@@ -405,8 +387,7 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             background: #0F3A3A;
             min-height: 100vh;
         }
-        
-        /* Header Animation */
+
         header {
             backdrop-filter: blur(10px);
             background: rgba(255, 255, 255, 0.95);
@@ -424,7 +405,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Card Hover Effects */
         .card-hover {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -434,7 +414,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
-        /* Photo Container with Glow Effect */
         .photo-container {
             position: relative;
             animation: fadeInScale 0.6s ease-out;
@@ -472,7 +451,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Profile Stats Animation */
         .stat-card {
             background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
             animation: slideUp 0.6s ease-out backwards;
@@ -492,7 +470,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Tab Navigation */
         .nav-item {
             position: relative;
             padding: 12px 20px;
@@ -528,7 +505,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             width: 100%;
         }
 
-        /* Mobile Tab Scroll */
         .mobile-tabs {
             scrollbar-width: none;
             -ms-overflow-style: none;
@@ -550,7 +526,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             box-shadow: 0 4px 6px -1px rgba(95, 168, 161, 0.3);
         }
 
-        /* Input Focus Effects */
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--accent);
@@ -562,7 +537,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             transition: all 0.3s ease;
         }
 
-        /* Button Ripple Effect */
         .btn-primary {
             position: relative;
             overflow: hidden;
@@ -588,7 +562,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
         }
 
-        /* Tooltip */
         .tooltip-container {
             position: relative;
             cursor: pointer;
@@ -631,7 +604,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             border-color: var(--primary) transparent transparent transparent;
         }
 
-        /* Tab Content Animation */
         .tab-content {
             animation: fadeIn 0.5s ease-out;
         }
@@ -647,7 +619,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Alert Animation */
         .alert-animate {
             animation: slideInRight 0.5s ease-out;
         }
@@ -663,7 +634,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Loading Skeleton */
         .skeleton {
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
@@ -679,7 +649,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Section Headers */
         .section-header {
             position: relative;
             padding-left: 16px;
@@ -697,7 +666,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             border-radius: 2px;
         }
 
-        /* Form Section Divider */
         .form-divider {
             position: relative;
             text-align: center;
@@ -722,7 +690,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             font-weight: 600;
         }
 
-        /* Progress Indicator */
         .progress-ring {
             animation: spin 2s linear infinite;
         }
@@ -733,14 +700,12 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Sticky Sidebar Enhancement */
         .sticky-sidebar {
             position: sticky;
             top: 5.5rem;
             transition: all 0.3s ease;
         }
 
-        /* Responsive Design Enhancements */
         @media (max-width: 768px) {
             .sticky-sidebar {
                 position: relative;
@@ -752,7 +717,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Icon Animation */
         .icon-bounce {
             animation: bounce 2s infinite;
         }
@@ -766,7 +730,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             }
         }
 
-        /* Gradient Text */
         .gradient-text {
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             -webkit-background-clip: text;
@@ -774,7 +737,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             background-clip: text;
         }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -810,20 +772,17 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
         }
 
         function changeTab(tabId) {
-            // Sembunyikan semua konten tab
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => {
                 content.classList.add('hidden');
                 content.style.opacity = 0;
             });
 
-            // Hapus status active dari semua nav item
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(item => {
                 item.classList.remove('active');
             });
 
-            // Tampilkan konten tab yang dipilih
             const selectedContent = document.getElementById(tabId);
             if (selectedContent) {
                 selectedContent.classList.remove('hidden');
@@ -832,13 +791,11 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 }, 10);
             }
 
-            // Atur status active pada nav item yang dipilih
             const selectedNav = document.querySelector(`.nav-item[onclick="changeTab('${tabId}')"]`);
             if (selectedNav) {
                 selectedNav.classList.add('active');
             }
-            
-            // Atur status active pada nav item di sidebar mobile/tablet
+
             const mobileNavItems = document.querySelectorAll('.mobile-tab-item');
             mobileNavItems.forEach(item => {
                 item.classList.remove('active');
@@ -847,16 +804,14 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             const selectedMobileNav = document.querySelector(`.mobile-tab-item[onclick="changeTab('${tabId}')"]`);
             if (selectedMobileNav) {
                 selectedMobileNav.classList.add('active');
-                // Scroll ke item yang aktif
+
                 selectedMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             }
         }
 
-        // Jalankan saat halaman dimuat untuk tab pertama
         document.addEventListener('DOMContentLoaded', () => {
             changeTab('data-pribadi');
-            
-            // Animasi untuk alert
+
             const alerts = document.querySelectorAll('.alert-animate');
             alerts.forEach(alert => {
                 setTimeout(() => {
@@ -868,8 +823,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
 </head>
 
 <body class="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 min-h-screen">
-
-    <!-- Header -->
     <header class="top-0 left-0 w-full shadow-lg z-30 flex items-center justify-between h-16 px-6 sticky">
         <a href="#" class="flex items-center space-x-3 group">
             <div class="relative">
@@ -887,8 +840,7 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
     
     <div class="p-4 md:p-8"> 
         <div class="max-w-7xl mx-auto">
-            
-            <!-- Page Title -->
+
             <div class="mb-8">
                 <h2 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2">
                     <i class="fas fa-user-graduate text-teal-600 mr-3"></i>
@@ -896,8 +848,7 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 </h2>
                 <p class="text-gray-600 ml-12">NIS: <?php echo htmlspecialchars($siswa['nis']); ?> • <?php echo htmlspecialchars($siswa['kelas'] . " - " . $siswa['jurusan']); ?></p>
             </div>
-            
-            <!-- Alert Messages -->
+
             <?php if ($pesan_sukses): ?>
             <div class="alert-animate bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-800 p-5 mb-6 rounded-xl shadow-lg" role="alert">
                 <div class="flex items-start">
@@ -924,11 +875,8 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
 
             <form method="POST" enctype="multipart/form-data" action="detail_biodata.php?id_siswa=<?php echo $id_siswa; ?>">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    
-                    <!-- Sidebar -->
                     <div class="lg:col-span-1 space-y-6 sticky-sidebar">
-                        
-                        <!-- Photo Card -->
+
                         <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 card-hover">
                             <h4 class="text-lg font-bold text-gray-800 mb-5 section-header flex items-center">
                                 <i class="fas fa-camera text-teal-600 mr-2"></i> Foto Profil
@@ -947,11 +895,10 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </p>
                             </div>
                         </div>
-                        
-                        <!-- Profile Stats -->
+
                         <div class="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 card-hover">
                             <h4 class="text-lg font-bold text-gray-800 mb-5 section-header flex items-center">
-                                <i class="fas fa-chart-line text-teal-600 mr-2"></i> Hasil Profiling
+                                <i class="fas fa-chart-line text-teal-600 mr-2"></i> Hasil Tes:
                             </h4>
                             <div class="space-y-4">
                                 <div class="stat-card p-4 rounded-xl text-white shadow-lg">
@@ -961,7 +908,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 <div class="stat-card p-4 rounded-xl text-white shadow-lg tooltip-container">
                                     <p class="text-sm font-medium opacity-90 mb-1 flex items-center">
                                         Kecerdasan Majemuk
-                                        <i class="fas fa-info-circle ml-2 cursor-pointer"></i>
                                     </p>
                                     <p class="font-bold text-lg"><?php echo htmlspecialchars($hasil_tes_kemampuan_calculated); ?></p>
                                     
@@ -987,11 +933,8 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                             </div>
                         </div>
                     </div>
-
-                    <!-- Main Content -->
                     <div class="lg:col-span-3">
 
-                        <!-- Desktop Tab Navigation -->
                         <div class="hidden md:flex bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-8">
                             <button type="button" class="nav-item flex-1 text-center text-sm font-medium text-gray-700" onclick="changeTab('data-pribadi')">
                                 <i class="fas fa-user-circle mr-2"></i> Data Pribadi
@@ -1009,8 +952,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 <i class="fas fa-brain mr-2"></i> Psikologis
                             </button>
                         </div>
-                        
-                        <!-- Mobile Tab Navigation -->
                         <div class="md:hidden mb-6 overflow-x-auto mobile-tabs bg-white border border-gray-100 shadow-xl rounded-2xl p-2">
                             <div class="inline-flex space-x-2">
                                 <button type="button" class="mobile-tab-item py-2.5 px-5 rounded-xl text-xs font-medium text-gray-700" onclick="changeTab('data-pribadi')">
@@ -1030,15 +971,13 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </button>
                             </div>
                         </div>
-
-                        <!-- Tab: Data Pribadi -->
                         <div id="data-pribadi" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
                                 <i class="fas fa-user-circle text-teal-600 mr-3"></i> Data Pribadi
                             </h3>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Read-only fields with enhanced styling -->
+
                                 <div class="relative">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-id-card text-teal-600 mr-2"></i>Nama Lengkap
@@ -1066,8 +1005,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                     </label>
                                     <input type="text" value="<?php echo htmlspecialchars($siswa['tahun_ajaran'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
                                 </div>
-
-                                <!-- Editable fields -->
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-user-tag text-teal-600 mr-2"></i>Nama Panggilan
@@ -1182,8 +1119,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Tab: Riwayat Pendidikan -->
                         <div id="riwayat-pendidikan" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
                                 <i class="fas fa-graduation-cap text-teal-600 mr-3"></i> Riwayat Pendidikan & Prestasi
@@ -1230,8 +1165,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Tab: Data Orang Tua -->
                         <div id="data-orang-tua" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
                                 <i class="fas fa-users text-teal-600 mr-3"></i> Data Orang Tua/Wali
@@ -1281,8 +1214,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Tab: Data Pendukung -->
                         <div id="data-pendukung" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
                                 <i class="fas fa-home text-teal-600 mr-3"></i> Data Pendukung Belajar
@@ -1394,8 +1325,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Tab: Profil Psikologis -->
                         <div id="profil-psikologis" class="tab-content bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-8 hidden">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-teal-100 section-header">
                                 <i class="fas fa-brain text-teal-600 mr-3"></i> Profil Psikologis & Minat
@@ -1466,7 +1395,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                             </div>
                         </div>
                         
-                        <!-- Submit Button -->
                         <div class="mt-10 pt-8 border-t-2 border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 p-8 rounded-2xl shadow-xl">
                             <div class="flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div class="flex items-start space-x-4">
@@ -1492,21 +1420,17 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             </form>
         </div>
     </div>
-
-    <!-- Floating Action Button (Mobile) -->
     <div class="fixed bottom-6 right-6 md:hidden z-40">
         <button type="button" onclick="document.querySelector('form').scrollIntoView({behavior: 'smooth', block: 'end'})" class="bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-110 icon-bounce">
             <i class="fas fa-arrow-down text-xl"></i>
         </button>
     </div>
-
-    <!-- Back to Top Button -->
     <button id="backToTop" class="hidden fixed bottom-6 left-6 bg-gray-800 text-white p-4 rounded-full shadow-2xl hover:bg-gray-900 transition-all duration-300 hover:scale-110 z-40">
         <i class="fas fa-arrow-up text-xl"></i>
     </button>
 
     <script>
-        // Back to Top functionality
+
         const backToTopBtn = document.getElementById('backToTop');
         
         window.addEventListener('scroll', () => {
@@ -1523,8 +1447,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 behavior: 'smooth'
             });
         });
-
-        // Form validation visual feedback
         const inputs = document.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
             input.addEventListener('blur', function() {
@@ -1537,8 +1459,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 }
             });
         });
-
-        // Smooth scroll for mobile tabs
         const mobileTabsContainer = document.querySelector('.mobile-tabs');
         if (mobileTabsContainer) {
             let isDown = false;
@@ -1567,8 +1487,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 mobileTabsContainer.scrollLeft = scrollLeft - walk;
             });
         }
-
-        // Auto-hide alerts after 5 seconds
         document.addEventListener('DOMContentLoaded', () => {
             const alerts = document.querySelectorAll('.alert-animate');
             alerts.forEach(alert => {
@@ -1582,8 +1500,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 }, 5000);
             });
         });
-
-        // Add loading state to submit button
         const form = document.querySelector('form');
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalBtnContent = submitBtn.innerHTML;
@@ -1598,8 +1514,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 <span>Menyimpan...</span>
             `;
         });
-
-        // Enhanced tooltip for mobile
         if (window.innerWidth < 768) {
             const tooltipContainers = document.querySelectorAll('.tooltip-container');
             tooltipContainers.forEach(container => {
@@ -1633,8 +1547,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 });
             });
         }
-
-        // Progress indicator for form completion
         function updateProgressIndicator() {
             const allInputs = document.querySelectorAll('input:not([readonly]), textarea, select');
             let filledInputs = 0;
@@ -1646,20 +1558,16 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             });
             
             const progress = Math.round((filledInputs / allInputs.length) * 100);
-            
-            // You can add a progress bar element if needed
+
             console.log(`Form completion: ${progress}%`);
         }
 
-        // Update progress on input change
         document.querySelectorAll('input, textarea, select').forEach(input => {
             input.addEventListener('change', updateProgressIndicator);
         });
 
-        // Initialize progress
         updateProgressIndicator();
 
-        // Animate cards on scroll
         const observerOptions = {
             threshold: 0.1,
             rootMargin: '0px 0px -50px 0px'
@@ -1674,7 +1582,6 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             });
         }, observerOptions);
 
-        // Observe all cards
         document.querySelectorAll('.card-hover').forEach(card => {
             card.style.opacity = '0';
             card.style.transform = 'translateY(20px)';
