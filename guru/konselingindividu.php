@@ -90,7 +90,7 @@ if (!$result_siswa) {
     die("Query Siswa Gagal: " . mysqli_error($koneksi));
 }
 
-function get_latest_session_data($koneksi, $id_siswa) {
+function get_latest_session_data($koneksi, $id_siswa){
     $query = "
         SELECT 
             pertemuan_ke, 
