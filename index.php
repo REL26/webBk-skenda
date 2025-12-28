@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -155,6 +154,7 @@
         <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-b from-[var(--nav-green-dark)] to-transparent shadow-[0_10px_30px_-15px_rgba(0,0,0,0.6)]"></div>
 
         <div class="relative max-w-7xl mx-auto flex items-center px-6 py-6 text-white">
+            <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logocompact/300x300/1758083167/SMK2.png" alt="logo-skenda" class="h-10 w-10 mr-4 object-contain"/>
             <div class="leading-tight">
                 <h1 class="font-semibold text-lg md:text-2xl tracking-wide">
                     Bimbingan Konseling

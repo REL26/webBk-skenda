@@ -27,16 +27,13 @@
 
 <body class="bg-gray-100">
 
-  <!-- WRAPPER (MOBILE ADA RUANG) -->
   <div class="min-h-screen flex items-center justify-center px-4 py-10">
 
-    <!-- ===== CARD UTAMA (GABUNG) ===== -->
     <div class="bg-white rounded-2xl shadow-2xl
                 w-full max-w-6xl
                 grid grid-cols-1 md:grid-cols-2
                 overflow-hidden">
 
-      <!-- ================= LEFT : LOGIN ================= -->
       <div class="p-8 md:p-12 flex flex-col justify-center">
 
         <div class="flex justify-center mb-8">
@@ -94,7 +91,6 @@
         </form>
       </div>
 
-      <!-- ================= RIGHT : PENJELASAN ================= -->
       <div class="bg-gradient-to-br from-gray-900 to-gray-800
                   text-white p-8 md:p-12 flex flex-col justify-center">
 
@@ -159,4 +155,3 @@
 
 </body>
 </html>
-
