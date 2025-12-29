@@ -28,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if ($data) {
-        $admin = "6287834937238";
+        $admin = "62088245604845";
         $nama = urlencode($data["nama"]);
         $role_text = ($role === "siswa") ? "Siswa" : "Guru";
 

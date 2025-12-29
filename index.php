@@ -333,13 +333,6 @@ document.querySelectorAll('.test-card-lockedx').forEach(card => {
 </body>
 </html>
 
-
-
-
-<footer class="text-center py-6 bg-[#123E44] text-white text-sm">
-    <p class="px-4">© 2025 Bimbingan Konseling - SMKN 2 Banjarmasin. All rights reserved.</p>
-</footer>
-
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script>
 AOS.init({ duration: 800, once: true });

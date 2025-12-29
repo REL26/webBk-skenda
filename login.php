@@ -81,11 +81,17 @@
             Login
           </button>
 
-          <div class="text-center">
+          <div class="text-center flex justify-around px-4">
             <a href="lupa_password.php"
-              class="text-sm text-gray-600 hover:underline">
+              class="text-sm text-gray-600 underline">
               Lupa Password?
             </a>
+            <a href="https://wa.me/62088245604845?text=Halo%20Admin,%20saya%20membutuhkan%20bantuan%20untuk%20akun%20saya." 
+               target="_blank"
+               class="text-sm text-gray-600 underline">
+               Hubungi Admin
+            </a>
+  
           </div>
 
         </form>
