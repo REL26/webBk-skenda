@@ -150,6 +150,19 @@
                 transform: scale(0.97);
             }
         }
+        /* focus-visible / accessibility */
+        :focus {
+            outline: 3px solid rgba(95,168,161,0.4);
+            outline-offset: 3px;
+        }
+
+        /* Respect user's reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
     </style>
 </head>
 <body class="font-sans bg-gray-50 text-[#1F2937]">
@@ -160,7 +173,7 @@
     <div class="relative">
         <div class="max-w-7xl mx-auto flex items-center px-6 py-4 text-white">
             <div class="flex items-center group cursor-pointer">
-                <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logocompact/300x300/1758083167/SMK2.png" class="h-12 w-12 mr-4 transform group-hover:rotate-12 transition-transform"/>
+                <img src="https://epjj.smkn2-bjm.sch.id/pluginfile.php/1/core_admin/logocompact/300x300/1758083167/SMK2.png" alt="Logo SMKN 2 Banjarmasin" loading="lazy" class="h-12 w-12 mr-4 transform group-hover:rotate-12 transition-transform"/>
                 <div class="leading-tight">
                     <h1 class="font-bold text-xl md:text-3xl tracking-tight">Bimbingan Konseling</h1>
                     <p class="text-xs md:text-base text-white/70">SMKN 2 Banjarmasin</p>
@@ -282,25 +295,16 @@ AOS.init({ duration: 800, once: true });
 const scrollProgress = document.getElementById('scrollProgress');
 const header = document.getElementById('mainHeader');
 const scrollCue = document.getElementById('scrollCue');
-const mobileCTA = document.getElementById('mobileCTA');
 
 window.addEventListener('scroll', () => {
     const winScroll = document.documentElement.scrollTop;
     const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    scrollProgress.style.width = (winScroll / height) * 100 + '%';
+    if (height > 0) scrollProgress.style.width = (winScroll / height) * 100 + '%';
 
     if (winScroll > 80) header.classList.add('scrolled','compact');
     else header.classList.remove('scrolled','compact');
 
     scrollCue.classList.toggle('hide', winScroll > 40);
-
-    if (winScroll > window.innerHeight * 0.6) {
-        mobileCTA.classList.remove('opacity-0','pointer-events-none');
-        mobileCTA.classList.add('opacity-100');
-    } else {
-        mobileCTA.classList.add('opacity-0','pointer-events-none');
-        mobileCTA.classList.remove('opacity-100');
-    }
 });
 
 document.querySelectorAll('.magnetic').forEach(el => {
@@ -330,70 +334,6 @@ document.querySelectorAll('.test-card-lockedx').forEach(card => {
 });
 </script>
 
-</body>
-</html>
-
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<script>
-AOS.init({ duration: 800, once: true });
-
-window.addEventListener('scroll', () => {
-    const winScroll = document.documentElement.scrollTop;
-    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    document.getElementById('scrollProgress').style.width = (winScroll / height) * 100 + '%';
-    const header = document.getElementById('mainHeader');
-    if (winScroll > 80) {
-        header.classList.add('scrolled','compact');
-    } else {
-        header.classList.remove('scrolled','compact');
-    }
-});
-
-document.querySelectorAll('.magnetic').forEach(el => {
-    el.addEventListener('mousemove', e => {
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left - rect.width / 2;
-        const y = e.clientY - rect.top - rect.height / 2;
-        el.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
-    });
-    el.addEventListener('mouseleave', () => {
-        el.style.transform = 'translate(0,0)';
-    });
-});
-
-document.querySelectorAll('.test-card-locked').forEach(card => {
-    card.addEventListener('click', e => {
-        e.preventDefault();
-        alert('Maaf, tes ini belum tersedia atau masih dalam tahap pengembangan.');
-    });
-});
-document.querySelectorAll('.test-card-lockedx').forEach(card => {
-    card.addEventListener('click', e => {
-        e.preventDefault();
-        alert('Login dahulu untuk melakukan tes.');
-    });
-});
-window.addEventListener('scroll', () => {
-    const winScroll = document.documentElement.scrollTop;
-    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    document.getElementById('scrollProgress').style.width = (winScroll / height) * 100 + '%';
-
-    const header = document.getElementById('mainHeader');
-    if (winScroll > 80) {
-        header.classList.add('scrolled','compact');
-    } else {
-        header.classList.remove('scrolled','compact');
-    }
-
-    const scrollCue = document.getElementById('scrollCue');
-    if (winScroll > 60) {
-        scrollCue.classList.add('hide');
-    } else {
-        scrollCue.classList.remove('hide');
-    }
-});
-
-</script>
 
 </body>
 </html>

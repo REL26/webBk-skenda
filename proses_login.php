@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$identity = mysqli_real_escape_string($koneksi, trim($_POST['nis'])); 
+$identity = trim($_POST['nis']); 
 $password_plain = trim($_POST['password']);
 
 $login_sukses = false;
@@ -15,10 +15,13 @@ $login_sukses = false;
 $is_email = (filter_var($identity, FILTER_VALIDATE_EMAIL) !== false) || strpos($identity, '@') !== false;
 
 if ($is_email) {
-    $qGuru = mysqli_query($koneksi, "SELECT id_guru, nip, nama, password, email FROM guru WHERE email='$identity' LIMIT 1");
+    $stmt = $koneksi->prepare("SELECT id_guru, nip, nama, password, email FROM guru WHERE email = ? LIMIT 1");
+    $stmt->bind_param("s", $identity); 
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-    if (mysqli_num_rows($qGuru) > 0) {
-        $data = mysqli_fetch_assoc($qGuru);
+    if ($result->num_rows > 0) {
+        $data = $result->fetch_assoc();
         
         if (password_verify($password_plain, $data['password'])) { 
             $_SESSION['id_guru'] = $data['id_guru'];
@@ -26,40 +29,50 @@ if ($is_email) {
             $_SESSION['nama'] = $data['nama'];
             $_SESSION['email'] = $data['email'];
             
+            $stmt->close();
             header("Location: guru/dashboard.php");
-            $login_sukses = true;
             exit;
         }
     }
+    $stmt->close();
 } 
 
-if (!$login_sukses) {
-    $qSiswa = mysqli_query($koneksi, "SELECT id_siswa, nis, nama, password FROM siswa WHERE nis='$identity' LIMIT 1");
+$stmtSiswa = $koneksi->prepare("SELECT id_siswa, nis, nama, password FROM siswa WHERE nis = ? LIMIT 1");
+$stmtSiswa->bind_param("s", $identity);
+$stmtSiswa->execute();
+$resultSiswa = $stmtSiswa->get_result();
 
-    if (mysqli_num_rows($qSiswa) > 0) {
-        $data = mysqli_fetch_assoc($qSiswa);
+if ($resultSiswa->num_rows > 0) {
+    $data = $resultSiswa->fetch_assoc();
 
-        if (password_verify($password_plain, $data['password'])) { 
-            $_SESSION['id_siswa'] = $data['id_siswa'];
-            $_SESSION['nis'] = $data['nis'];
-            $_SESSION['nama'] = $data['nama'];
-            
-            header("Location: siswa/dashboard.php");
-            $login_sukses = true;
-            exit;
-        }
+    if (password_verify($password_plain, $data['password'])) { 
+        $_SESSION['id_siswa'] = $data['id_siswa'];
+        $_SESSION['nis'] = $data['nis'];
+        $_SESSION['nama'] = $data['nama'];
+        
+        $stmtSiswa->close();
+        header("Location: siswa/dashboard.php");
+        exit;
     }
 }
+$stmtSiswa->close();
 
-if (!$login_sukses) {
-    $qSiswa_check = mysqli_query($koneksi, "SELECT 1 FROM siswa WHERE nis='$identity' LIMIT 1");
-    $qGuru_check = mysqli_query($koneksi, "SELECT 1 FROM guru WHERE email='$identity' LIMIT 1");
-    
-    $total_rows = mysqli_num_rows($qSiswa_check) + mysqli_num_rows($qGuru_check);
-    
-    $pesan = ($total_rows > 0) ? 'Password salah!' : 'Akun tidak ditemukan!';
-    
-    echo "<script>alert('$pesan'); window.location='login.php';</script>";
-    exit;
-}
+$stmtCekSiswa = $koneksi->prepare("SELECT 1 FROM siswa WHERE nis = ? LIMIT 1");
+$stmtCekSiswa->bind_param("s", $identity);
+$stmtCekSiswa->execute();
+$adaSiswa = $stmtCekSiswa->get_result()->num_rows;
+
+$stmtCekGuru = $koneksi->prepare("SELECT 1 FROM guru WHERE email = ? LIMIT 1");
+$stmtCekGuru->bind_param("s", $identity);
+$stmtCekGuru->execute();
+$adaGuru = $stmtCekGuru->get_result()->num_rows;
+
+$total_rows = $adaSiswa + $adaGuru;
+$pesan = ($total_rows > 0) ? 'Password salah!' : 'Akun tidak ditemukan!';
+
+echo "<script>alert('$pesan'); window.location='login.php';</script>";
+
+$stmtCekSiswa->close();
+$stmtCekGuru->close();
+exit;
 ?>
