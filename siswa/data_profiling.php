@@ -606,26 +606,53 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
             <?php endif; ?>
 
             <div class="no-print mb-8 flex flex-wrap justify-between items-center gap-3">
-                <a href="#" id="btnExportCV"
-   class="bg-blue-800 text-white px-5 py-2 rounded-lg hover:bg-blue-900 transition font-semibold shadow-md flex items-center justify-center">
-    <i class="fas fa-print mr-2"></i> Cetak/Ekspor PDF
-</a>
+                <button type="button" id="btnSiswaExport" class="w-full md:w-auto px-8 py-4 bg-white border-2 border-blue-400 text-gray-700 font-bold rounded-2xl hover:bg-gray-50 shadow-sm flex items-center justify-center gap-2">
+        <i class="fas fa-print text-blue-600"></i> Cetak CV
+    </button>
 <script>
-document.getElementById('btnExportCV').addEventListener('click', function(e) {
-    e.preventDefault();
-    fetch('cv_template.php')
-    .then(response => response.text())
-    .then(html => {
-        const printWindow = window.open('', '_blank', 'width=900,height=1200');
-        printWindow.document.open();
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.onload = function() {
-            setTimeout(() => {
-                printWindow.print();
-            }, 800);
-        };
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const btnCetak = document.getElementById('btnSiswaExport');
+    
+    if (btnCetak) {
+        btnCetak.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const btn = this;
+            const originalContent = btn.innerHTML;
+
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Loading...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.7';
+
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'cv_template.php';
+            document.body.appendChild(iframe);
+
+            iframe.onload = function() {
+                btn.innerHTML = originalContent;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+
+                setTimeout(() => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+     
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 1000);
+                }, 500);
+            };
+
+      
+            iframe.onerror = function() {
+                alert('Gagal memuat dokumen cetak.');
+                btn.innerHTML = originalContent;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+            };
+        });
+    }
 });
 </script>
 
@@ -819,18 +846,18 @@ document.getElementById('btnExportCV').addEventListener('click', function(e) {
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                             
                                 <div class="col-span-1">
-                                    <label for="riwayat_sma_smk_ma" class="form-label"><i class="fas fa-school mr-1"></i> SMA/SMK/MA (Saat Ini)</label>
-                                    <textarea id="riwayat_sma_smk_ma" name="riwayat_sma_smk_ma" rows="3" class="form-textarea" placeholder="Contoh: SMKN 2 Banjarmasin - Jurusan RPL"><?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?></textarea>
+                                    <label for="riwayat_sma_smk_ma" class="form-label"><i class="fas fa-school mr-1"></i> SMK</label>
+                                    <textarea id="riwayat_sma_smk_ma" name="riwayat_sma_smk_ma" rows="3" class="form-textarea" placeholder="Contoh: SMKN 2 Banjarmasin (Tahun Masuk-Sekarang)"><?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?></textarea>
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="riwayat_smp_mts" class="form-label"><i class="fas fa-school mr-1"></i> SMP/MTs</label>
-                                    <textarea id="riwayat_smp_mts" name="riwayat_smp_mts" rows="3" class="form-textarea" placeholder="Contoh: SMPN 5 Banjarmasin - Tahun Lulus 2021"><?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?></textarea>
+                                    <textarea id="riwayat_smp_mts" name="riwayat_smp_mts" rows="3" class="form-textarea" placeholder="Contoh: SMPN 5 Banjarmasin (Tahun Masuk-Tahun Lulus)"><?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?></textarea>
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="riwayat_sd_mi" class="form-label"><i class="fas fa-school mr-1"></i> SD/MI</label>
-                                    <textarea id="riwayat_sd_mi" name="riwayat_sd_mi" rows="3" class="form-textarea" placeholder="Contoh: SDN Seberang Mesjid 2 - Tahun Lulus 2018"><?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?></textarea>
+                                    <textarea id="riwayat_sd_mi" name="riwayat_sd_mi" rows="3" class="form-textarea" placeholder="Contoh: SDN Seberang Mesjid 2 (Tahun Masuk-Tahun Lulus)"><?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?></textarea>
                                 </div>
                                 
                             </div>
