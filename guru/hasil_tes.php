@@ -144,9 +144,6 @@ $result_jurusan = mysqli_query($koneksi, $query_jurusan);
 $jurusan_options = mysqli_fetch_all($result_jurusan, MYSQLI_ASSOC);
 $jurusan_options = array_column($jurusan_options, 'jurusan');
 
-$query_tahun = "SELECT id_tahun, tahun FROM tahun_ajaran ORDER BY tahun DESC";
-$result_tahun = mysqli_query($koneksi, $query_tahun);
-$data_tahun = mysqli_fetch_all($result_tahun, MYSQLI_ASSOC);
 
 $data_siswa = mysqli_fetch_all($result_siswa, MYSQLI_ASSOC);
 mysqli_data_seek($result_siswa, 0); 
@@ -768,16 +765,6 @@ ${linkEnd}
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                    
-                            <div>
-                                <label for="tahun" class="block text-sm font-semibold text-gray-700 mb-2">Tahun Ajaran</label>
-                                <select id="tahun" name="tahun" class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm">
-                                    <option value="">Semua Tahun</option>
-                                    <?php foreach ($data_tahun as $tahun): ?>
-                                        <option value="<?php echo $tahun['id_tahun']; ?>" <?php echo ($filter_tahun == $tahun['id_tahun']) ? 'selected' : ''; ?>><?php echo $tahun['tahun']; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
                             
                             <div>
                                 <label for="gender" class="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
@@ -825,7 +812,7 @@ ${linkEnd}
     </div>
     
     <div class="flex flex-col text-left leading-tight">
-        <span>Export Biodata</span>
+        <span>Export Biodata Sekaligus</span>
         <span class="text-[10px] font-medium opacity-80 uppercase tracking-wider">Format ZIP (PDF)</span>
     </div>
 </button>
@@ -1073,7 +1060,10 @@ ${linkEnd}
                     </div>
                 </div>
             <?php endif; ?>
-        
+            <a href="alumni.php" class="inline-flex mt-10 items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all shadow-sm text-sm font-medium">
+    <i class="fas fa-archive"></i> Lihat Arsip Alumni
+</a> 
+
             <div class="mt-8 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-lg p-6 border-2 border-orange-200">
                 <div class="flex items-start gap-4">
                     <div class="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -1103,6 +1093,7 @@ ${linkEnd}
                     </div>
                 </div>
             </div>
+            
             
         </main>
     </div>

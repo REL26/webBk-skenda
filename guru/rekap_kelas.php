@@ -928,7 +928,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                         </select>
                     </div>
 
-                    <div class="group">
+                    <!-- <div class="group">
                         <label for="tahun" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                             <i class="fas fa-calendar-alt "></i>
                             Tahun Ajaran
@@ -939,7 +939,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                                 <option value="<?php echo $tahun['id_tahun']; ?>" <?php echo ($filter_tahun == $tahun['id_tahun']) ? 'selected' : ''; ?>><?php echo $tahun['tahun']; ?></option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
+                    </div> -->
             
                     <div class="flex gap-2 col-span-1 md:col-span-2 lg:col-span-1 overflow-hidden">
                         <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">

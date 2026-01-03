@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 include '../koneksi.php'; 
@@ -707,7 +706,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         </select>
                     </div>
                     
-                    <div>
+                    <!-- <div>
                         <label for="tahun" class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-calendar-alt mr-1"></i> Tahun Ajaran
                         </label>
@@ -719,7 +718,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
+                    </div> -->
 
                     <div class="flex space-x-2">
                         <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-200 flex items-center justify-center text-sm font-semibold shadow-md btn-action">
@@ -1051,5 +1050,4 @@ $waktu_durasi_options = [15, 30, 45, 60];
                 </form>
             </div>
         </div>
-
     </div>
