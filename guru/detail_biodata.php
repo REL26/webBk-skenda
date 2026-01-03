@@ -833,9 +833,20 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 <span class="text-xl font-bold gradient-text block">Detail Siswa</span>
             </div>
         </a>
-        <a href="hasil_tes.php" class="btn-danger px-5 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm font-semibold flex items-center shadow-lg">
-            <i class="fas fa-arrow-left mr-2"></i> Kembali
-        </a>
+        <a href="javascript:void(0);" onclick="goBack()" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-bold text-sm">
+    <i class="fas fa-arrow-left"></i> Kembali
+</a>
+
+<script>
+function goBack() {
+    const previousPage = document.referrer;
+    if (previousPage.includes('alumni.php')) {
+        window.location.href = 'alumni.php';
+    } else {
+        window.location.href = 'hasil_tes.php';
+    }
+}
+</script>
     </header>
     
     <div class="p-4 md:p-8"> 
@@ -999,12 +1010,12 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                     <input type="text" value="<?php echo htmlspecialchars($siswa['kelas'] . " / " . $siswa['jurusan']); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
                                 </div>
                                 
-                                <div class="relative">
+                                <!-- <div class="relative">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt text-teal-600 mr-2"></i>Tahun Ajaran
                                     </label>
                                     <input type="text" value="<?php echo htmlspecialchars($siswa['tahun_ajaran'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-200 shadow-sm p-3 text-sm bg-gradient-to-r from-gray-50 to-gray-100 cursor-not-allowed font-medium" readonly>
-                                </div>
+                                </div> -->
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-user-tag text-teal-600 mr-2"></i>Nama Panggilan
@@ -1129,21 +1140,21 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-school text-teal-600 mr-2"></i>Asal SD/MI
                                     </label>
-                                    <input type="text" name="riwayat_sd_mi" value="<?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="SDN 1 Melati">
+                                    <input type="text" name="riwayat_sd_mi" value="<?php echo htmlspecialchars($siswa['riwayat_sd_mi'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="...">
                                 </div>
                                 
                                 <div class="bg-gradient-to-r from-cyan-50 to-blue-50 p-5 rounded-xl border-l-4 border-cyan-500">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-school text-cyan-600 mr-2"></i>Asal SMP/MTs
                                     </label>
-                                    <input type="text" name="riwayat_smp_mts" value="<?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="SMPN 5 Anggrek">
+                                    <input type="text" name="riwayat_smp_mts" value="<?php echo htmlspecialchars($siswa['riwayat_smp_mts'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="...">
                                 </div>
                                 
                                 <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-l-4 border-blue-500">
                                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                        <i class="fas fa-school text-blue-600 mr-2"></i>Asal SMA/SMK/MA (Jika Pindah)
+                                        <i class="fas fa-school text-blue-600 mr-2"></i>Asal SMK
                                     </label>
-                                    <input type="text" name="riwayat_sma_smk_ma" value="<?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="Kosongkan jika dari SMP/MTs">
+                                    <input type="text" name="riwayat_sma_smk_ma" value="<?php echo htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? ''); ?>" class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 p-3 text-sm bg-white" placeholder="...">
                                 </div>
                                 
                                 <div class="form-divider">
@@ -1406,11 +1417,44 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                                         <p class="text-sm text-gray-600">Pastikan semua data telah terisi dengan benar sebelum menyimpan</p>
                                     </div>
                                 </div>
-                                <button type="submit" class="w-full md:w-auto btn-primary text-white font-bold py-4 px-8 rounded-xl shadow-2xl text-lg flex items-center justify-center space-x-3 group">
-                                    <i class="fas fa-save group-hover:scale-110 transition-transform"></i>
-                                    <span>Simpan Data</span>
-                                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-                                </button>
+                                <div class="flex flex-col md:flex-row items-center gap-4 mt-10 no-print">
+    <button type="submit" class="w-full md:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-[1.5rem] shadow-xl shadow-blue-100 flex items-center justify-center gap-3 group transition-all">
+        <i class="fas fa-save group-hover:scale-110 transition-transform text-lg"></i>
+        <span class="text-sm uppercase tracking-widest">Simpan Perubahan</span>
+    </button>
+
+    <a href="#" id="btnExportCV" class="w-full md:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white border-2 border-gray-100 text-gray-700 rounded-[1.5rem] hover:border-blue-200 hover:bg-blue-50 transition-all font-black text-sm shadow-sm group">
+        <i class="fas fa-print text-blue-600 group-hover:scale-110 transition-transform text-lg"></i>
+        <span class="text-sm uppercase tracking-widest">Cetak CV</span>
+    </a>
+</div>
+<script>
+document.getElementById('btnExportCV').addEventListener('click', function(e) {
+    e.preventDefault();
+    const idSiswa = "<?php echo $id_siswa; ?>";
+    const btn = this;
+    const originalContent = btn.innerHTML;
+
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    btn.classList.add('opacity-50', 'pointer-events-none');
+
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = 'cv_template.php?id_siswa=' + idSiswa;
+    document.body.appendChild(iframe);
+
+    iframe.onload = function() {
+        btn.innerHTML = originalContent;
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+        
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        
+        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
+    };
+});
+</script>
+</div>
                             </div>
                         </div>
                         

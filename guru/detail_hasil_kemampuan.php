@@ -10,7 +10,7 @@ if (!isset($_SESSION['id_guru']) || !isset($_GET['id_siswa'])) {
 $id_siswa_int = (int) $_GET['id_siswa'];
 
 $nama_pengguna = isset($_SESSION['nama']) ? htmlspecialchars($_SESSION['nama']) : 'Guru Bimbingan Konseling';
-$nama_kepsek = "..."; 
+$nama_kepsek = "Novie Bambang Rumadi, S.T., M.Pd"; 
 $nama_guru_bk = "...";      
 $kota = "Banjarmasin"; 
 
@@ -347,15 +347,28 @@ $tanggal_laporan = $tanggal_laporan ?? date('d F Y');
                     </div>
                 </button>
                 
-                <a href="hasil_tes.php" class="card block p-6 bg-gray-200 text-gray-800 rounded-xl shadow-lg hover:bg-gray-300">
-                    <div class="flex flex-col items-center justify-center h-full">
-                        <svg class="w-10 h-10 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                        </svg>
-                        <h2 class="text-xl font-bold mb-1">Kembali ke Daftar Hasil</h2>
-                        <p class="text-sm text-center opacity-90">Kembali ke menu hasil tes siswa.</p>
-                    </div>
-                </a>
+                <a href="javascript:void(0);" onclick="goBack()" class="block p-6 bg-white border-2 border-gray-100 text-gray-800 rounded-xl shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
+    <div class="flex flex-col items-center justify-center h-full">
+        <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition-all">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+        </div>
+        <h2 class="text-lg font-black mb-1 group-hover:text-blue-600 transition-colors">Kembali ke Daftar</h2>
+        <p class="text-xs text-center text-gray-400 font-medium">Klik untuk kembali ke halaman sebelumnya.</p>
+    </div>
+</a>
+
+<script>
+function goBack() {
+    const previousPage = document.referrer;
+    if (previousPage.includes('alumni.php')) {
+        window.location.href = 'alumni.php';
+    } else {
+        window.location.href = 'hasil_tes.php';
+    }
+}
+</script>
 
             </div>
         </div>

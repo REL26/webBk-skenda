@@ -588,12 +588,17 @@ body {
     </div>
 </div>
 
-<div class="no-print">
-    <a href="detail_biodata.php?id_siswa=<?php echo $id_siswa; ?>" class="btn bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition duration-150 ease-in-out">
-        <i class="fas fa-arrow-left mr-2"></i> KEMBALI
+<div class="no-print mb-10 flex flex-wrap justify-center gap-4">
+    <a href="detail_biodata.php?id_siswa=<?php echo $id_siswa; ?>" 
+       class="flex items-center gap-3 px-8 py-4 bg-white border-2 border-gray-100 text-gray-700 rounded-[1.5rem] hover:bg-gray-50 hover:border-gray-200 transition-all font-black text-sm shadow-sm group">
+        <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+        <span class="uppercase tracking-widest">Kembali ke Profil</span>
     </a>
-    <button onclick="window.print()" class="btn bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition duration-150 ease-in-out">
-        <i class="fas fa-file-pdf mr-2"></i> EKSPOR PDF
+
+    <button onclick="window.print()" 
+            class="flex items-center gap-3 px-8 py-4 bg-red-600 text-white rounded-[1.5rem] hover:bg-red-700 transition-all font-black text-sm shadow-xl shadow-red-100 group">
+        <i class="fas fa-file-pdf group-hover:scale-110 transition-transform text-lg"></i>
+        <span class="uppercase tracking-widest">Ekspor ke PDF</span>
     </button>
 </div>
 </body>
