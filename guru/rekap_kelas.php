@@ -12,46 +12,53 @@ $nama_pengguna = isset($_SESSION['nama']) ? htmlspecialchars($_SESSION['nama']) 
 $current_page = basename($_SERVER['PHP_SELF']);
 $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.php']);
 
-$filter_kelas   = isset($_GET['kelas'])     ? mysqli_real_escape_string($koneksi, trim($_GET['kelas']))     : '';
+$filter_kelas   = isset($_GET['kelas']) ? mysqli_real_escape_string($koneksi, trim($_GET['kelas'])) : '';
 $filter_jurusan = isset($_GET['jurusan']) ? mysqli_real_escape_string($koneksi, trim($_GET['jurusan'])) : '';
-$filter_tahun   = isset($_GET['tahun'])   ? mysqli_real_escape_string($koneksi, trim($_GET['tahun']))   : '';
 
 $where_clauses = [];
-if (!empty($filter_kelas))   $where_clauses[] = "s.kelas = '$filter_kelas'";
-if (!empty($filter_jurusan)) $where_clauses[] = "s.jurusan = '$filter_jurusan'";
-if (!empty($filter_tahun))   $where_clauses[] = "t.id_tahun = '$filter_tahun'";
+if (!empty($filter_kelas)) {
+    $where_clauses[] = "s.kelas = '$filter_kelas'";
+}
+if (!empty($filter_jurusan)) {
+    $where_clauses[] = "s.jurusan = '$filter_jurusan'";
+}
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
-$gb_mapping = [
-    'Visual' => 'Visual', 'Auditori' => 'Auditori', 'Kinestetik' => 'Kinestetik', '' => 'Belum Tes'
-];
 $gb_colors = [
-    'Visual' => '#FFC107', 'Auditori' => '#03A9F4', 'Kinestetik' => '#8BC34A', 'Belum Tes' => '#BDBDBD'
+    'Visual' => '#5FA8A1',
+    'Auditori' => '#4C8E89',
+    'Kinestetik' => '#123E44',
+    'Belum Tes' => '#E5E7EB'
 ];
 
 $query_siswa = "
     SELECT 
-        s.id_siswa, s.nis, s.nama, s.kelas, s.jurusan, t.tahun AS tahun_ajaran, 
+        s.id_siswa,
+        s.nis,
+        s.nama,
+        s.kelas,
+        s.jurusan,
+        t.tahun AS tahun_ajaran,
         (
             SELECT 
                 CASE
                     WHEN skor_visual >= skor_auditori AND skor_visual >= skor_kinestetik THEN 'Visual'
                     WHEN skor_auditori >= skor_visual AND skor_auditori >= skor_kinestetik THEN 'Auditori'
                     ELSE 'Kinestetik'
-                END 
-            FROM hasil_gayabelajar 
-            WHERE id_siswa = s.id_siswa 
-            ORDER BY tanggal_tes DESC LIMIT 1
+                END
+            FROM hasil_gayabelajar
+            WHERE id_siswa = s.id_siswa
+            ORDER BY tanggal_tes DESC
+            LIMIT 1
         ) AS skor_gb_latest
     FROM siswa s
     JOIN tahun_ajaran t ON s.tahun_ajaran_id = t.id_tahun
-    " . $where_sql . " 
+    $where_sql
     ORDER BY s.nama ASC
 ";
 
 $result_siswa = mysqli_query($koneksi, $query_siswa);
-
 if (!$result_siswa) {
     die("Query Error: " . mysqli_error($koneksi));
 }
@@ -59,95 +66,75 @@ if (!$result_siswa) {
 $data_siswa = mysqli_fetch_all($result_siswa, MYSQLI_ASSOC);
 
 $gb_counts = [
-    'Visual' => 0, 'Auditori' => 0, 'Kinestetik' => 0, 'Belum Tes' => 0
+    'Visual' => 0,
+    'Auditori' => 0,
+    'Kinestetik' => 0,
+    'Belum Tes' => 0
 ];
 
 foreach ($data_siswa as $siswa) {
-    $gb_type = empty($siswa['skor_gb_latest']) ? 'Belum Tes' : $siswa['skor_gb_latest'];
-    $gb_counts[$gb_type] = ($gb_counts[$gb_type] ?? 0) + 1;
+    $tipe = empty($siswa['skor_gb_latest']) ? 'Belum Tes' : $siswa['skor_gb_latest'];
+    $gb_counts[$tipe]++;
 }
 
-$gb_belum_tes = $gb_counts['Belum Tes'] ?? 0;
+$gb_belum_tes = $gb_counts['Belum Tes'];
 unset($gb_counts['Belum Tes']);
-
 arsort($gb_counts);
-
 $gb_counts['Belum Tes'] = $gb_belum_tes;
-
-$gb_status_text = ($gb_belum_tes > 0) 
-    ? "Terdapat {$gb_belum_tes} siswa yang belum menyelesaikan Tes Gaya Belajar." 
-    : "Tes Gaya Belajar sudah diselesaikan oleh semua siswa.";
 
 $gb_labels = json_encode(array_keys($gb_counts));
 $gb_data = json_encode(array_values($gb_counts));
 $gb_chart_colors = json_encode(array_values(array_intersect_key($gb_colors, $gb_counts)));
 
+$gb_status_text = ($gb_belum_tes > 0)
+    ? "Terdapat {$gb_belum_tes} siswa yang belum menyelesaikan Tes Gaya Belajar."
+    : "Tes Gaya Belajar sudah diselesaikan oleh semua siswa.";
+
 $query_kelas = "SELECT DISTINCT kelas FROM siswa WHERE kelas IS NOT NULL ORDER BY kelas";
 $result_kelas = mysqli_query($koneksi, $query_kelas);
-$kelas_options = mysqli_fetch_all($result_kelas, MYSQLI_ASSOC);
-$kelas_options = array_column($kelas_options, 'kelas');
+$kelas_options = array_column(mysqli_fetch_all($result_kelas, MYSQLI_ASSOC), 'kelas');
 
 $query_jurusan = "SELECT DISTINCT jurusan FROM siswa WHERE jurusan IS NOT NULL ORDER BY jurusan";
 $result_jurusan = mysqli_query($koneksi, $query_jurusan);
-$jurusan_options = mysqli_fetch_all($result_jurusan, MYSQLI_ASSOC);
-$jurusan_options = array_column($jurusan_options, 'jurusan');
+$jurusan_options = array_column(mysqli_fetch_all($result_jurusan, MYSQLI_ASSOC), 'jurusan');
 
-$query_tahun = "SELECT id_tahun, tahun FROM tahun_ajaran ORDER BY tahun DESC";
-$result_tahun = mysqli_query($koneksi, $query_tahun);
-$data_tahun = mysqli_fetch_all($result_tahun, MYSQLI_ASSOC);
-
-
-$display_kelas = !empty($filter_kelas) ? ' Kelas ' . htmlspecialchars($filter_kelas) : '';
-$display_jurusan = !empty($filter_jurusan) ? ' Jurusan ' . htmlspecialchars($filter_jurusan) : '';
-
-$display_tahun = '';
-if (!empty($filter_tahun)) {
-    $current_tahun = array_filter($data_tahun, function($t) use ($filter_tahun) { return $t['id_tahun'] == $filter_tahun; });
-    $display_tahun = ' Tahun Ajaran ' . htmlspecialchars(reset($current_tahun)['tahun']);
-} elseif (!empty($data_siswa)) {
-    $display_tahun = ' (Tahun Ajaran ' . htmlspecialchars($data_siswa[0]['tahun_ajaran']) . ')';
+$filter_title = '';
+if (!empty($filter_kelas) && !empty($filter_jurusan)) {
+    $filter_title = 'Kelas ' . htmlspecialchars($filter_kelas) . ' Jurusan ' . htmlspecialchars($filter_jurusan);
 }
 
-$filter_title = trim($display_kelas . $display_jurusan . $display_tahun);
+$get_dominant = function ($counts) {
+    $max = 0;
+    $types = [];
+    $tested = array_diff_key($counts, ['Belum Tes' => 0]);
+    $total_tested = array_sum($tested);
 
-$get_dominant = function($counts) {
-    $max_count = 0;
-    $dominant_type = [];
-    $total = array_sum($counts);
-    $counts_without_belum = array_diff_key($counts, ['Belum Tes' => 0]);
-    $total_tested = array_sum($counts_without_belum);
-
-    foreach ($counts_without_belum as $type => $count) {
-        if ($count > $max_count) {
-            $max_count = $count;
-            $dominant_type = [$type];
-        } elseif ($count == $max_count && $count > 0) {
-            $dominant_type[] = $type;
+    foreach ($tested as $type => $count) {
+        if ($count > $max) {
+            $max = $count;
+            $types = [$type];
+        } elseif ($count === $max && $count > 0) {
+            $types[] = $type;
         }
-    }
-    if ($max_count == 0 && ($counts['Belum Tes'] ?? 0) == $total) {
-        return [
-            'types' => [], 
-            'count' => 0, 
-            'total' => $total_tested
-        ];
     }
 
     return [
-        'types' => $dominant_type, 
-        'count' => $max_count, 
+        'types' => $types,
+        'count' => $max,
         'total' => $total_tested
     ];
 };
 
 $dominant_gb = $get_dominant($gb_counts);
-
 $total_tested_gb = $dominant_gb['total'];
-
-$gb_percentage = ($dominant_gb['count'] > 0 && $total_tested_gb > 0) ? round(($dominant_gb['count'] / $total_tested_gb) * 100) : 0;
+$gb_percentage = ($dominant_gb['count'] > 0 && $total_tested_gb > 0)
+    ? round(($dominant_gb['count'] / $total_tested_gb) * 100)
+    : 0;
 
 $total_siswa = count($data_siswa);
 ?>
+
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -173,14 +160,21 @@ $total_siswa = count($data_siswa);
         }
 
 :root {
+    /* PRIMARY */
     --primary: #0F3A3A;
     --primary-dark: #0B2E2E;
     --primary-light: #123E44;
+
+    /* ACCENT */
     --accent: #5FA8A1;
     --accent-dark: #4C8E89;
+
+    /* NEUTRAL */
     --white: #FFFFFF;
     --gray-50: #F9FAFB;
     --gray-200: #E5E7EB;
+
+    /* STATUS (DISESUAIKAN TEMA) */
     --success: #4C8E89;
     --warning: #5FA8A1;
     --danger: #9B2C2C;
@@ -406,7 +400,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 -webkit-print-color-adjust: exact !important;
                 color-adjust: exact !important;
             }
-
+            
             @page {
                 size: A4 portrait;
                 margin: 0.8cm;
@@ -710,7 +704,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header class="no-print md:hidden flex justify-between items-center px-4 py-3 glass-effect shadow-lg sticky top-0 z-30 ">
+    <header class="hide-on-print md:hidden flex justify-between items-center px-4 py-3 glass-effect shadow-lg sticky top-0 z-30">
         <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-xl primary-gradient flex items-center justify-center shadow-lg">
                 <i class="fas fa-user-tie text-white text-lg"></i>
@@ -869,7 +863,8 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                     </div>
                 </div>
 
-                <?php if (!empty($filter_kelas) && !empty($filter_jurusan) && !empty($filter_tahun)) : ?>
+                <?php if (!empty($filter_kelas) && !empty($filter_jurusan)) : ?>
+
                 <div class="flex flex-wrap gap-2 ml-16">
                     <span class="filter-badge">
                         <i class="fas fa-users"></i>
@@ -878,15 +873,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                     <span class="filter-badge">
                         <i class="fas fa-graduation-cap"></i>
                         <?php echo htmlspecialchars($filter_jurusan); ?>
-                    </span>
-                    <span class="filter-badge">
-                        <i class="fas fa-calendar"></i>
-                        <?php 
-                        $current_tahun = array_filter($data_tahun, function($t) use ($filter_tahun) { 
-                            return $t['id_tahun'] == $filter_tahun; 
-                        });
-                        echo htmlspecialchars(reset($current_tahun)['tahun']);
-                        ?>
                     </span>
                 </div>
                 <?php endif; ?>
@@ -928,18 +914,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                         </select>
                     </div>
 
-                    <!-- <div class="group">
-                        <label for="tahun" class="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                            <i class="fas fa-calendar-alt "></i>
-                            Tahun Ajaran
-                        </label>
-                        <select id="tahun" name="tahun" class="w-full rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 p-3 text-sm font-medium shadow-sm" required>
-                            <option value="">-- Pilih Tahun Ajaran --</option>
-                            <?php foreach ($data_tahun as $tahun): ?>
-                                <option value="<?php echo $tahun['id_tahun']; ?>" <?php echo ($filter_tahun == $tahun['id_tahun']) ? 'selected' : ''; ?>><?php echo $tahun['tahun']; ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div> -->
             
                     <div class="flex gap-2 col-span-1 md:col-span-2 lg:col-span-1 overflow-hidden">
                         <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
@@ -954,8 +928,8 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 </form>
             </div>
             
-            <?php if (!empty($filter_kelas) && !empty($filter_jurusan) && !empty($filter_tahun)) : ?>
-            
+            <?php if (!empty($filter_kelas) && !empty($filter_jurusan)) : ?>
+
                 <div class="no-print glass-effect p-6 rounded-2xl shadow-xl mb-8 border border-gray-200">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
@@ -982,6 +956,8 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             
                 <?php if (count($data_siswa) > 0) : ?>
                 
+                
+
                 <div class="no-print mb-8">
                     <div class="chart-container glass-effect p-8 rounded-2xl shadow-2xl border border-gray-200 card-hover">
                         <div class="flex items-center gap-3 mb-6">
@@ -1000,71 +976,86 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 </div>
 
                 <div class="mt-8 report-section glass-effect p-8 rounded-2xl shadow-2xl border border-gray-200">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg animated-icon">
-                            <i class="fas fa-lightbulb text-white text-xl"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-2xl font-bold text-gray-800">Rangkuman Analisis</h4>
-                            <p class="text-sm text-gray-500">Insight dari data yang tersedia</p>
-                        </div>
-                    </div>
-                    
-                    <div class="wawasan-data-pdf hidden hide-on-print show-on-print">
-                        <p>Berdasarkan data profil siswa <?php echo $filter_title; ?> (Total <?php echo $total_siswa; ?> Siswa), diperoleh ringkasan data sebagai berikut:</p>
-                        <ul style="list-style-type: disc; margin-left: 20px; padding-left: 0;">
-                            <li>
-                                Gaya Belajar Dominan: <span><?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi (Semua Belum Tes)' : implode(' dan ', $dominant_gb['types']); ?></span> (<?php echo $dominant_gb['count']; ?> siswa, <?php echo $gb_percentage; ?>% dari siswa yang sudah tes).
-                            </li>
-                            <li>
-                                Status Tes Siswa: 
-                                <span><?php echo $gb_status_text; ?></span>.
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <div class="wawasan-data-web hide-on-print space-y-4">
-                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-indigo-500 p-6 rounded-xl">
-                            <div class="flex items-start gap-3">
-                                <i class="fas fa-trophy text-indigo-600 text-2xl mt-1"></i>
-                                <div>
-                                    <h5 class="font-bold text-gray-800 mb-2">Gaya Belajar Dominan</h5>
-                                    <p class="text-gray-700">
-                                        <span class="font-bold text-indigo-600 text-xl">
-                                            <?php echo empty($dominant_gb['types']) ? 'Tidak Teridentifikasi' : implode(' & ', $dominant_gb['types']); ?>
-                                        </span>
-                                        <?php if (!empty($dominant_gb['types'])) : ?>
-                                        <br>
-                                        <span class="text-sm">
-                                            <i class="fas fa-users text-gray-500 mr-1"></i>
-                                            <?php echo $dominant_gb['count']; ?> siswa 
-                                            (<strong><?php echo $gb_percentage; ?>%</strong> dari yang sudah tes)
-                                        </span>
-                                        <?php endif; ?>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+    <div class="flex items-center gap-3 mb-6">
+        <div>
+            <h4 class="text-2xl font-bold text-gray-800">Rangkuman Analisis</h4>
+            <p class="text-sm text-gray-500">Insight dari data yang tersedia</p>
+        </div>
+    </div>
 
-                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-6 rounded-xl">
-                            <div class="flex items-start gap-3">
-                                <i class="fas fa-clipboard-check text-green-600 text-2xl mt-1"></i>
-                                <div>
-                                    <h5 class="font-bold text-gray-800 mb-2">Status Tes</h5>
-                                    <p class="text-gray-700"><?php echo $gb_status_text; ?></p>
-                                    <?php if ($gb_belum_tes > 0) : ?>
-                                    <?php else : ?>
-                                    <div class="mt-3 inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg font-medium text-sm">
-                                        <i class="fas fa-check-circle"></i>
-                                        <span>Semua Lengkap</span>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <div class="wawasan-data-pdf show-on-print-only">
+        <p>
+            Berdasarkan data profil siswa <?php echo $filter_title; ?>
+            (Total <?php echo $total_siswa; ?> Siswa), diperoleh ringkasan data sebagai berikut:
+        </p>
+        <ul style="list-style-type: disc; margin-left: 20px; padding-left: 0;">
+            <li>
+                Gaya Belajar Dominan:
+                <strong>
+                    <?php
+                        echo empty($dominant_gb['types'])
+                            ? 'Tidak Teridentifikasi (Semua Belum Tes)'
+                            : implode(' dan ', $dominant_gb['types']);
+                    ?>
+                </strong>
+                (<?php echo $dominant_gb['count']; ?> siswa,
+                <?php echo $gb_percentage; ?>%)
+            </li>
+            <li>
+                Status Tes Siswa:
+                <strong><?php echo $gb_status_text; ?></strong>
+            </li>
+        </ul>
+    </div>
+
+    <div class="wawasan-data-web hide-on-print space-y-4">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-indigo-500 p-6 rounded-xl">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-trophy text-indigo-600 text-2xl mt-1"></i>
+                <div>
+                    <h5 class="font-bold text-gray-800 mb-2">Gaya Belajar Dominan</h5>
+                    <p class="text-gray-700">
+                        <span class="font-bold text-indigo-600 text-xl">
+                            <?php
+                                echo empty($dominant_gb['types'])
+                                    ? 'Tidak Teridentifikasi'
+                                    : implode(' & ', $dominant_gb['types']);
+                            ?>
+                        </span>
+                        <?php if (!empty($dominant_gb['types'])) : ?>
+                            <br>
+                            <span class="text-sm">
+                                <i class="fas fa-users text-gray-500 mr-1"></i>
+                                <?php echo $dominant_gb['count']; ?> siswa
+                                (<strong><?php echo $gb_percentage; ?>%</strong> dari yang sudah tes)
+                            </span>
+                        <?php endif; ?>
+                    </p>
                 </div>
+            </div>
+        </div>
 
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-6 rounded-xl">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-clipboard-check text-green-600 text-2xl mt-1"></i>
+                <div>
+                    <h5 class="font-bold text-gray-800 mb-2">Status Tes</h5>
+                    <p class="text-gray-700"><?php echo $gb_status_text; ?></p>
+
+                    <?php if ($gb_belum_tes > 0) : ?>
+                    <?php else : ?>
+                        <div class="mt-3 inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg font-medium text-sm">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Semua Lengkap</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                
                 <div class="report-section show-on-print-only mt-6">
                     <h4 style="font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 5px;">
                         1. Hasil Tes Gaya Belajar
@@ -1076,6 +1067,7 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                                 <th>Presentase</th> 
                             </tr>
                         </thead>
+                        
                         <tbody>
                             <?php
                             $total_tested_siswa = $total_siswa - ($gb_counts['Belum Tes'] ?? 0);
@@ -1127,9 +1119,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                                 <span class="inline-flex items-center gap-2 bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">
                                     <i class="fas fa-graduation-cap"></i> Jurusan
                                 </span>
-                                <span class="inline-flex items-center gap-2 bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">
-                                    <i class="fas fa-calendar"></i> Tahun Ajaran
-                                </span>
                             </div>
                         </div>
                     </div>
@@ -1138,9 +1127,9 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
         </main>
     </div>
 
-    <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
+    <footer class="hide-on-print bg-white border-t border-gray-200 py-6 mt-auto">
         <div class="text-center">
-            <p class="text-sm text-gray-600">
+            <p class="ms-20 text-sm text-gray-600">
                 &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
             </p>
         </div>
