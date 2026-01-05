@@ -371,9 +371,9 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             --primary: #0F3A3A;
             --primary-dark: #0B2E2E;
             --primary-light: #123E44;
-            --accent: #5FA8A1;
+            --accent: #1e615aff;
             --accent-dark: #4C8E89;
-            --accent-light: #7BC4BE;
+            --accent-light: #2fa49aff;
             --white: #FFFFFF;
             --gray-50: #F9FAFB;
             --gray-100: #F3F4F6;
@@ -830,7 +830,7 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                 <div class="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-0 group-hover:opacity-20 transition-opacity"></div>
             </div>
             <div>
-                <span class="text-xl font-bold gradient-text block">Detail Siswa</span>
+                <span class="text-xl font-extrabold gradient-text block">Detail Siswa</span>
             </div>
         </a>
         <a href="javascript:void(0);" onclick="goBack()" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-bold text-sm">
