@@ -890,7 +890,12 @@ $waktu_durasi_options = [15, 30, 45, 60];
     </div>
     
     <footer class="no-print text-center py-4 bg-white border-t border-gray-200 text-gray-600 text-xs mt-auto md:ml-[260px]">
-        &copy; 2025 Bimbingan Konseling SMKN 2 Banjarmasin.
+        <p class="text-sm text-black/70">
+    &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
+</p>
+<p class="text-xs text-gray-400 mt-1">
+    Developed by <span class="font-medium">SahDu Team</span>
+</p>
     </footer>
 
     <div id="konselingModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">

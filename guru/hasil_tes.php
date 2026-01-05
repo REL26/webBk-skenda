@@ -1130,8 +1130,12 @@ ${linkEnd}
     <footer class="bg-white border-t border-gray-200 py-6 mt-auto content-wrapper">
         <div class="text-center">
             <p class="text-sm text-gray-600">
-                &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
-            </p>
+    &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
+</p>
+<p class="text-xs text-gray-400 mt-1">
+    Developed by <span class="font-medium">SahDu Team</span>
+</p>
+
         </div>
     </footer>
 </body>
