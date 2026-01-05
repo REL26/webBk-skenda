@@ -853,7 +853,12 @@ $stmt_kelompok->close();
         </div>
     </div>
     <footer class="text-center py-4 primary-bg text-white text-xs md:text-sm mt-auto">
-    <p>&copy; <?php echo date('Y'); ?> Bimbingan Konseling - SMKN 2 Banjarmasin. All rights reserved.</p>
+    <p class="text-sm text-gray-200 font-light">
+    &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
+</p>
+<p class="text-xs text-gray-400 mt-1">
+    Developed by <span class="font-medium">SahDu Team</span>
+</p>
 </footer>
 </body>
 </html>

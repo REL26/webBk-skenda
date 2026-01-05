@@ -699,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div><span class="font-medium text-gray-600">NIS:</span> <strong class="text-gray-900"><?php echo $siswa['nis']; ?></strong></div>
                                 <div><span class="font-medium text-gray-600">NISN:</span> <strong class="text-gray-900"><?php echo htmlspecialchars($siswa['nisn'] ?? '-'); ?></strong></div>
                                 <div><span class="font-medium text-gray-600">Kelas & Jurusan:</span> <strong class="text-gray-900"><?php echo $kelas_jurusan; ?></strong></div>
-                                <div><span class="font-medium text-gray-600">ID Siswa (Internal):</span> <strong class="text-gray-900"><?php echo $siswa['id_siswa']; ?></strong></div>
+                                <!-- <div><span class="font-medium text-gray-600">ID Siswa (Internal):</span> <strong class="text-gray-900"><?php echo $siswa['id_siswa']; ?></strong></div> -->
                             </div>
                         </div>
 
@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h4 class="text-lg font-bold text-indigo-700 border-b pb-2 mb-3">Hasil Tes (Baca Saja)</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
                                 <div><span class="font-medium text-gray-600">Gaya Belajar Dominan:</span> <strong class="text-indigo-900"><?php echo $gaya_belajar; ?></strong></div>
-                                <div><span class="font-medium text-gray-600">Tipe Kecerdasan Dominan:</span> <strong class="text-indigo-900"><?php echo $hasil_tes_kemampuan_calculated; ?></strong></div>
+                                <div><span class="font-medium text-gray-600">Tipe Kemampuan Dominan:</span> <strong class="text-indigo-900"><?php echo $hasil_tes_kemampuan_calculated; ?></strong></div>
                             </div>
                         </div>
 
@@ -1107,7 +1107,12 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <footer class="no-print primary-bg text-white text-center py-4 mt-auto">
-        <p class="text-sm">&copy; <?php echo date('Y'); ?> Bimbingan Konseling - SMKN 2 Banjarmasin. All rights reserved.</p>
+        <p class="text-sm text-gray-200 font-light">
+    &copy; 2025 <span class="font-semibold">Bimbingan Konseling SMKN 2 Banjarmasin</span>
+</p>
+<p class="text-xs text-gray-400 mt-1">
+    Developed by <span class="font-medium">SahDu Team</span>
+</p>
     </footer>
 
 </body>
