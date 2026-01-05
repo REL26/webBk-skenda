@@ -1,3 +1,9 @@
+<!--
+Sistem ini dikembangkan sebagai proyek internal sekolah
+oleh tim siswa (2025–2026)
+-->
+
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -52,7 +58,7 @@
 
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1">
-              NIS / Email Guru
+              NIS (Siswa) / Email (Guru)
             </label>
             <input type="text" name="nis"
               placeholder="Masukkan NIS atau Email"
@@ -161,3 +167,4 @@
 
 </body>
 </html>
+
