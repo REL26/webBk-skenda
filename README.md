@@ -22,8 +22,9 @@ efficient manner.
 - JavaScript
 
 ## 👨‍💻 Developer
-Developed by **Farel Albari**  
+Developed by **Farel Albari**  (me) 
 Team: **SahDu Team**  
+Team Leader: **Farel Albari** (me) 
 Project: Sistem Bimbingan Konseling Sekolah  
 Institution: SMKN 2 Banjarmasin  
 Year: 2025
