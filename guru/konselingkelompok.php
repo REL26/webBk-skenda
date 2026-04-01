@@ -608,7 +608,6 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
     <header class="md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30">
     
-    <!-- LEFT: ICON + TEXT -->
     <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-lg primary-bg flex items-center justify-center shadow-md">
             <i class="fas fa-user-tie text-white"></i>
@@ -620,7 +619,6 @@ $waktu_durasi_options = [15, 30, 45, 60];
         </div>
     </div>
 
-    <!-- RIGHT: MENU BUTTON -->
     <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 hover:bg-gray-100 rounded-lg transition">
         <i class="fas fa-bars"></i>
     </button>
@@ -670,6 +668,9 @@ $waktu_durasi_options = [15, 30, 45, 60];
             </a>
             <a href="bimbingankelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'bimbingankelompok.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
                 <i class="fas fa-users-cog mr-2"></i> Bimbingan Kelompok
+            </a>
+            <a href="laporanbk.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'bimbingankelompok.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
+                <i class="fas fa-users-cog mr-2"></i> Laporan BK
             </a>
         </div>
         <hr class="border-gray-200">
@@ -732,6 +733,9 @@ $waktu_durasi_options = [15, 30, 45, 60];
                     </a>
                     <a href="bimbingankelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users-cog mr-3 w-4"></i> Bimbingan Kelompok
+                    </a>
+                    <a href="laporanbk.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                        <i class="fas fa-users-cog mr-3 w-4"></i> Laporan BK
                     </a>
                 </div>
 

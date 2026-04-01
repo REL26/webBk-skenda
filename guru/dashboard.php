@@ -175,8 +175,11 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
                 <i class="fas fa-users w-4"></i> Konseling Kelompok
             </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
+            <a href="bimbingankelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
                 <i class="fas fa-users w-4"></i> Bimbingan Kelompok
+            </a>
+            <a href="laporanbk.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2">
+                <i class="fas fa-users w-4"></i> Laporan BK
             </a>
         </div>
         <hr class="border-gray-200">
@@ -238,8 +241,11 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
                     <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
                     </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="bimbingankelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Bimbingan Kelompok
+                    </a>
+                    <a href="laporanbk.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                        <i class="fas fa-users mr-3 w-4"></i> Laporan BK
                     </a>
                 </div>
 

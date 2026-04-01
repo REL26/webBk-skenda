@@ -70,6 +70,7 @@ class="flex-1 px-4 py-2 border rounded-lg text-sm">
 </option>
 <?php endwhile; ?>
 </select>
+
 <button class="px-5 py-2 bg-emerald-700 text-white rounded-lg text-sm">
 <i class="fas fa-search mr-2"></i>Cari
 </button>

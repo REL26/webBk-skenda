@@ -763,6 +763,9 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
                 <i class="fas fa-users mr-2"></i> Bimbingan Kelompok
             </a>
+            <a href="laporanbk.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
+                <i class="fas fa-users mr-2"></i> Laporan BK
+            </a>
         </div>
         <hr class="border-gray-200">
 
@@ -822,8 +825,11 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                     <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
                     </a>
-                    <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                    <a href="bimbingankelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
                         <i class="fas fa-users mr-3 w-4"></i> Bimbingan Kelompok
+                    </a>
+                    <a href="laporanbk.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
+                        <i class="fas fa-users mr-3 w-4"></i> Laporan BK
                     </a>
                 </div>
 
