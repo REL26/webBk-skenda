@@ -288,7 +288,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             <i class="fas fa-bars"></i>
         </button>
     </header>
-
+    
     <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 transition-opacity duration-300" onclick="toggleMenu()"></div>
     <div id="mobileMenu" class="fade-slide hidden-transition absolute top-[64px] left-0 w-full bg-white shadow-xl z-30 md:hidden flex flex-col text-left text-base border-t border-gray-100">
         <a href="dashboard.php" class="py-3 px-4 primary-color bg-gray-100 font-bold transition flex items-center"><i class="fas fa-home mr-3"></i>Beranda</a>
@@ -313,7 +313,23 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 
         </div>
     </section>
+    <?php if (isset($_SESSION['pesan_sukses'])): ?>
+    <div id="alert-message" class="max-w-7xl mx-auto mt-4 px-4">
+        <div class="bg-green-100 border-green-500 text-green-700 p-4 rounded shadow-md flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3"></i>
+                <span><?php echo $_SESSION['pesan_sukses']; ?></span>
+            </div>
+            <button onclick="document.getElementById('alert-message').remove()" class="text-green-700 hover:text-green-900">
+                <i class="fas fa-times ms-2 "></i>
+            </button>
+        </div>
+    </div>
 
+    <?php 
+        unset($_SESSION['pesan_sukses']); 
+    ?>
+<?php endif; ?>
     <section id="test-section" class="py-12 md:py-16 px-4 flex-grow container mx-auto">
         <h2 class="text-2xl md:text-3xl font-bold text-center mb-10 primary-color border-b-2 border-gray-200 pb-3">
             Pilih Tes Minat Bakat Anda
@@ -459,5 +475,15 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 </p>
 
     </footer>
+    <script>
+    setTimeout(function() {
+        const alert = document.getElementById('alert-message');
+        if (alert) {
+            alert.style.transition = "opacity 0.5s ease";
+            alert.style.opacity = "0";
+            setTimeout(() => alert.remove(), 500);
+        }
+    }, 3000);
+</script>
 </body>
 </html>

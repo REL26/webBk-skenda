@@ -175,29 +175,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ";
         
         if (mysqli_query($koneksi, $update_query)) {
-            $pesan_sukses = "Data biodata berhasil diperbarui!";
-            $query_siswa = mysqli_query($koneksi, "
-                SELECT 
-                    s.*,
-                    hg.skor_visual, hg.skor_auditori, hg.skor_kinestetik
-                FROM siswa s
-                LEFT JOIN hasil_gayabelajar hg ON s.id_siswa = hg.id_siswa
-                WHERE s.id_siswa='$id_siswa'
-            ");
-            $siswa = mysqli_fetch_assoc($query_siswa);
-
-            $query_kecerdasan = mysqli_query($koneksi, "
-                SELECT *
-                FROM hasil_kecerdasan
-                WHERE id_siswa='$id_siswa'
-                ORDER BY tanggal_tes DESC 
-                LIMIT 1
-            ");
-            $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
-            
-        } else {
-            $pesan_error = "Gagal memperbarui data: " . mysqli_error($koneksi);
-        }
+        $_SESSION['pesan_sukses'] = "Data biodata berhasil diperbarui!";
+        header("Location: dashboard.php");
+        exit; 
+    } else {
+        $pesan_error = "Gagal memperbarui data: " . mysqli_error($koneksi);
+    }
     }
 }
 
@@ -438,14 +421,10 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
     const currentIcon = header.querySelector('.accordion-icon');
 
     const isCollapsed = currentContent.classList.contains('collapsed');
-
-    // 1. Tutup semua accordion
     document.querySelectorAll('.accordion-group').forEach(group => {
         group.querySelector('.accordion-content').classList.add('collapsed');
         group.querySelector('.accordion-icon').classList.remove('rotated');
     });
-
-    // 2. Jika sebelumnya tertutup, buka yang diklik
     if (isCollapsed) {
         currentContent.classList.remove('collapsed');
         currentIcon.classList.add('rotated');
@@ -757,12 +736,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="berat_badan" class="form-label"><i class="fas fa-weight mr-1"></i> Berat Badan (kg)</label>
-                                    <input type="number" id="berat_badan" name="berat_badan" class="form-input" value="<?php echo htmlspecialchars($siswa['berat_badan'] ?? ''); ?>" min="1" max="300" placeholder="Cth: 55">
+                                    <input type="number" id="berat_badan" name="berat_badan" class="form-input" value="<?php echo htmlspecialchars($siswa['berat_badan'] ?? ''); ?>"  placeholder="Cth: 55">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="tinggi_badan" class="form-label"><i class="fas fa-ruler-vertical mr-1"></i> Tinggi Badan (cm)</label>
-                                    <input type="number" id="tinggi_badan" name="tinggi_badan" class="form-input" value="<?php echo htmlspecialchars($siswa['tinggi_badan'] ?? ''); ?>" min="1" max="300" placeholder="Cth: 165">
+                                    <input type="number" id="tinggi_badan" name="tinggi_badan" class="form-input" value="<?php echo htmlspecialchars($siswa['tinggi_badan'] ?? ''); ?>"  placeholder="Cth: 165">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -811,22 +790,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                                 <div class="col-span-1">
                                     <label for="no_telp" class="form-label"><i class="fas fa-mobile-alt mr-1"></i> Nomor HP Siswa</label>
-                                    <input type="number" id="no_telp" name="no_telp" class="form-input" value="<?php echo htmlspecialchars($siswa['no_telp'] ?? ''); ?>" maxlength="20" placeholder="Cth: 08123456789">
+                                    <input type="number" id="no_telp" name="no_telp" class="form-input" value="<?php echo htmlspecialchars($siswa['no_telp'] ?? ''); ?>" maxlength="20" placeholder="Masukkan nomor aktif anda">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="email" class="form-label"><i class="fas fa-envelope mr-1"></i> Email Siswa</label>
-                                    <input type="email" id="email" name="email" class="form-input" value="<?php echo htmlspecialchars($siswa['email'] ?? ''); ?>" maxlength="100" placeholder="Cth: namaanda@gmail.com">
+                                    <input type="email" id="email" name="email" class="form-input" value="<?php echo htmlspecialchars($siswa['email'] ?? ''); ?>" maxlength="100" placeholder="Masukkan email aktif anda">
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="instagram" class="form-label"><i class="fab fa-instagram mr-1"></i> Akun Instagram</label>
-                                    <input type="text" id="instagram" name="instagram" class="form-input" value="<?php echo htmlspecialchars($siswa['instagram'] ?? ''); ?>" maxlength="100" placeholder="Cth: @usernamemu">
+                                    <input type="text" id="instagram" name="instagram" class="form-input" value="<?php echo htmlspecialchars($siswa['instagram'] ?? ''); ?>" maxlength="100" placeholder="Masukkan username ig anda">
                                 </div>
                                 
                                 <div class="md:col-span-2 lg:col-span-3">
                                     <label for="alamat_lengkap" class="form-label"><i class="fas fa-map-marked-alt mr-1"></i> Alamat Lengkap Saat Ini</label>
-                                    <textarea id="alamat_lengkap" name="alamat_lengkap" rows="3" class="form-textarea" placeholder="Tuliskan alamat lengkap Anda (Jalan/Gang, RT/RW, Kelurahan, Kecamatan)."><?php echo htmlspecialchars($siswa['alamat_lengkap'] ?? ''); ?></textarea>
+                                    <textarea id="alamat_lengkap" name="alamat_lengkap" rows="3" class="form-textarea" placeholder="Tuliskan alamat lengkap Anda"><?php echo htmlspecialchars($siswa['alamat_lengkap'] ?? ''); ?></textarea>
                                 </div>
                                 
                             </div>
@@ -861,18 +840,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                                 
                             </div>
-                            
+                            <p class="mb-5 text-red-500"><i class="fas fa-info-circle mr-2"></i>Form Prestasi dan Riwayat Organisasi opsional (tidak wajib diisi)</p>
                             <div class="print-hidden-title"><h3>Prestasi & Organisasi</h3></div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             
                                 <div class="col-span-1">
                                     <label for="prestasi_pengalaman" class="form-label"><i class="fas fa-medal mr-1"></i> Prestasi/Pengalaman Non-Akademik</label>
-                                    <textarea id="prestasi_pengalaman" name="prestasi_pengalaman" rows="5" class="form-textarea" placeholder="Tuliskan prestasi, penghargaan, atau pengalaman lain (Lomba, magang, dll). Pisahkan per baris."><?php echo htmlspecialchars($siswa['prestasi_pengalaman'] ?? ''); ?></textarea>
+                                    <textarea id="prestasi_pengalaman" name="prestasi_pengalaman" rows="5" class="form-textarea" placeholder="Tulis prestasi anda di sini jika ada, caranya pisahkan tiap prestasi dengan klik enter agar teks barunya kebawah, buat seperti list tapi tidak menggunakan tanda seperti - dan bullet"><?php echo htmlspecialchars($siswa['prestasi_pengalaman'] ?? ''); ?></textarea>
                                 </div>
                                 
                                 <div class="col-span-1">
                                     <label for="organisasi" class="form-label"><i class="fas fa-users-cog mr-1"></i> Riwayat Organisasi</label>
-                                    <textarea id="organisasi" name="organisasi" rows="5" class="form-textarea" placeholder="Tuliskan organisasi yang pernah diikuti (OSIS, Pramuka, dll.) beserta posisi Anda. Pisahkan per baris."><?php echo htmlspecialchars($siswa['organisasi'] ?? ''); ?></textarea>
+                                    <textarea id="organisasi" name="organisasi" rows="5" class="form-textarea" placeholder="Tuliskan organisasi yang pernah anda ikuti di sini jika ada, caranya pisahkan tiap organisasi dengan klik enter agar teks barunya kebawah, buat seperti list tapi tidak menggunakan tanda seperti - dan bullet"><?php echo htmlspecialchars($siswa['organisasi'] ?? ''); ?></textarea>
                                 </div>
                             
                             </div>
@@ -897,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="pekerjaan_ayah" class="form-label"><i class="fas fa-briefcase mr-1"></i> Pekerjaan Ayah</label>
-                                    <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" maxlength="100" placeholder="Cth: PNS, Wiraswasta">
+                                    <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" maxlength="100" placeholder="Masukkan pekerjaan Ayah anda">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -941,7 +920,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="transportasi_ke_sekolah" class="form-label"><i class="fas fa-bus mr-1"></i> Transportasi ke Sekolah</label>
-                                    <input type="text" id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['transportasi_ke_sekolah'] ?? ''); ?>" placeholder="Cth: Sepeda Motor / Angkutan Umum">
+                                    <input type="text" id="transportasi_ke_sekolah" name="transportasi_ke_sekolah" class="form-input" value="<?php echo htmlspecialchars($siswa['transportasi_ke_sekolah'] ?? ''); ?>" placeholder="Cth: Sepeda Motor, Mobil, Bus">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -958,7 +937,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="fasilitas_internet" class="form-label"><i class="fas fa-wifi mr-1"></i> Akses Internet di Rumah</label>
-                                    <input type="text" id="fasilitas_internet" name="fasilitas_internet" class="form-input" value="<?php echo htmlspecialchars($siswa['fasilitas_internet'] ?? ''); ?>" maxlength="255" placeholder="Cth: WiFi, Data Seluler, Tidak Ada">
+                                    <input type="text" id="fasilitas_internet" name="fasilitas_internet" class="form-input" value="<?php echo htmlspecialchars($siswa['fasilitas_internet'] ?? ''); ?>" maxlength="255" placeholder="Cth: WiFi, Data Seluler">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -968,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="buku_pelajaran_dimiliki" class="form-label"><i class="fas fa-book mr-1"></i> Buku Pelajaran yang Dimiliki</label>
-                                    <input type="text" id="buku_pelajaran_dimiliki" name="buku_pelajaran_dimiliki" class="form-input" value="<?php echo htmlspecialchars($siswa['buku_pelajaran_dimiliki'] ?? ''); ?>" maxlength="255" placeholder="Cth: Buku Paket, LKS, Buku Catatan">
+                                    <input type="text" id="buku_pelajaran_dimiliki" name="buku_pelajaran_dimiliki" class="form-input" value="<?php echo htmlspecialchars($siswa['buku_pelajaran_dimiliki'] ?? ''); ?>" maxlength="255" placeholder="Cth: Buku Paket">
                                 </div>
                                 
                                 <div class="col-span-1">
@@ -978,7 +957,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <div class="col-span-1">
                                     <label for="bahasa_asing_dikuasai" class="form-label"><i class="fas fa-language mr-1"></i> Bahasa Asing Dikuasai</label>
-                                    <input type="text" id="bahasa_asing_dikuasai" name="bahasa_asing_dikuasai" class="form-input" value="<?php echo htmlspecialchars($siswa['bahasa_asing_dikuasai'] ?? ''); ?>" maxlength="255" placeholder="Cth: Inggris (Pasif)">
+                                    <input type="text" id="bahasa_asing_dikuasai" name="bahasa_asing_dikuasai" class="form-input" value="<?php echo htmlspecialchars($siswa['bahasa_asing_dikuasai'] ?? ''); ?>" maxlength="255" placeholder="Cth: Inggris, Portugis">
                                 </div>
                                 
                             </div>
