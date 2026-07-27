@@ -1,0 +1,588 @@
+<?php
+session_start();
+include '../koneksi.php';
+
+if (!isset($_SESSION['id_siswa'])) {
+    header("Location: ../login.php");
+    exit;
+}
+
+$id_siswa = $_SESSION['id_siswa'];
+
+$query = mysqli_query($koneksi, "
+    SELECT 
+        s.*,
+        hg.id_hasil AS id_hasil_gb, 
+        hg.skor_visual, hg.skor_auditori, hg.skor_kinestetik,
+        hk.id_hasil AS id_hasil_kemampuan,
+        hkp.id_hasil AS id_hasil_kepribadian
+    FROM siswa s
+    LEFT JOIN hasil_gayabelajar hg ON s.id_siswa = hg.id_siswa
+    LEFT JOIN hasil_kecerdasan hk ON s.id_siswa = hk.id_siswa
+    LEFT JOIN hasil_kepribadian hkp ON s.id_siswa = hkp.id_siswa
+    WHERE s.id_siswa='$id_siswa'
+");
+$siswa = mysqli_fetch_assoc($query);
+
+$id_hasil_gayabelajar = $siswa['id_hasil_gb'] ?? null;
+$id_hasil_gb_js = json_encode($id_hasil_gayabelajar);
+
+$id_hasil_kemampuan = $siswa['id_hasil_kemampuan'] ?? null;
+$id_hasil_kemampuan_js = json_encode($id_hasil_kemampuan);
+
+$id_hasil_kepribadian = $siswa['id_hasil_kepribadian'] ?? null;
+$id_hasil_kepribadian_js = json_encode($id_hasil_kepribadian);
+
+$nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
+
+$is_biodata_complete = true;
+$required_fields = [
+    'nama_panggilan', 'tempat_lahir', 'tanggal_lahir', 'alamat_lengkap', 'berat_badan', 
+    'tinggi_badan', 'agama', 'hobi_kegemaran', 'anak_ke', 'suku', 'cita_cita', 
+    'no_telp', 'email', 'instagram', 'tentang_saya_singkat', 'riwayat_sma_smk_ma', 
+    'riwayat_smp_mts', 'riwayat_sd_mi', 'nama_ayah', 'pekerjaan_ayah', 'nama_ibu', 
+    'pekerjaan_ibu', 'no_hp_ortu', 'status_tempat_tinggal', 'jarak_ke_sekolah', 
+    'transportasi_ke_sekolah', 'memiliki_hp_laptop', 'fasilitas_internet', 
+    'fasilitas_belajar_dirumah', 'pelajaran_disenangi', 'pelajaran_tdk_disenangi', 
+    'buku_pelajaran_dimiliki', 'bahasa_sehari_hari', 'bahasa_asing_dikuasai', 
+    'tempat_curhat', 'kelebihan_diri', 'kekurangan_diri'
+];
+
+foreach ($required_fields as $field) {
+    if (empty($siswa[$field])) {
+        $is_biodata_complete = false;
+        break;
+    }
+}
+
+$is_tes_kemampuan_done = !empty($id_hasil_kemampuan); 
+$is_tes_gayabelajar_done = $siswa['skor_visual'] !== null;
+$is_tes_kepribadian_done = !empty($id_hasil_kepribadian);
+
+// --- Asesmen BK: satu card di dashboard, isinya menyesuaikan tingkat kelas siswa ---
+// siswa.kelas hanya berisi tingkat murni ('X'/'XI'/'XII'/'LULUS' setelah lulus),
+// TIDAK digabung dengan jurusan (jurusan ada di kolom terpisah) -- jadi
+// perbandingan PERSIS (in_array, bukan substring/prefix) sudah aman dan tidak
+// tertukar antara "X", "XI", dan "XII" walau sama-sama diawali huruf "X".
+$tingkat_asesmen      = strtoupper(trim($siswa['kelas'] ?? ''));
+$versi_asesmen_valid  = ['X', 'XI', 'XII'];
+$asesmen_tersedia     = in_array($tingkat_asesmen, $versi_asesmen_valid, true);
+
+$is_tes_asesmen_done = false;
+$asesmen_href = '#';
+
+if ($asesmen_tersedia) {
+    // asesmen_x.php / asesmen_xi.php / asesmen_xii.php
+    $asesmen_href = 'asesmen_' . strtolower($tingkat_asesmen) . '.php';
+
+    $id_siswa_int = (int) $id_siswa;
+    $tingkat_esc  = mysqli_real_escape_string($koneksi, $tingkat_asesmen);
+    $q_asesmen = mysqli_query($koneksi, "
+        SELECT id_hasil FROM hasil_asesmen
+        WHERE id_siswa = $id_siswa_int AND versi = '$tingkat_esc'
+        LIMIT 1
+    ");
+    $is_tes_asesmen_done = ($q_asesmen && mysqli_num_rows($q_asesmen) > 0);
+}
+
+// Flash pesan sukses setelah redirect dari asesmen_x/xi/xii.php?asesmen_selesai=1
+if (isset($_GET['asesmen_selesai'])) {
+    $_SESSION['pesan_sukses'] = 'Asesmen BK berhasil dikirim. Terima kasih telah mengisi dengan lengkap!';
+}
+
+$status_biodata_js = $is_biodata_complete ? 'true' : 'false';
+$status_kemampuan_js = $is_tes_kemampuan_done ? 'true' : 'false';
+$status_gayabelajar_js = $is_tes_gayabelajar_done ? 'true' : 'false';
+$status_kepribadian_js = $is_tes_kepribadian_done ? 'true' : 'false';
+$status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beranda | BK SMKN 2 Banjarmasin</title>
+    <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2F6C6E; 
+            --secondary-color: #38A169; 
+            --overlay-color: rgba(47, 108, 110, 0.85); 
+        }
+
+        .primary-color { color: var(--primary-color); }
+        .primary-bg { background-color: var(--primary-color); }
+        .primary-border { border-color: var(--primary-color); }
+
+        #hero-section {
+            background-image: url('https://assets-a1.kompasiana.com/items/album/2016/05/25/1459049shutterstock-140079079780x390-57452e9ef37a6148061f8f95.jpg'); 
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: var(--overlay-color); 
+            z-index: 1; 
+        }
+
+        #hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .fade-slide {
+            transition: all 0.3s ease-in-out;
+            transform-origin: top;
+        }
+        .hidden-transition {
+            opacity: 0;
+            transform: scaleY(0.95);
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .visible-transition {
+            opacity: 1;
+            transform: scaleY(1);
+            max-height: 500px; 
+            pointer-events: auto;
+        }
+
+        .test-card {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid #E5E7EB; 
+            position: relative;
+        }
+
+        .card-active:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            border-color: var(--primary-color);
+        }
+        .card-active:hover .card-icon {
+            transform: scale(1.05);
+            color: var(--primary-color);
+        }
+
+        .test-card-done {
+            background-color: #F0FFF4; 
+            border: 2px solid var(--secondary-color); 
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        .test-card-done .card-icon {
+            color: var(--secondary-color) !important; 
+        }
+        .test-card-done:hover {
+            transform: scale(1.01);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+        }
+        .test-card-done .status-label {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-card-locked, .test-card-biodata-locked {
+            filter: grayscale(80%);
+            opacity: 0.7;
+            cursor: not-allowed;
+            background-color: #F9FAFB;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .test-card-locked:hover, .test-card-biodata-locked:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+            transform: none !important;
+        }
+        .lock-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 0.75rem;
+            pointer-events: none;
+        }
+    </style>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const body = document.body;
+
+            const isClosed = menu.classList.contains('hidden-transition');
+
+            if (isClosed) {
+                menu.classList.remove('hidden-transition');
+                menu.classList.add('visible-transition');
+                overlay.classList.remove('hidden');
+                body.classList.add('overflow-hidden');
+            } else {
+                menu.classList.remove('visible-transition');
+                menu.classList.add('hidden-transition');
+                overlay.classList.add('hidden');
+                body.classList.remove('overflow-hidden');
+            }
+        }
+        
+        const IS_BIODATA_COMPLETE = <?php echo $status_biodata_js; ?>;
+        const ID_HASIL_GAYABELAJAR = <?php echo $id_hasil_gb_js; ?>;
+        const ID_HASIL_KEMAMPUAN = <?php echo $id_hasil_kemampuan_js; ?>;
+        const ID_HASIL_KEPRIBADIAN = <?php echo $id_hasil_kepribadian_js; ?>;
+        const IS_TES_KEPRIBADIAN_DONE = <?php echo $status_kepribadian_js; ?>;
+        const IS_TES_ASESMEN_DONE = <?php echo $status_asesmen_js; ?>;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.card-link').forEach(card => {
+                const isTestDone = card.dataset.testStatus === 'true';
+                const testName = card.dataset.testName;
+                const cardElement = card.querySelector('.test-card');
+
+                let finalUrl = card.getAttribute('href'); 
+
+                if (isTestDone) {
+                    // Asesmen BK tidak punya halaman hasil untuk siswa -- hanya
+                    // Guru BK yang bisa melihat jawabannya. Jangan tawarkan
+                    // navigasi "Lihat Hasil" seperti tes lain.
+                    if (testName === 'Asesmen BK') {
+                        card.addEventListener('click', e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            alert('Asesmen BK sudah Anda isi. Jawaban hanya dapat dilihat oleh Guru BK dan tidak ditampilkan di sini.');
+                        });
+                        return;
+                    }
+
+                    if (testName === 'Tes Gaya Belajar' && ID_HASIL_GAYABELAJAR) {
+                        finalUrl = 'hasil_gayabelajar.php?id_hasil=' + ID_HASIL_GAYABELAJAR;
+                        card.setAttribute('href', finalUrl);
+                    } else if (testName === 'Tes Kemampuan' && ID_HASIL_KEMAMPUAN) {
+                        finalUrl = 'hasil_kemampuan.php?id_hasil=' + ID_HASIL_KEMAMPUAN;
+                        card.setAttribute('href', finalUrl);
+                    } else if (testName === 'Tes Kepribadian' && ID_HASIL_KEPRIBADIAN) {
+                        finalUrl = 'hasil_kepribadian.php?id_hasil=' + ID_HASIL_KEPRIBADIAN;
+                        card.setAttribute('href', finalUrl);
+                    }
+                    
+                    card.addEventListener('click', e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm('Anda sudah mengerjakan ' + testName + '. Apakah Anda ingin melihat hasil tes Anda sekarang?')) {
+                            window.location.href = finalUrl; 
+                        }
+                    });
+                    
+                } else if (!IS_BIODATA_COMPLETE && !cardElement.classList.contains('test-card-locked')) {
+                    cardElement.classList.add('test-card-biodata-locked');
+                } else if (!cardElement.classList.contains('test-card-locked')) {
+                    cardElement.classList.add('card-active');
+                }
+
+                if (cardElement.classList.contains('test-card-biodata-locked')) {
+                    card.addEventListener('click', e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('Akses terkunci! Anda wajib melengkapi data di menu "Data Profiling" terlebih dahulu.');
+                    });
+                }
+    
+                if (cardElement.classList.contains('test-card-locked')) {
+                     card.addEventListener('click', e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (testName === 'Asesmen BK') {
+                            alert('Asesmen BK saat ini tidak tersedia untuk status kelas Anda.');
+                        } else {
+                            alert(testName + ' akan segera hadir! Mohon tunggu informasi lebih lanjut.');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</head>
+<body class="font-sans bg-gray-50 text-gray-800 flex flex-col min-h-screen">
+
+    <header class="flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2">
+            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
+            <div>
+                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-gray-600">Bimbingan dan Konseling</small>
+            </div>
+        </a>
+        <nav class="hidden md:flex items-center space-x-6">
+            <a href="dashboard.php" class="primary-color font-bold border-b-2 border-transparent border-primary-color pb-1 transition underline">Beranda</a>
+            <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Riwayat</a>
+            <a href="ganti_password.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Ganti Password</a>
+            <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
+                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+            </button>
+        </nav>
+        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+            <i class="fas fa-bars"></i>
+        </button>
+    </header>
+    
+    <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-20 transition-opacity duration-300" onclick="toggleMenu()"></div>
+    <div id="mobileMenu" class="fade-slide hidden-transition absolute top-[64px] left-0 w-full bg-white shadow-xl z-30 md:hidden flex flex-col text-left text-base border-t border-gray-100">
+        <a href="dashboard.php" class="py-3 px-4 primary-color bg-gray-100 font-bold transition flex items-center"><i class="fas fa-home mr-3"></i>Beranda</a>
+        <a href="data_profiling.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-user-edit mr-3"></i>Data Profiling</a>
+        <a href="riwayatkonselingsiswa.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-history mr-3"></i>Riwayat</a>
+        <a href="ganti_password.php" class="py-3 px-4 text-gray-700 hover:bg-gray-50 transition flex items-center"><i class="fas fa-key mr-3"></i>Ganti Password</a>
+        <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-semibold mt-1">
+            <i class="fas fa-sign-out-alt mr-1"></i> Logout
+        </button>
+    </div>
+
+    <section id="hero-section" class="text-center py-16 md:py-28 text-white shadow-2xl">
+        
+        <div id="hero-content" class="max-w-4xl mx-auto px-4">
+            <h1 class="text-3xl md:text-5xl font-extrabold mb-3 md:mb-4">
+                <i class="fas fa-hand-wave mr-2"></i> Selamat Datang, <?php echo htmlspecialchars($nama_siswa); ?>!
+            </h1>
+            <p class="text-lg md:text-xl font-light mb-8 md:mb-10">
+                Halo <?php echo htmlspecialchars($nama_siswa); ?>, temukan potensi terbaik dan arah masa depan Anda di sini!
+            </p>
+
+
+        </div>
+    </section>
+    <?php if (isset($_SESSION['pesan_sukses'])): ?>
+    <div id="alert-message" class="max-w-7xl mx-auto mt-4 px-4">
+        <div class="bg-green-100 border-green-500 text-green-700 p-4 rounded shadow-md flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-3"></i>
+                <span><?php echo $_SESSION['pesan_sukses']; ?></span>
+            </div>
+            <button onclick="document.getElementById('alert-message').remove()" class="text-green-700 hover:text-green-900">
+                <i class="fas fa-times ms-2 "></i>
+            </button>
+        </div>
+    </div>
+
+    <?php 
+        unset($_SESSION['pesan_sukses']); 
+    ?>
+<?php endif; ?>
+    <section id="test-section" class="py-12 md:py-16 px-4 flex-grow container mx-auto">
+        <h2 class="text-2xl md:text-3xl font-bold text-center mb-10 primary-color border-b-2 border-gray-200 pb-3">
+            Pilih Tes Minat Bakat Anda
+        </h2>
+        
+        <?php if (!$is_biodata_complete): ?>
+        <div class="max-w-4xl mx-auto bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-10 rounded-lg shadow-xl" role="alert">
+            <div class="flex items-start">
+                <div class="pt-1"><i class="fas fa-lock mr-3 text-3xl"></i></div>
+                <div>
+                    <p class="font-bold text-lg">AKSES TES TERKUNCI!</p>
+                    <p class="text-sm">Anda wajib melengkapi semua data di menu 
+                        <a href="data_profiling.php" class="font-extrabold underline text-red-700 hover:text-red-800 transition">Data Profiling</a> sebelum dapat memulai tes minat bakat.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+            
+            <?php 
+            $kemampuan_href = $is_tes_kemampuan_done 
+                ? 'hasil_kemampuan.php?id_hasil=' . $id_hasil_kemampuan 
+                : 'tes_kemampuan.php';
+            $card_class_kemampuan = $is_tes_kemampuan_done ? 'test-card-done' : ($is_biodata_complete ? 'card-active' : 'test-card-biodata-locked'); 
+            ?>
+            <a href="<?php echo $kemampuan_href; ?>" 
+                data-test-name="Tes Kemampuan" 
+                data-test-status="<?php echo $status_kemampuan_js; ?>" 
+                class="card-link h-full block">
+                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_kemampuan; ?>">
+                    <i class="fas fa-brain primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                    <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Kemampuan</h4>
+                    <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
+                        Mengukur potensi kognitif dan akademik. Membantu Anda memahami kemampuan dasar dan memilih bidang studi/jurusan yang sesuai.
+                    </p>
+                    
+                    <?php if ($is_tes_kemampuan_done): ?>
+                        <span class="status-label"><i class="fas fa-check-circle mr-1"></i> Selesai</span>
+                        <div class="mt-auto text-sm md:text-base font-bold text-green-600 pt-2">Lihat Hasil <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php elseif (!$is_biodata_complete): ?>
+                        <div class="lock-overlay">
+                            <div class="text-center">
+                                <i class="fas fa-lock text-red-600 text-3xl mb-1"></i>
+                                <div class="mt-auto text-sm md:text-base font-extrabold text-red-600">Terkunci!</div>
+                                <div class="text-xs text-red-800 mt-1 font-semibold">Lengkapi Data Profiling</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto text-sm md:text-base font-bold text-gray-500 pt-2">Mulai <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php else: ?>
+                        <div class="mt-auto text-sm md:text-base font-bold primary-color pt-2">Mulai Tes <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php endif; ?>
+                </div>
+            </a>
+
+            <?php 
+            $gayabelajar_href = $is_tes_gayabelajar_done 
+                ? 'hasil_gayabelajar.php?id_hasil=' . $id_hasil_gayabelajar 
+                : 'tes_gayabelajar.php';
+            $card_class_gayabelajar = $is_tes_gayabelajar_done ? 'test-card-done' : ($is_biodata_complete ? 'card-active' : 'test-card-biodata-locked'); 
+            ?>
+            <a href="<?php echo $gayabelajar_href; ?>" 
+                data-test-name="Tes Gaya Belajar" 
+                data-test-status="<?php echo $status_gayabelajar_js; ?>"
+                class="card-link h-full block">
+                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_gayabelajar; ?>">
+                    <i class="fas fa-palette primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                    <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Gaya Belajar</h4>
+                    <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
+                        Mengidentifikasi cara belajar paling efektif Anda (Visual, Auditorik, Kinestetik) untuk memaksimalkan proses belajar.
+                    </p>
+                    
+                    <?php if ($is_tes_gayabelajar_done): ?>
+                        <span class="status-label"><i class="fas fa-check-circle mr-1"></i> Selesai</span>
+                        <div class="mt-auto text-sm md:text-base font-bold text-green-600 pt-2">Lihat Hasil <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php elseif (!$is_biodata_complete): ?>
+                        <div class="lock-overlay">
+                            <div class="text-center">
+                                <i class="fas fa-lock text-red-600 text-3xl mb-1"></i>
+                                <div class="mt-auto text-sm md:text-base font-extrabold text-red-600">Terkunci!</div>
+                                <div class="text-xs text-red-800 mt-1 font-semibold">Lengkapi Data Profiling</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto text-sm md:text-base font-bold text-gray-500 pt-2">Mulai <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php else: ?>
+                        <div class="mt-auto text-sm md:text-base font-bold primary-color pt-2">Mulai Tes <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php endif; ?>
+                </div>
+            </a>
+
+            <?php
+            $kepribadian_href = $is_tes_kepribadian_done
+                ? 'hasil_kepribadian.php?id_hasil=' . $id_hasil_kepribadian
+                : 'tes_kepribadian.php';
+            $card_class_kepribadian = $is_tes_kepribadian_done ? 'test-card-done' : ($is_biodata_complete ? 'card-active' : 'test-card-biodata-locked');
+            ?>
+            <a href="<?php echo $kepribadian_href; ?>"
+                data-test-name="Tes Kepribadian"
+                data-test-status="<?php echo $status_kepribadian_js; ?>"
+                class="card-link h-full block">
+                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_kepribadian; ?>">
+                    <i class="fas fa-user-shield primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                    <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Kepribadian</h4>
+                    <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
+                        Membantu Anda mengenal lebih dalam tipe kepribadian, kekuatan, dan potensi tantangan Anda di masa depan.
+                    </p>
+
+                    <?php if ($is_tes_kepribadian_done): ?>
+                        <span class="status-label"><i class="fas fa-check-circle mr-1"></i> Selesai</span>
+                        <div class="mt-auto text-sm md:text-base font-bold text-green-600 pt-2">Lihat Hasil <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php elseif (!$is_biodata_complete): ?>
+                        <div class="lock-overlay">
+                            <div class="text-center">
+                                <i class="fas fa-lock text-red-600 text-3xl mb-1"></i>
+                                <div class="mt-auto text-sm md:text-base font-extrabold text-red-600">Terkunci!</div>
+                                <div class="text-xs text-red-800 mt-1 font-semibold">Lengkapi Data Profiling</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto text-sm md:text-base font-bold text-gray-500 pt-2">Mulai <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php else: ?>
+                        <div class="mt-auto text-sm md:text-base font-bold primary-color pt-2">Mulai Tes <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php endif; ?>
+                </div>
+            </a>
+
+            <?php
+
+            if (!$asesmen_tersedia) {
+                $card_class_asesmen = 'test-card-locked';
+            } elseif ($is_tes_asesmen_done) {
+                $card_class_asesmen = 'test-card-done';
+            } elseif (!$is_biodata_complete) {
+                $card_class_asesmen = 'test-card-biodata-locked';
+            } else {
+                $card_class_asesmen = 'card-active';
+            }
+            ?>
+            <a href="<?php echo htmlspecialchars($asesmen_href); ?>"
+                data-test-name="Asesmen BK"
+                data-test-status="<?php echo $status_asesmen_js; ?>"
+                class="card-link h-full block">
+                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_asesmen; ?>">
+                    <i class="fas fa-clipboard-list primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                    <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Asesmen BK</h4>
+                    <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
+                        Asesmen kebutuhan Bimbingan dan Konseling sesuai tingkat kelas Anda saat ini.
+                    </p>
+
+                    <?php if (!$asesmen_tersedia): ?>
+                        <div class="lock-overlay">
+                            <div class="text-center">
+                                <i class="fas fa-ban text-gray-500 text-3xl mb-1"></i>
+                                <div class="mt-auto text-sm md:text-base font-extrabold text-gray-600">Tidak Tersedia</div>
+                                <div class="text-xs text-gray-500 mt-1 font-semibold">Tidak berlaku untuk status kelas Anda</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto text-sm md:text-base font-bold text-gray-500 pt-2">Tidak Tersedia</div>
+                    <?php elseif ($is_tes_asesmen_done): ?>
+                        <span class="status-label"><i class="fas fa-check-circle mr-1"></i> Selesai</span>
+                        <div class="mt-auto text-sm md:text-base font-bold text-green-600 pt-2">Sudah Diisi</div>
+                    <?php elseif (!$is_biodata_complete): ?>
+                        <div class="lock-overlay">
+                            <div class="text-center">
+                                <i class="fas fa-lock text-red-600 text-3xl mb-1"></i>
+                                <div class="mt-auto text-sm md:text-base font-extrabold text-red-600">Terkunci!</div>
+                                <div class="text-xs text-red-800 mt-1 font-semibold">Lengkapi Data Profiling</div>
+                            </div>
+                        </div>
+                        <div class="mt-auto text-sm md:text-base font-bold text-gray-500 pt-2">Mulai <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php else: ?>
+                        <div class="mt-auto text-sm md:text-base font-bold primary-color pt-2">Isi Asesmen <i class="fas fa-chevron-right ml-1 text-sm"></i></div>
+                    <?php endif; ?>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <footer class="text-center py-4 primary-bg text-white text-xs md:text-sm mt-auto shadow-inner">
+        <p class="text-sm text-gray-200 font-light">
+    &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
+</p>
+<p class="text-xs text-gray-400 mt-1">
+    Developed by <span class="font-medium">SahDu Team</span>
+</p>    
+
+    </footer>
+    <script>
+    setTimeout(function() {
+        const alert = document.getElementById('alert-message');
+        if (alert) {
+            alert.style.transition = "opacity 0.5s ease";
+            alert.style.opacity = "0";
+            setTimeout(() => alert.remove(), 500);
+        }
+    }, 3000);
+</script>
+</body>
+</html>
