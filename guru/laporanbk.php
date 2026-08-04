@@ -1018,12 +1018,6 @@ if ($laporan_id > 0) {
   .col-tgl-print {
     width: 14% !important;
   }
-
-  /* ============================================================
-     PERBAIKAN KHUSUS TABEL IV - REKAP PERMASALAHAN PESERTA DIDIK
-     ============================================================ */
-  
-  /* Pastikan tabel IV menggunakan table-layout: fixed untuk konsistensi */
   #rekapMasalah {
     table-layout: fixed !important;
     width: 100% !important;
@@ -1488,15 +1482,12 @@ if ($laporan_id > 0) {
                   <tr class="bg-gray-200">
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Hari</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tanggal</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Nama Siswa </th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Kelas</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tindak Awal</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Panggilan Orang Tua</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Home Visit</th>
                     <th class="border border-gray-300 px-1 py-2 text-sm text-center no-print">Aksi</th>
                   </tr>
                 </thead>
@@ -1527,7 +1518,7 @@ if ($laporan_id > 0) {
                     <th class="border border-gray-300 px-3 py-2 text-sm" style="width:18%;">Permasalahan</th>
                     <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Layanan BK</th>
                     <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Tindak Lanjut</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Tanggal</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Bulan</th>
                     <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Pihak Terkait</th>
                     <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
                   </tr>
@@ -1944,20 +1935,6 @@ if ($laporan_id > 0) {
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak awal" oninput="autoResizeTextarea(this)"></textarea>
-            </td>
-            <td class="border border-gray-300 px-1 py-1">
-                <select name="panggilan_ortu[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
-                    <option value="">Pilih</option>
-                    <option value="Ya">Ya</option>
-                    <option value="Tidak">Tidak</option>
-                </select>
-            </td>
-            <td class="border border-gray-300 px-1 py-1">
-                <select name="home_visit[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
-                    <option value="">Pilih</option>
-                    <option value="Ya">Ya</option>
-                    <option value="Tidak">Tidak</option>
-                </select>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
