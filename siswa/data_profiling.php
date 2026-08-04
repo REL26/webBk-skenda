@@ -890,7 +890,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label for="penghasilan_ayah" class="form-label">Penghasilan Ayah</label>
                     <input type="text" id="penghasilan_ayah" name="penghasilan_ayah"
                         class="form-input input-rupiah"
-                        value="<?= !empty($siswa['penghasilan_ayah']) ? (int)$siswa['penghasilan_ayah   '] : '' ?>"
+                        value="<?= !empty($siswa['penghasilan_ayah']) ? (int)$siswa['penghasilan_ayah'] : '' ?>"
                         placeholder="Contoh: Rp 3.000.000" inputmode="numeric" autocomplete="off">
                 </div>
 
