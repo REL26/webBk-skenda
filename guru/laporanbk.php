@@ -2,27 +2,160 @@
 session_start();
 include '../koneksi.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
-    $semester = mysqli_real_escape_string($koneksi, $_POST['semester']);
-    $tahun_pelajaran = mysqli_real_escape_string($koneksi, $_POST['tahun_pelajaran']);
-    $sasaran = mysqli_real_escape_string($koneksi, $_POST['sasaran']);
-    $tanggal = mysqli_real_escape_string($koneksi, $_POST['tanggal']);
-    $koordinator_nip = mysqli_real_escape_string($koneksi, $_POST['koordinator_nip']);
-    $gurubk_nip = mysqli_real_escape_string($koneksi, $_POST['gurubk_nip']);
-    
-    $materi_rekap = implode("\n", array_filter($_POST['rekap']));
-    $masalah = implode("\n", array_filter($_POST['masalah']));
-    $tindak_lanjut = implode("\n", array_filter($_POST['tindak']));
+if (!isset($_SESSION['id_guru'])) {
+    header("Location: ../login.php");
+    exit;
+}
 
-    $query = "INSERT INTO laporan_bk (semester, tahun_pelajaran, sasaran, tanggal, koordinator_nip, gurubk_nip, materi_rekap, masalah, tindak_lanjut) 
-              VALUES ('$semester', '$tahun_pelajaran', '$sasaran', '$tanggal', '$koordinator_nip', '$gurubk_nip', '$materi_rekap', '$masalah', '$tindak_lanjut')";
+$id_guru_login = (int) $_SESSION['id_guru'];
 
-    if (mysqli_query($koneksi, $query)) {
-        $_SESSION['pesan_sukses'] = "Laporan berhasil disimpan!";
-        header("Location: dashboard.php");
+/* ==========================================================
+   HANDLER AJAX (dipanggil via fetch, bukan submit form biasa)
+   Aksi yang didukung: simpan, finalisasi, buka_draft
+   Semua respon dalam format JSON.
+   ========================================================== */
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    $action = $_POST['action'];
+
+    // ---------- SIMPAN (INSERT baru / UPDATE draft yang sudah ada) ----------
+    if ($action === 'simpan') {
+        $id_laporan      = isset($_POST['id_laporan']) ? (int) $_POST['id_laporan'] : 0;
+        $nama_dokumen    = mysqli_real_escape_string($koneksi, $_POST['nama_dokumen'] ?? '');
+        $semester        = mysqli_real_escape_string($koneksi, $_POST['semester'] ?? '');
+        $tahun_pelajaran = mysqli_real_escape_string($koneksi, $_POST['tahun_pelajaran'] ?? '');
+        $sasaran         = mysqli_real_escape_string($koneksi, $_POST['sasaran'] ?? '');
+        $tanggal         = mysqli_real_escape_string($koneksi, $_POST['tanggal'] ?? date('Y-m-d'));
+        $koordinator_nip = mysqli_real_escape_string($koneksi, $_POST['koordinator_nip'] ?? '');
+
+        $rekap_raw   = $_POST['rekap_json'] ?? '[]';
+        $masalah_raw = $_POST['masalah_json'] ?? '[]';
+        $tindak_raw  = $_POST['tindak_json'] ?? '[]';
+
+        // Validasi ringan: pastikan yang dikirim memang JSON valid array, kalau tidak fallback ke array kosong
+        foreach (['rekap_raw', 'masalah_raw', 'tindak_raw'] as $var) {
+            if (json_decode($$var) === null) {
+                $$var = '[]';
+            }
+        }
+
+        $materi_rekap  = mysqli_real_escape_string($koneksi, $rekap_raw);
+        $masalah       = mysqli_real_escape_string($koneksi, $masalah_raw);
+        $tindak_lanjut = mysqli_real_escape_string($koneksi, $tindak_raw);
+
+        if ($nama_dokumen === '') {
+            $nama_dokumen = 'Laporan BK - ' . ($semester ?: '-') . ' ' . ($tahun_pelajaran ?: '-');
+        }
+        $nama_dokumen = mysqli_real_escape_string($koneksi, $nama_dokumen);
+
+        if ($id_laporan > 0) {
+            // Pastikan dokumen ini milik guru yang login & masih berstatus draft
+            $cek = mysqli_query($koneksi, "SELECT status, id_guru FROM laporan_bk WHERE id_laporan = $id_laporan");
+            $row = $cek ? mysqli_fetch_assoc($cek) : null;
+
+            if (!$row) {
+                echo json_encode(['success' => false, 'message' => 'Dokumen tidak ditemukan.']);
+                exit;
+            }
+            if ((int)$row['id_guru'] !== $id_guru_login) {
+                echo json_encode(['success' => false, 'message' => 'Anda tidak berhak mengedit dokumen ini.']);
+                exit;
+            }
+            if ($row['status'] === 'final') {
+                echo json_encode(['success' => false, 'message' => 'Dokumen sudah final, tidak bisa diedit langsung. Buka kembali sebagai draft terlebih dahulu.']);
+                exit;
+            }
+
+            $query = "UPDATE laporan_bk SET
+                        nama_dokumen = '$nama_dokumen',
+                        semester = '$semester',
+                        tahun_pelajaran = '$tahun_pelajaran',
+                        sasaran = '$sasaran',
+                        tanggal = '$tanggal',
+                        koordinator_nip = '$koordinator_nip',
+                        materi_rekap = '$materi_rekap',
+                        masalah = '$masalah',
+                        tindak_lanjut = '$tindak_lanjut'
+                      WHERE id_laporan = $id_laporan";
+            $aksi_log = 'diedit';
+        } else {
+            $query = "INSERT INTO laporan_bk
+                        (nama_dokumen, semester, tahun_pelajaran, sasaran, tanggal, koordinator_nip, id_guru, materi_rekap, masalah, tindak_lanjut, status)
+                      VALUES
+                        ('$nama_dokumen', '$semester', '$tahun_pelajaran', '$sasaran', '$tanggal', '$koordinator_nip', $id_guru_login, '$materi_rekap', '$masalah', '$tindak_lanjut', 'draft')";
+            $aksi_log = 'dibuat';
+        }
+
+        if (mysqli_query($koneksi, $query)) {
+            if ($id_laporan == 0) {
+                $id_laporan = mysqli_insert_id($koneksi);
+            }
+            mysqli_query($koneksi, "INSERT INTO riwayat_laporan (id_laporan, aksi, id_guru) VALUES ($id_laporan, '$aksi_log', $id_guru_login)");
+            echo json_encode(['success' => true, 'id_laporan' => $id_laporan, 'message' => 'Dokumen berhasil disimpan sebagai draft.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan: ' . mysqli_error($koneksi)]);
+        }
         exit;
-    } else {
-        echo "Error: " . mysqli_error($koneksi);
+    }
+
+    // ---------- FINALISASI ----------
+    if ($action === 'finalisasi') {
+        $id_laporan = (int) ($_POST['id_laporan'] ?? 0);
+        $cek = mysqli_query($koneksi, "SELECT id_guru FROM laporan_bk WHERE id_laporan = $id_laporan");
+        $row = $cek ? mysqli_fetch_assoc($cek) : null;
+
+        if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+            echo json_encode(['success' => false, 'message' => 'Dokumen tidak ditemukan atau bukan milik Anda.']);
+            exit;
+        }
+
+        $ok = mysqli_query($koneksi, "UPDATE laporan_bk SET status = 'final', finalized_at = NOW() WHERE id_laporan = $id_laporan");
+        if ($ok) {
+            mysqli_query($koneksi, "INSERT INTO riwayat_laporan (id_laporan, aksi, id_guru) VALUES ($id_laporan, 'difinalisasi', $id_guru_login)");
+            echo json_encode(['success' => true, 'message' => 'Dokumen berhasil difinalisasi.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal finalisasi: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
+    // ---------- BUKA KEMBALI SEBAGAI DRAFT ----------
+    if ($action === 'buka_draft') {
+        $id_laporan = (int) ($_POST['id_laporan'] ?? 0);
+        $cek = mysqli_query($koneksi, "SELECT id_guru FROM laporan_bk WHERE id_laporan = $id_laporan");
+        $row = $cek ? mysqli_fetch_assoc($cek) : null;
+
+        if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+            echo json_encode(['success' => false, 'message' => 'Dokumen tidak ditemukan atau bukan milik Anda.']);
+            exit;
+        }
+
+        $ok = mysqli_query($koneksi, "UPDATE laporan_bk SET status = 'draft', finalized_at = NULL WHERE id_laporan = $id_laporan");
+        if ($ok) {
+            mysqli_query($koneksi, "INSERT INTO riwayat_laporan (id_laporan, aksi, id_guru) VALUES ($id_laporan, 'dibuka_ulang', $id_guru_login)");
+            echo json_encode(['success' => true, 'message' => 'Dokumen dibuka kembali sebagai draft.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Aksi tidak dikenali.']);
+    exit;
+}
+
+/* ==========================================================
+   LOAD DOKUMEN UNTUK MODE EDIT (?id=xx)
+   ========================================================== */
+$laporan = null;
+$laporan_id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+if ($laporan_id > 0) {
+    $q = mysqli_query($koneksi, "SELECT * FROM laporan_bk WHERE id_laporan = $laporan_id AND id_guru = $id_guru_login");
+    $laporan = $q ? mysqli_fetch_assoc($q) : null;
+    if (!$laporan) {
+        // Dokumen tidak ditemukan / bukan milik guru ini -> anggap form baru
+        $laporan_id = 0;
     }
 }
 ?>
@@ -89,65 +222,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
                   overflow-x: hidden;
               }
 
-              .fade-slide {
-                  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-                  opacity: 0;
-                  transform: translateY(-10px);
-                  pointer-events: none;
-              }
-
-              .fade-slide.active-transition {
-                  opacity: 1;
-                  transform: translateY(0);
-                  pointer-events: auto;
-              }
-
-              @media (min-width: 768px) {
-                  .sidebar {
-                      width: 260px;
-                      flex-shrink: 0;
-                      transform: translateX(0) !important;
-                      position: fixed !important;
-                      height: 100vh;
-                      top: 0;
-                      left: 0;
-                      overflow-y: auto;
-                  }
-              }
-
-              .nav-item {
-                  position: relative;
-                  overflow: hidden;
-                  transition: all 0.3s ease;
-              }
-
-              .nav-item::before {
-                  content: '';
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  height: 100%;
-                  width: 4px;
-                  background: var(--accent);
-                  transform: scaleY(0);
-                  transition: transform 0.3s ease;
-              }
-
-              .nav-item:hover::before,
-              .nav-item.active::before {
-                  transform: scaleY(1);
-              }
-
-              .nav-item.active {
-                  background-color: var(--primary-light);
-              }
-
-              .nav-item.active > div:first-child,
-              .nav-item.active {
-                  background-color: #3C7F81 !important;
-                  color: white !important;
-              }
-
               .modal {
                   transition: opacity 0.3s ease, visibility 0.3s ease;
                   visibility: hidden;
@@ -207,10 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
               }
 
               main {
-                  width: 100%;
                   box-sizing: border-box;
                   overflow-x: hidden;
-                  max-width: 100%;
               }
 
               @media (max-width: 767px) {
@@ -256,6 +328,284 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
               .print-value-proxy {
                 display: none;
               }
+              
+              /* Style untuk input tanggal */
+              .date-input-wrapper {
+                position: relative;
+                display: flex;
+                align-items: center;
+                width: 100%;
+              }
+              
+              .date-input-wrapper input[type="date"] {
+                width: 100%;
+                padding: 6px 8px;
+                border: none;
+                background: transparent;
+                font-size: 0.875rem;
+                outline: none;
+                cursor: pointer;
+                min-height: 34px;
+              }
+              
+              .date-input-wrapper input[type="date"]:hover {
+                background-color: rgba(0,0,0,0.03);
+              }
+              
+              .date-input-wrapper input[type="date"]:focus {
+                background-color: rgba(0,0,0,0.05);
+              }
+              
+              .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+                cursor: pointer;
+                padding: 4px;
+                opacity: 0.6;
+              }
+              
+              .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator:hover {
+                opacity: 1;
+              }
+              
+              /* Custom scroll untuk tabel */
+              .table-scroll-wrapper {
+                overflow-x: auto;
+                width: 100%;
+              }
+              
+              /* Kolom No diperkecil - cukup untuk "No" satu baris */
+              .col-no {
+                width: 4%;
+                min-width: 35px;
+                max-width: 45px;
+                white-space: nowrap;
+              }
+              
+              /* Kolom Tanggal diperlebar */
+              .col-tanggal {
+                width: 14%;
+                min-width: 110px;
+              }
+              
+              /* Konsistensi lebar tabel */
+              table {
+                width: 100% !important;
+                table-layout: fixed !important;
+              }
+              
+              /* Perbaiki border untuk tabel IV */
+              #rekapMasalah {
+                border-collapse: collapse !important;
+              }
+              
+              #rekapMasalah td, #rekapMasalah th {
+                border: 1px solid #d1d5db !important;
+              }
+
+              /* ============================================================
+                 PERBAIKAN UNTUK KOLOM KELAS - WRAP OTOMATIS
+                 ============================================================ */
+              
+              /* Kolom Kelas di tabel IV - menggunakan word-wrap untuk wrap otomatis */
+              #rekapMasalah td:nth-child(4),
+              #rekapMasalah th:nth-child(4) {
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                word-break: break-word !important;
+                white-space: normal !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                padding: 4px 2px !important;
+              }
+              
+              /* Select di kolom Kelas - styling seperti dropdown Sasaran */
+              #rekapMasalah td:nth-child(4) select {
+                width: 100% !important;
+                min-height: 34px;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: normal !important;
+                text-align: center !important;
+                background: transparent !important;
+                border: none !important;
+                outline: none !important;
+                font-size: 0.875rem !important;
+                padding: 4px 24px 4px 4px !important;
+                cursor: pointer !important;
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
+                background-repeat: no-repeat !important;
+                background-position: right 6px center !important;
+                background-size: 12px 12px !important;
+                position: relative !important;
+              }
+              
+              /* Opsi select juga bisa wrap */
+              #rekapMasalah td:nth-child(4) select option {
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                padding: 2px 4px !important;
+              }
+              
+              /* Lebar kolom Kelas tetap 9% seperti sebelumnya */
+              #rekapMasalah colgroup col:nth-child(4) {
+                width: 9% !important;
+              }
+
+              /* ============================================================
+                 PERBAIKAN LEBAR KOLOM PERMASALAHAN & TINDAK AWAL
+                 ============================================================ */
+              
+              /* Kolom Permasalahan - dikurangi sedikit lebarnya */
+              #rekapMasalah colgroup col:nth-child(6) {
+                width: 12% !important;
+              }
+              
+              /* Kolom Tindak Awal - dikurangi sedikit lebarnya */
+              #rekapMasalah colgroup col:nth-child(8) {
+                width: 11% !important;
+              }
+              
+              /* Kolom Jumlah Siswa - diperlebar */
+              #rekapMasalah colgroup col:nth-child(7) {
+                width: 9% !important;
+              }
+              
+              /* ============================================================
+                 PERBAIKAN HEADER - RATA TENGAH & WRAP BAIK
+                 ============================================================ */
+              
+              /* Semua header di tabel IV rata tengah */
+              #rekapMasalah thead th {
+                text-align: center !important;
+                vertical-align: middle !important;
+              }
+              
+              /* Header Permasalahan - rata tengah */
+              #rekapMasalah thead th:nth-child(6) {
+                text-align: center !important;
+                vertical-align: middle !important;
+              }
+              
+              /* Header Tindak Awal - rata tengah */
+              #rekapMasalah thead th:nth-child(8) {
+                text-align: center !important;
+                vertical-align: middle !important;
+              }
+              
+              /* Header Jumlah Siswa - 2 baris */
+              #rekapMasalah thead th:nth-child(7) {
+                text-align: center !important;
+                vertical-align: middle !important;
+                line-height: 1.3 !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                white-space: normal !important;
+              }
+              
+              /* Isi kolom Permasalahan tetap rata kiri */
+              #rekapMasalah tbody td:nth-child(6) {
+                text-align: left !important;
+                vertical-align: middle !important;
+              }
+              
+              /* Isi kolom Tindak Awal tetap rata kiri */
+              #rekapMasalah tbody td:nth-child(8) {
+                text-align: left !important;
+                vertical-align: middle !important;
+              }
+              
+              /* Saat print - kolom Kelas tetap wrap */
+              @media print {
+                /* Kolom Kelas di print - wrap otomatis */
+                #rekapMasalah td:nth-child(4),
+                #rekapMasalah th:nth-child(4) {
+                  word-wrap: break-word !important;
+                  overflow-wrap: break-word !important;
+                  word-break: break-word !important;
+                  white-space: normal !important;
+                  text-align: center !important;
+                  vertical-align: middle !important;
+                  padding: 4pt 2pt !important;
+                  width: 9% !important;
+                  min-width: 45pt !important;
+                }
+                
+                /* Nilai proxy di kolom Kelas - wrap otomatis */
+                #rekapMasalah td:nth-child(4) .print-value-proxy {
+                  display: block !important;
+                  font-family: "Times New Roman", Times, serif !important;
+                  font-size: 10pt !important;
+                  color: #000 !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  line-height: 1.4 !important;
+                  word-wrap: break-word !important;
+                  overflow-wrap: break-word !important;
+                  word-break: break-word !important;
+                  white-space: normal !important;
+                  text-align: center !important;
+                }
+                
+                /* Sembunyikan select di print */
+                #rekapMasalah td:nth-child(4) select {
+                  display: none !important;
+                }
+
+                /* Print - Lebar kolom Permasalahan & Tindak Awal */
+                #rekapMasalah td:nth-child(6),
+                #rekapMasalah th:nth-child(6) {
+                  width: 12% !important;
+                  min-width: 48pt !important;
+                }
+                
+                #rekapMasalah td:nth-child(8),
+                #rekapMasalah th:nth-child(8) {
+                  width: 11% !important;
+                  min-width: 44pt !important;
+                }
+                
+                #rekapMasalah td:nth-child(7),
+                #rekapMasalah th:nth-child(7) {
+                  width: 9% !important;
+                  min-width: 34pt !important;
+                }
+
+                /* Print - Header rata tengah */
+                #rekapMasalah thead th {
+                  text-align: center !important;
+                  vertical-align: middle !important;
+                }
+                
+                #rekapMasalah thead th:nth-child(6),
+                #rekapMasalah thead th:nth-child(8) {
+                  text-align: center !important;
+                  vertical-align: middle !important;
+                }
+
+                /* Print - Isi Permasalahan & Tindak Awal rata kiri */
+                #rekapMasalah tbody td:nth-child(6) {
+                  text-align: left !important;
+                  vertical-align: middle !important;
+                }
+                
+                #rekapMasalah tbody td:nth-child(8) {
+                  text-align: left !important;
+                  vertical-align: middle !important;
+                }
+
+                /* Print - header Jumlah Siswa 2 baris */
+                #rekapMasalah thead th:nth-child(7) {
+                  white-space: normal !important;
+                  word-wrap: break-word !important;
+                  overflow-wrap: break-word !important;
+                  line-height: 1.3 !important;
+                  text-align: center !important;
+                  vertical-align: middle !important;
+                }
+              }
+
               @media print {
 
   /* ═══════════════════════════════════════════
@@ -312,9 +662,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     display: none !important;
   }
 
-  /* ═══════════════════════════════════════════
-     LAYOUT  sidebar hilang, main full width
-  ═══════════════════════════════════════════ */
   main {
     margin: 0 !important;
     padding: 0 !important;
@@ -445,19 +792,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     print-color-adjust: exact !important;
   }
 
+  #rekapMasalah thead th {
+    word-wrap: normal !important;
+    overflow-wrap: normal !important;
+    word-break: keep-all !important;
+    white-space: normal !important;
+  }
+
   tr {
     page-break-inside: avoid !important;
   }
 
-  /* Kolom Aksi: border tetap ada, isi kosong */
+  /* Kolom Aksi: sembunyikan total saat print, tabel melebar otomatis */
   th:last-child,
   td:last-child {
-    border: 1pt solid #000000 !important;
-    display: table-cell !important;
+    display: none !important;
   }
 
-  td:last-child > * {
-    display: none !important;
+  colgroup col:last-child {
+    visibility: collapse !important;
   }
 
   /* ═══════════════════════════════════════════
@@ -488,9 +841,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     color: transparent !important;
   }
 
-  /* ═══════════════════════════════════════════
-     PENUTUP + TANDA TANGAN  tidak terpisah
-  ═══════════════════════════════════════════ */
+  table input[type="text"],
+  table input[type="number"],
+  table input[type="date"],
+  table textarea {
+    display: none !important;
+  }
+
+  .print-info-table,
+  .print-info-table td {
+    border: none !important;
+    padding: 1.5pt 0 !important;
+    font-size: 10pt !important;
+  }
+
   .penutup-ttd-wrap {
     display: block !important;
   }
@@ -623,265 +987,320 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     display: none !important;
   }
 
-  /* Nilai select/date yang di-render via JS */
+  /* Nilai select/date/text/number yang di-render via JS */
   .print-value-proxy {
     display: block !important;
     font-family: "Times New Roman", Times, serif !important;
     font-size: 10pt !important;
     color: #000 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
+  /* Perbaiki border Home Visit di print */
+  #rekapMasalah td {
+    border: 1pt solid #000000 !important;
+  }
+  
+  /* Konsistensi lebar tabel di print */
+  #rekapKegiatan, #rekapMasalah, #tindakLanjut {
+    width: 100% !important;
+  }
+  
+  /* Kolom No di print */
+  .col-no-print {
+    width: 4% !important;
+    min-width: 35px !important;
+  }
+  
+  /* Kolom Tanggal di print */
+  .col-tgl-print {
+    width: 14% !important;
+  }
+
+  /* ============================================================
+     PERBAIKAN KHUSUS TABEL IV - REKAP PERMASALAHAN PESERTA DIDIK
+     ============================================================ */
+  
+  /* Pastikan tabel IV menggunakan table-layout: fixed untuk konsistensi */
+  #rekapMasalah {
+    table-layout: fixed !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Semua sel di tabel IV memiliki border yang konsisten */
+  #rekapMasalah th,
+  #rekapMasalah td {
+    border: 1pt solid #000000 !important;
+    padding: 4pt 4pt !important;
+  }
+
+  /* Header tabel IV - background abu-abu */
+  #rekapMasalah thead th {
+    background-color: #e8e8e8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 4pt 3pt !important;
+  }
+
+  /* ============================================================
+     ATURAN KHUSUS UNTUK SETIAP KOLOM DI TABEL IV
+     ============================================================ */
+  
+  /* Kolom No - tetap satu baris, kecil */
+  #rekapMasalah td:nth-child(1),
+  #rekapMasalah th:nth-child(1) {
+    width: 4% !important;
+    min-width: 20pt !important;
+    max-width: 30pt !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Hari - tetap satu baris, kecil */
+  #rekapMasalah td:nth-child(2),
+  #rekapMasalah th:nth-child(2) {
+    width: 6% !important;
+    min-width: 30pt !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Tanggal - wrap alami jika perlu */
+  #rekapMasalah td:nth-child(3),
+  #rekapMasalah th:nth-child(3) {
+    width: 11% !important;
+    min-width: 60pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Kelas - WRAP OTOMATIS sesuai permintaan */
+  #rekapMasalah td:nth-child(4),
+  #rekapMasalah th:nth-child(4) {
+    width: 9% !important;
+    min-width: 45pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 4pt 2pt !important;
+  }
+
+  /* Kolom Bidang - WRAP otomatis */
+  #rekapMasalah td:nth-child(5),
+  #rekapMasalah th:nth-child(5) {
+    width: 9% !important;
+    min-width: 35pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Permasalahan - WRAP otomatis, dikurangi sedikit lebarnya */
+  #rekapMasalah td:nth-child(6),
+  #rekapMasalah th:nth-child(6) {
+    width: 12% !important;
+    min-width: 48pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+  }
+
+  /* Kolom Jumlah Siswa - WRAP untuk header, isi tetap satu baris, diperlebar */
+  #rekapMasalah td:nth-child(7),
+  #rekapMasalah th:nth-child(7) {
+    width: 9% !important;
+    min-width: 34pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Tindak Awal - WRAP otomatis, header di tengah, dikurangi sedikit lebarnya */
+  #rekapMasalah td:nth-child(8),
+  #rekapMasalah th:nth-child(8) {
+    width: 11% !important;
+    min-width: 44pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+  }
+
+  /* Kolom Panggilan Orang Tua - WRAP untuk header, isi tetap satu baris */
+  #rekapMasalah td:nth-child(9),
+  #rekapMasalah th:nth-child(9) {
+    width: 9% !important;
+    min-width: 38pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* Kolom Home Visit - WRAP untuk header, isi tetap satu baris */
+  #rekapMasalah td:nth-child(10),
+  #rekapMasalah th:nth-child(10) {
+    width: 7% !important;
+    min-width: 30pt !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* Sembunyikan kolom Aksi di tabel IV saat print */
+  #rekapMasalah td:nth-child(11),
+  #rekapMasalah th:nth-child(11) {
+    display: none !important;
+  }
+
+  /* Hilangkan colgroup untuk kolom aksi di print */
+  #rekapMasalah colgroup col:nth-child(11) {
+    display: none !important;
+  }
+
+  /* Nilai proxy di tabel IV */
+  #rekapMasalah .print-value-proxy {
+    display: block !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.4 !important;
+  }
+
+  /* KELAS - wrap otomatis, rata tengah */
+  #rekapMasalah td:nth-child(4) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    text-align: center !important;
+  }
+
+  /* HARI - tetap satu baris */
+  #rekapMasalah td:nth-child(2) .print-value-proxy {
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  /* PANGGILAN ORANG TUA - isi tetap satu baris */
+  #rekapMasalah td:nth-child(9) .print-value-proxy {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+
+  /* HOME VISIT - isi tetap satu baris */
+  #rekapMasalah td:nth-child(10) .print-value-proxy {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+
+  /* TANGGAL - wrap alami */
+  #rekapMasalah td:nth-child(3) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* BIDANG - wrap otomatis */
+  #rekapMasalah td:nth-child(5) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
+  /* PERMASALAHAN - wrap otomatis, rata kiri */
+  #rekapMasalah td:nth-child(6) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+  }
+
+  /* TINDAK AWAL - wrap otomatis, rata kiri */
+  #rekapMasalah td:nth-child(8) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+  }
+
+  /* JUMLAH SISWA - isi tetap satu baris */
+  #rekapMasalah td:nth-child(7) .print-value-proxy {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+
+  /* Header tabel IV - biarkan wrap alami untuk header yang panjang */
+  #rekapMasalah thead th {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.3 !important;
+    font-size: 10pt !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+
+  /* Hilangkan scrollbar saat print */
+  .table-scroll-wrapper {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  /* Pastikan tidak ada overflow yang menyebabkan scroll */
+  #rekapMasalah {
+    overflow: visible !important;
+  }
+
+  /* ============================================================
+     SEMBUNYIKAN ELEMEN YANG TIDAK BOLEH TAMPIL SAAT PRINT
+     ============================================================ */
+  
+  /* Sembunyikan blok informasi awal laporan (Sekolah, Alamat, Bulan/Tahun, Disusun oleh, Guru BK/Konselor) */
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Sembunyikan NIP yang muncul di atas garis tanda tangan */
+  .print-hide-nip, #nipKoordinator, #nipGuruBK {
+    display: none !important;
+  }
+
+  /* ============================================================
+     PERBAIKAN KOLOM SASARAN PADA TABEL III SAAT PRINT - RATA TENGAH
+     ============================================================ */
+  #rekapKegiatan td:nth-child(3) {
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
 }
-
-
-              
     </style>
   </head>
   <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-    <header
-      class="no-print md:hidden flex justify-between items-center px-4 py-3 bg-white shadow-md sticky top-0 z-30"
-    >
-      <div class="flex items-center gap-3">
-        <div
-          class="w-10 h-10 rounded-lg primary-bg flex items-center justify-center shadow-md"
-        >
-          <i class="fas fa-user-tie text-white"></i>
-        </div>
-        <div class="no-print leading-tight">
-          <strong class="no-print text-sm font-bold text-gray-800 block"
-            >Guru BK</strong
-          >
-          <p class="text-xs text-gray-500">SMKN 2 BJM</p>
-        </div>
-      </div>
-      <button
-        onclick="toggleMenu()"
-        class="text-gray-700 text-xl p-2 hover:bg-gray-100 rounded-lg transition"
-        aria-label="Toggle Menu"
-      >
-        <i class="fas fa-bars"></i>
-      </button>
-    </header>
-
-    <div
-      id="menuOverlay"
-      class="no-print hidden fixed inset-0 bg-black/50 z-20 md:hidden"
-      onclick="toggleMenu()"
-    ></div>
-
-    <div
-      id="mobileMenu"
-      class="no-print fade-slide hidden fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm"
-    >
-      <a
-        href="dashboard.php"
-        class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition"
-      >
-        <i class="fas fa-home mr-2"></i> Dashboard
-      </a>
-      <hr class="border-gray-200" />
-
-      <div
-        class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_profiling_active ? 'bg-gray-100 font-medium' : ''; ?>"
-        onclick="toggleSubMenu('profilingSubmenuMobile')"
-      >
-        <div class="flex justify-between">
-          <span class="flex font-medium">
-            <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
-          </span>
-          <i
-            id="profilingSubmenuMobileIcon"
-            class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"
-          ></i>
-        </div>
-      </div>
-      <div
-        id="profilingSubmenuMobile"
-        class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 <?php echo $is_profiling_active ? '' : 'hidden'; ?>"
-      >
-        <a
-          href="hasil_tes.php"
-          class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'hasil_tes.php' ? 'text-indigo-600 font-semibold' : ''; ?>"
-        >
-          <i class="fas fa-list-alt mr-2"></i> Data Hasil Persiswa
-        </a>
-        <a
-          href="rekap_kelas.php"
-          class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'rekap_kelas.php' ? 'text-indigo-600 font-semibold' : ''; ?>"
-        >
-          <i class="fas fa-chart-bar mr-2"></i> Data Hasil Perkelas
-        </a>
-      </div>
-      <hr class="border-gray-200" />
-
-      <div
-        class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_program_bk_active ? 'bg-gray-100 font-medium' : ''; ?>"
-        onclick="toggleSubMenu('programBkSubmenuMobile')"
-      >
-        <div class="flex justify-between">
-          <span class="flex font-medium">
-            <i class="fas fa-calendar-alt mr-2"></i> Program BK
-          </span>
-          <i
-            id="programBkSubmenuMobileIcon"
-            class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_program_bk_active ? 'fa-chevron-up' : ''; ?>"
-          ></i>
-        </div>
-      </div>
-      <div
-        id="programBkSubmenuMobile"
-        class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 <?php echo $is_program_bk_active ? '' : 'hidden'; ?>"
-      >
-        <a
-          href="konselingindividu.php"
-          class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'konselingindividu.php' ? 'text-indigo-600 font-semibold' : ''; ?>"
-        >
-          <i class="fas fa-user-friends mr-2"></i> Konseling Individu
-        </a>
-        <a
-          href="konselingkelompok.php"
-          class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'konselingkelompok.php' ? 'text-indigo-600 font-semibold' : ''; ?>"
-        >
-          <i class="fas fa-users mr-2"></i> Konseling Kelompok
-        </a>
-        <a
-          href="bimbingankelompok.php"
-          class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'bimbingankelompok.php' ? 'text-indigo-600 font-semibold' : ''; ?>"
-        >
-          <i class="fas fa-users-cog mr-2"></i> Bimbingan Kelompok
-        </a>
-      </div>
-      <hr class="border-gray-200" />
-      <a
-        href="logout.php"
-        class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-medium flex items-center justify-center"
-      >
-        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-      </a>
-    </div>
-
-    <div class="flex flex-grow">
-      <aside
-        id="sidebar"
-        class="no-print sidebar hidden md:flex primary-bg shadow-2xl z-40 flex-col text-white"
-      >
-        <div class="px-6 py-6 border-b border-white/10">
-          <div class="flex items-center space-x-3">
-            <div
-              class="no-print w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg"
-            >
-              <i class="no-print fas fa-user-tie text-xl text-white"></i>
-            </div>
-            <div>
-              <strong class="no-print text-base font-bold block"
-                >Guru BK</strong
-              >
-              <span class="no-print text-xs text-white/80"
-                >SMKN 2 Banjarmasin</span
-              >
-            </div>
-          </div>
-        </div>
-
-        <nav class="flex flex-col flex-grow py-4 space-y-1 px-3">
-          <a
-            href="dashboard.php"
-            class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200"
-          >
-            <i class="fas fa-home mr-3"></i> Dashboard
-          </a>
-
-          <div
-            class="nav-item cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>"
-            onclick="toggleSubMenu('profilingSubmenuDesktop')"
-          >
-            <div
-              class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200"
-            >
-              <span class="flex-item">
-                <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
-              </span>
-              <i
-                id="profilingSubmenuDesktopIcon"
-                class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"
-              ></i>
-            </div>
-          </div>
-          <div
-            id="profilingSubmenuDesktop"
-            class="pl-8 space-y-1 <?php echo $is_profiling_active ? '' : 'hidden'; ?>"
-          >
-            <a
-              href="hasil_tes.php"
-              class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'hasil_tes.php' ? 'text-white font-semibold' : ''; ?>"
-            >
-              <i class="fas fa-list-alt mr-3 w-4"></i> Data Hasil Persiswa
-            </a>
-            <a
-              href="rekap_kelas.php"
-              class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'rekap_kelas.php' ? 'text-white font-semibold' : ''; ?>"
-            >
-              <i class="fas fa-chart-bar mr-3 w-4"></i> Data Hasil Perkelas
-            </a>
-          </div>
-
-          <div
-            class="nav-item cursor-pointer <?php echo $is_program_bk_active ? 'active' : ''; ?>"
-            onclick="toggleSubMenu('programBkSubmenuDesktop')"
-          >
-            <div
-              class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200"
-            >
-              <span class="flex-item">
-                <i class="fas fa-calendar-alt mr-2"></i> Program BK
-              </span>
-              <i
-                id="programBkSubmenuDesktopIcon"
-                class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_program_bk_active ? 'fa-chevron-up' : ''; ?>"
-              ></i>
-            </div>
-          </div>
-          <div
-            id="programBkSubmenuDesktop"
-            class="pl-8 space-y-1 <?php echo $is_program_bk_active ? '' : 'hidden'; ?>"
-          >
-            <a
-              href="konselingindividu.php"
-              class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'konselingindividu.php' ? 'text-white font-semibold' : ''; ?>"
-            >
-              <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
-            </a>
-            <a
-              href="konselingkelompok.php"
-              class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200"
-            >
-              <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
-            </a>
-            <a
-              href="bimbingankelompok.php"
-              class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200"
-            >
-              <i class="fas fa-users-cog mr-3 w-4"></i> Bimbingan Kelompok
-            </a>
-            <a
-              href="#"
-              class="flex items-center px-4 py-2 text-sm text-white hover:bg-white/10 rounded-lg transition duration-200 font-semibold"
-            >
-              <i class="fas fa-clipboard-list mr-3 w-4"></i> Laporan BK
-            </a>
-          </div>
-
-          <div class="mt-auto pt-4 border-t border-white/10">
-            <a
-              href="logout.php"
-              class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200"
-            >
-              <i class="fas fa-sign-out-alt mr-3"></i> Logout
-            </a>
-          </div>
-        </nav>
-      </aside>
-
+   <?php include __DIR__ . '/partials/sidebar.php'; ?>
       <main class="flex-grow p-4 md:p-8">
         <div class="no-print mb-6">
           <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
@@ -895,15 +1314,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
         <div class="bg-white rounded-xl shadow-md p-6 md:p-8">
           <div class="judul hidden print:block mb-6">
             <h3 class="text-xl font-bold mb-4">Bimbingan dan Konseling (BK)</h3>
-            <p class="text-sm mb-2">
-              Sekolah : SMK Negeri 2 Banjarmasin<br />
-              Alamat Sekolah : Jl. Brigjen Hasan Basri No. 6 Banjarmasin<br />
-              Bulan / Tahun : <?php
-                $bulan_list = ['January'=>'Januari','February'=>'Februari','March'=>'Maret','April'=>'April','May'=>'Mei','June'=>'Juni','July'=>'Juli','August'=>'Agustus','September'=>'September','October'=>'Oktober','November'=>'November','December'=>'Desember'];
-                echo $bulan_list[date('F')] . ' ' . date('Y');
-              ?>
-            </p>
-            <p class="text-sm mb-4">Disusun oleh:<br />Guru BK / Konselor</p>
+            <!-- Blok informasi awal - disembunyikan saat print dengan class print-hide -->
+            <div class="print-hide">
+              <p class="text-sm mb-2">
+                Sekolah : SMK Negeri 2 Banjarmasin<br />
+                Alamat Sekolah : Jl. Brigjen Hasan Basri No. 6 Banjarmasin<br />
+                Bulan / Tahun : <?php
+                  $bulan_list = ['January'=>'Januari','February'=>'Februari','March'=>'Maret','April'=>'April','May'=>'Mei','June'=>'Juni','July'=>'Juli','August'=>'Agustus','September'=>'September','October'=>'Oktober','November'=>'November','December'=>'Desember'];
+                  echo $bulan_list[date('F')] . ' ' . date('Y');
+                ?>
+              </p>
+              <p class="text-sm mb-4">Disusun oleh:<br />Guru BK / Konselor</p>
+            </div>
+
+            <?php if ($laporan): ?>
+            <table class="print-info-table" style="width:100%; margin-bottom:10pt; border-collapse:collapse;">
+              <tr>
+                <td style="width:22%; padding:2pt 0; font-weight:bold;">Nama Dokumen</td>
+                <td style="width:2%;">:</td>
+                <td><?php echo htmlspecialchars($laporan['nama_dokumen']); ?></td>
+              </tr>
+              <tr>
+                <td style="padding:2pt 0; font-weight:bold;">Semester</td>
+                <td>:</td>
+                <td><?php echo htmlspecialchars($laporan['semester']); ?></td>
+              </tr>
+              <tr>
+                <td style="padding:2pt 0; font-weight:bold;">Tahun Pelajaran</td>
+                <td>:</td>
+                <td><?php echo htmlspecialchars($laporan['tahun_pelajaran']); ?></td>
+              </tr>
+              <tr>
+                <td style="padding:2pt 0; font-weight:bold;">Sasaran</td>
+                <td>:</td>
+                <td><?php echo htmlspecialchars($laporan['sasaran']); ?></td>
+              </tr>
+              <tr>
+                <td style="padding:2pt 0; font-weight:bold;">Tanggal Laporan</td>
+                <td>:</td>
+                <td><?php echo $laporan['tanggal'] ? date('d F Y', strtotime($laporan['tanggal'])) : '-'; ?></td>
+              </tr>
+            </table>
+            <?php endif; ?>
 
             <h3 class="text-lg font-bold mt-6 mb-2">I. PENDAHULUAN</h3>
             <p class="text-sm text-justify mb-4">
@@ -928,40 +1380,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             </ol>
           </div>
 
+          <input type="hidden" id="idLaporan" value="<?php echo (int) $laporan_id; ?>">
+          <input type="hidden" id="statusLaporan" value="<?php echo $laporan ? htmlspecialchars($laporan['status']) : 'draft'; ?>">
+
+          <div class="no-print mb-6 flex items-center justify-between flex-wrap gap-2">
+            <span id="badgeStatus" class="px-3 py-1 rounded-full text-sm font-semibold <?php echo ($laporan && $laporan['status'] === 'final') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'; ?>">
+              <?php echo ($laporan && $laporan['status'] === 'final') ? '🟢 Final' : '🟡 Draft'; ?>
+            </span>
+            <a href="riwayat_dokumen.php" class="text-sm text-blue-600 hover:underline">
+              <i class="fas fa-clock-rotate-left mr-1"></i> Lihat Riwayat Dokumen
+            </a>
+          </div>
+
+          <div class="no-print mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Dokumen</label>
+              <input type="text" id="namaDokumen" placeholder="Contoh: Laporan BK Semester Ganjil 2026"
+                class="w-full px-3 py-2 border rounded text-sm"
+                value="<?php echo $laporan ? htmlspecialchars($laporan['nama_dokumen']) : ''; ?>">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Laporan</label>
+              <input type="date" id="tanggalLaporan" class="w-full px-3 py-2 border rounded text-sm"
+                value="<?php echo $laporan ? htmlspecialchars($laporan['tanggal']) : date('Y-m-d'); ?>">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+              <select id="semesterLaporan" class="w-full px-3 py-2 border rounded text-sm">
+                <option value="">-- Pilih Semester --</option>
+                <option value="Ganjil" <?php echo ($laporan && $laporan['semester'] === 'Ganjil') ? 'selected' : ''; ?>>Ganjil</option>
+                <option value="Genap" <?php echo ($laporan && $laporan['semester'] === 'Genap') ? 'selected' : ''; ?>>Genap</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tahun Pelajaran</label>
+              <input type="text" id="tahunPelajaranLaporan" placeholder="Contoh: 2026/2027"
+                class="w-full px-3 py-2 border rounded text-sm"
+                value="<?php echo $laporan ? htmlspecialchars($laporan['tahun_pelajaran']) : ''; ?>">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sasaran</label>
+              <input type="text" id="sasaranLaporan" placeholder="Contoh: Kelas X - XII"
+                class="w-full px-3 py-2 border rounded text-sm"
+                value="<?php echo $laporan ? htmlspecialchars($laporan['sasaran']) : ''; ?>">
+            </div>
+          </div>
+
           <div class="mb-8">
             <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
               <i class="no-print fas fa-list-check text-blue-600 mr-2"></i>
               III. REKAPITULASI KEGIATAN LAYANAN BK
             </h3>
-            <div class="overflow-x-auto">
+            <div class="table-scroll-wrapper">
               <table
                 id="rekapKegiatan"
                 class="w-full border-collapse border border-gray-300"
               >
                 <thead>
                   <tr class="bg-gray-200">
-                    <th class="border border-gray-300 px-3 py-2 text-sm">No</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Jenis Layanan
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Sasaran
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Jumlah Siswa
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Waktu
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Bentuk Kegiatan
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Keterangan
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Aksi
-                    </th>
+                    <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Jenis Layanan</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:12%;">Sasaran</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:8%;">Jumlah Siswa</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Tanggal</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Bentuk Kegiatan</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Keterangan</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -982,29 +1466,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
               ></i>
               IV. REKAP PERMASALAHAN PESERTA DIDIK
             </h3>
-            <div class="overflow-x-auto">
+            <div class="table-scroll-wrapper">
               <table
                 id="rekapMasalah"
                 class="w-full border-collapse border border-gray-300"
               >
+                <colgroup>
+                  <col style="width: 4%;" />
+                  <col style="width: 6%;" />
+                  <col style="width: 11%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 12%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 11%;" />
+                  <col style="width: 9%;" />
+                  <col style="width: 7%;" />
+                  <col style="width: 4%;" />
+                </colgroup>
                 <thead>
                   <tr class="bg-gray-200">
-                    <th class="border border-gray-300 px-3 py-2 text-sm">No</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Bidang
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Permasalahan
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Jumlah Siswa
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Tindak Awal
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Aksi
-                    </th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Hari</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tanggal</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Nama Siswa </th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Kelas</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tindak Awal</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Panggilan Orang Tua</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Home Visit</th>
+                    <th class="border border-gray-300 px-1 py-2 text-sm text-center no-print">Aksi</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -1023,32 +1516,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
               <i class="no-print fas fa-tasks text-blue-600 mr-2"></i>
               V. TINDAK LANJUT
             </h3>
-            <div class="overflow-x-auto">
+            <div class="table-scroll-wrapper">
               <table
                 id="tindakLanjut"
                 class="w-full border-collapse border border-gray-300"
               >
                 <thead>
                   <tr class="bg-gray-200">
-                    <th class="border border-gray-300 px-3 py-2 text-sm">No</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Permasalahan
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Layanan BK
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Tindak Lanjut
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Waktu
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Pihak Terkait
-                    </th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm">
-                      Aksi
-                    </th>
+                    <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:18%;">Permasalahan</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Layanan BK</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Tindak Lanjut</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Tanggal</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Pihak Terkait</th>
+                    <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -1097,7 +1578,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     >
       <option value="">Pilih Nama Guru</option>
       <option value="<?php echo $nama_kepsek; ?>"><?php echo $nama_kepsek; ?></option>
-      <option value="Fahrunazi, S.Pd">Pahrurazi, S.Pd</option>
+      <option value="Pahrurazi, S.Pd">Pahrurazi, S.Pd</option>
     </select>
 
     <input
@@ -1106,11 +1587,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
       class="no-print w-full px-3 py-2 border rounded text-sm"
       placeholder="Masukkan NIP"
       oninput="
-        document.getElementById('printNipKoordinator').textContent =
+        document.getElementById('valNipKoordinator').textContent =
           this.value
       "
     />
 
+    <!-- HANYA NAMA yang dicetak - NIP di bawah garis sudah terpisah -->
     <p class="hidden print:block sign-space">&nbsp;</p>
     <span
       id="printKoordinator"
@@ -1119,18 +1601,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     <div
       class="hidden print:block border-t border-black w-56 mx-auto mt-1"
     ></div>
-    <p class="hidden print:block text-sm mt-1">
-      NIP: <span id="printNipKoordinator"></span>
+    <p class="hidden print:block text-sm mt-1 text-center">
+      NIP: <span id="valNipKoordinator"></span>
     </p>
   </div>
 
   <div>
-    <p class="text-sm font-semibold mb-1">
+    <div class="no-print mb-2">
+      <input type="date" id="inputTglTtd" class="w-40 px-2 py-1 border rounded text-sm text-center" onchange="formatTanggalTtd(this.value)">
+    </div>
+    <p id="teksTglTtd" class="hidden print:block text-sm font-semibold mb-1">
       <?php echo $tgl_sekarang?>
     </p>
     <p class="text-sm mb-4">Guru Bimbingan dan Konseling</p>
 
     <select
+      id="pilihGuruBK"
       class="input no-print w-full px-3 py-2 border rounded mb-2 text-sm"
       onchange="syncPrintText(this, 'printGuruBK')"
     >
@@ -1153,11 +1639,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
       class="no-print w-full px-3 py-2 border rounded text-sm"
       placeholder="Masukkan NIP"
       oninput="
-        document.getElementById('printNipGuruBK').textContent =
+        document.getElementById('valNipGuruBK').textContent =
           this.value
       "
     />
 
+    <!-- HANYA NAMA yang dicetak - NIP di bawah garis sudah terpisah -->
     <p class="hidden print:block sign-space">&nbsp;</p>
     <span
       id="printGuruBK"
@@ -1166,8 +1653,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
     <div
       class="hidden print:block border-t border-black w-56 mx-auto mt-1"
     ></div>
-    <p class="hidden print:block text-sm mt-1">
-      NIP: <span id="printNipGuruBK"></span>
+    <p class="hidden print:block text-sm mt-1 text-center">
+      NIP: <span id="valNipGuruBK"></span>
     </p>
   </div>
 </div>
@@ -1194,10 +1681,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             ></div>
           </div>
 
-          <div class="flex justify-center gap-4 no-print">
+          <div class="flex justify-center gap-4 no-print flex-wrap" id="actionButtons">
             <button
+              id="btnSimpan"
+              onclick="simpanDokumen()"
+              class="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition font-semibold"
+            >
+              <i class="fas fa-save mr-2"></i> Simpan Dokumen
+            </button>
+            <button
+              id="btnFinalisasi"
+              onclick="finalisasiDokumen()"
+              class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
+            >
+              <i class="fas fa-flag-checkered mr-2"></i> Finalisasi
+            </button>
+            <button
+              id="btnBukaDraft"
+              onclick="bukaSebagaiDraft()"
+              class="hidden bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition font-semibold"
+            >
+              <i class="fas fa-lock-open mr-2"></i> Buka Kembali sebagai Draft
+            </button>
+            <button
+              id="btnCetak"
               onclick="window.print()"
-              class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+              disabled
+              class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Hanya bisa dicetak jika dokumen sudah Final"
             >
               <i class="fas fa-file-pdf mr-2"></i> Ekspor ke PDF
             </button>
@@ -1211,6 +1722,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
         </div>
 
         <script>
+          <?php if ($laporan): ?>
+          window.DATA_LAPORAN_EXISTING = {
+            rekap: <?php echo $laporan['materi_rekap'] ? $laporan['materi_rekap'] : '[]'; ?>,
+            masalah: <?php echo $laporan['masalah'] ? $laporan['masalah'] : '[]'; ?>,
+            tindak: <?php echo $laporan['tindak_lanjut'] ? $laporan['tindak_lanjut'] : '[]'; ?>
+          };
+          <?php endif; ?>
+
           const dataSasaran = [
           <?php
           $q = mysqli_query($koneksi,"
@@ -1226,48 +1745,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
           ];
         </script>
 
+        <!-- JS BERSAMA untuk toggle sidebar/submenu - WAJIB ada di semua halaman -->
+        <script src="partials/sidebar-script.js"></script>
         <script>
-          function toggleMenu() {
-            const mobileMenu = document.getElementById("mobileMenu");
-            const overlay = document.getElementById("menuOverlay");
-            const body = document.body;
-
-            if (mobileMenu.classList.contains("active-transition")) {
-              mobileMenu.classList.remove("active-transition");
-              overlay.classList.add("hidden");
-
-              setTimeout(() => {
-                mobileMenu.classList.add("hidden");
-                body.classList.remove("overflow-hidden");
-              }, 300);
-            } else {
-              mobileMenu.classList.remove("hidden");
-              setTimeout(
-                () => mobileMenu.classList.add("active-transition"),
-                10,
-              );
-              overlay.classList.remove("hidden");
-              body.classList.add("overflow-hidden");
-            }
-          }
-
-          function toggleSubMenu(menuId) {
-            const submenu = document.getElementById(menuId);
-            const icon = document.getElementById(menuId + "Icon");
-
-            if (submenu) {
-              if (submenu.classList.contains("hidden")) {
-                submenu.classList.remove("hidden");
-                if (icon)
-                  icon.classList.replace("fa-chevron-down", "fa-chevron-up");
-              } else {
-                submenu.classList.add("hidden");
-                if (icon)
-                  icon.classList.replace("fa-chevron-up", "fa-chevron-down");
-              }
-            }
-          }
-
           function tambahRekap() {
             const table = document.getElementById("rekapKegiatan");
             const tbody = table.querySelector("tbody");
@@ -1275,16 +1755,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             const rowNum = tbody.rows.length;
 
             let optionSasaran = '<option value="">Pilih Sasaran</option>';
-            dataSasaran.forEach((item) => {
-              optionSasaran += `<option value="${item}">${item}</option>`;
+            urutkanDataSasaran(dataSasaran).forEach((item) => {
+              optionSasaran += `<option value="${item}">${formatKelasTampilan(item)}</option>`;
             });
 
             row.className = "hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-2 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
+            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <input name="jenis_layanan[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Jenis Layanan">
+                <textarea name="jenis_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Jenis Layanan" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <select name="sasaran_kelas[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
@@ -1295,13 +1775,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
                 <input type="number" name="jumlah_siswa[]" min="0" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0">
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="date" name="waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none">
+                <div class="date-input-wrapper">
+                    <input type="date" name="waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
+                </div>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input name="bentuk_kegiatan[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Bentuk">
+                <textarea name="bentuk_kegiatan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Bentuk" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input name="keterangan[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Keterangan">
+                <textarea name="keterangan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Keterangan" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 transition">
@@ -1311,27 +1793,171 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
         `;
           }
 
+          function autoResizeTextarea(el) {
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          }
+
+          function hitungHari(inputEl) {
+            const row = inputEl.closest("tr");
+            const hariField = row.querySelector('input[name="masalah_hari[]"]');
+
+            if (!inputEl.value) {
+              if (hariField) hariField.value = "";
+              return;
+            }
+
+            const namaHari = [
+              "Minggu",
+              "Senin",
+              "Selasa",
+              "Rabu",
+              "Kamis",
+              "Jumat",
+              "Sabtu",
+            ];
+
+            const parts = inputEl.value.split("-");
+            const tanggalObj = new Date(
+              parseInt(parts[0], 10),
+              parseInt(parts[1], 10) - 1,
+              parseInt(parts[2], 10),
+            );
+
+            if (hariField) hariField.value = namaHari[tanggalObj.getDay()];
+          }
+
+          function parseKelasItem(item) {
+            const tokens = item.trim().split(/\s+/).filter(Boolean);
+            const tingkatList = ["XIII", "XII", "XI", "X"];
+            let tingkat = "";
+            let rombel = "";
+            const sisa = [];
+
+            tokens.forEach((token) => {
+              if (tingkat === "") {
+                const cocokUtuh = tingkatList.find((t) => t === token.toUpperCase());
+                if (cocokUtuh) {
+                  tingkat = cocokUtuh;
+                  return;
+                }
+
+                const cocokGabung = tingkatList.find((t) =>
+                  token.toUpperCase().startsWith(t),
+                );
+                if (cocokGabung) {
+                  tingkat = cocokGabung;
+                  const sisaToken = token.substring(cocokGabung.length);
+                  if (sisaToken) rombel = sisaToken;
+                  return;
+                }
+              }
+              sisa.push(token);
+            });
+
+            if (!rombel && sisa.length > 1) {
+              rombel = sisa.pop();
+            }
+
+            const jurusan = sisa.join(" ");
+
+            return { tingkat, jurusan, rombel, asli: item };
+          }
+
+          function formatKelasTampilan(item) {
+            const parsed = parseKelasItem(item);
+            if (!parsed.tingkat) {
+              return item;
+            }
+            return [parsed.tingkat, parsed.jurusan, parsed.rombel]
+              .filter(Boolean)
+              .join(" ");
+          }
+
+          function urutkanDataSasaran(data) {
+            const urutanTingkat = { X: 1, XI: 2, XII: 3, XIII: 4 };
+
+            return data
+              .map((item) => parseKelasItem(item))
+              .sort((a, b) => {
+                const ta = urutanTingkat[a.tingkat] || 99;
+                const tb = urutanTingkat[b.tingkat] || 99;
+                if (ta !== tb) return ta - tb;
+
+                const jurusanBanding = a.jurusan.localeCompare(b.jurusan);
+                if (jurusanBanding !== 0) return jurusanBanding;
+
+                return a.rombel.localeCompare(b.rombel);
+              })
+              .map((parsed) => parsed.asli);
+          }
+
+          function formatTanggalIndonesia(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            const bulan = ['Januari','Februari','Maret','April','Mei','Juni',
+                          'Juli','Agustus','September','Oktober','November','Desember'];
+            return parseInt(parts[2]) + ' ' + bulan[parseInt(parts[1]) - 1] + ' ' + parts[0];
+          }
+
+          function updateTanggalDisplay(inputEl) {
+            // Fungsi ini dipanggil saat tanggal berubah
+            // Nilai akan diformat saat print
+          }
+
           function tambahMasalah() {
             const table = document.getElementById("rekapMasalah");
             const tbody = table.querySelector("tbody");
             const row = tbody.insertRow();
             const rowNum = tbody.rows.length;
 
+            let optionKelasMasalah = '<option value="">Pilih Kelas</option>';
+            urutkanDataSasaran(dataSasaran).forEach((item) => {
+              optionKelasMasalah += `<option value="${item}">${formatKelasTampilan(item)}</option>`;
+            });
+
             row.className = "hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-2 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
+            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="bidang[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Bidang">
+                <input type="text" name="masalah_hari[]" readonly class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="Hari">
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="masalah[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Deskripsi masalah">
+                <div class="date-input-wrapper">
+                    <input type="date" name="masalah_tanggal[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="hitungHari(this); updateTanggalDisplay(this)">
+                </div>
+            </td>
+            <td class="border border-gray-300 px-1 py-1 text-center" style="word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;white-space:normal;vertical-align:middle;">
+                <select name="masalah_kelas[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer" style="word-wrap:break-word;overflow-wrap:break-word;white-space:normal;text-align:center;min-height:34px;padding-right:24px;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 12 12%22%3E%3Cpath fill=%22%236b7280%22 d=%22M6 8L1 3h10z%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 6px center;background-size:12px 12px;-webkit-appearance:none;appearance:none;">
+                    ${optionKelasMasalah}
+                </select>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0">
+                <textarea name="bidang[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Bidang" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="tindak_awal[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Tindak awal">
+                <textarea name="masalah[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Deskripsi masalah" oninput="autoResizeTextarea(this)"></textarea>
+            </td>
+            <td class="border border-gray-300 px-1 py-1 text-center">
+                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0">
+            </td>
+            <td class="border border-gray-300 px-1 py-1">
+                <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak awal" oninput="autoResizeTextarea(this)"></textarea>
+            </td>
+            <td class="border border-gray-300 px-1 py-1">
+                <select name="panggilan_ortu[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
+                    <option value="">Pilih</option>
+                    <option value="Ya">Ya</option>
+                    <option value="Tidak">Tidak</option>
+                </select>
+            </td>
+            <td class="border border-gray-300 px-1 py-1">
+                <select name="home_visit[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
+                    <option value="">Pilih</option>
+                    <option value="Ya">Ya</option>
+                    <option value="Tidak">Tidak</option>
+                </select>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
@@ -1350,21 +1976,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             row.className = "hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-2 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
+            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="tl_permasalahan[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Permasalahan">
+                <textarea name="tl_permasalahan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Permasalahan" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="tl_layanan[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Layanan BK">
+                <textarea name="tl_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Layanan BK" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="tl_tindak_lanjut[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Tindak lanjut">
+                <textarea name="tl_tindak_lanjut[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak lanjut" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="date" name="tl_waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none">
+                <div class="date-input-wrapper">
+                    <input type="date" name="tl_waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
+                </div>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="tl_pihak[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Pihak terkait">
+                <textarea name="tl_pihak[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Pihak terkait" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
@@ -1474,19 +2102,92 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             }
           }
 
+          // Fungsi format tanggal teks untuk tanda tangan
+          function formatTanggalTtd(dateStr) {
+            if (!dateStr) {
+              document.getElementById('teksTglTtd').textContent = '';
+              return;
+            }
+            const parts = dateStr.split('-');
+            const bulan = ['Januari','Februari','Maret','April','Mei','Juni',
+                           'Juli','Agustus','September','Oktober','November','Desember'];
+            const tgl = parts[2];
+            const bln = bulan[parseInt(parts[1], 10) - 1];
+            const thn = parts[0];
+            document.getElementById('teksTglTtd').textContent = tgl + ' ' + bln + ' ' + thn;
+          }
+
           document.addEventListener("DOMContentLoaded", () => {
-            const overlay = document.getElementById("menuOverlay");
-            if (overlay) overlay.addEventListener("click", toggleMenu);
             document
               .querySelectorAll(".animate-slide-in")
               .forEach((el, index) => {
                 el.style.animationDelay = `${index * 0.1}s`;
               });
 
-            tambahRekap();
-            tambahMasalah();
-            tambahTindak();
+            if (window.DATA_LAPORAN_EXISTING) {
+              restoreSemuaTabel(window.DATA_LAPORAN_EXISTING);
+            } else {
+              tambahRekap();
+              tambahMasalah();
+              tambahTindak();
+            }
+
+            // Setup nilai default input tanggal ke hari ini
+            const inputTgl = document.getElementById('inputTglTtd');
+            if(inputTgl) {
+                inputTgl.value = '';
+                formatTanggalTtd('');
+            }
           });
+
+          // Kolom tiap tabel, urut sesuai HTML row template masing-masing
+          const KOLOM_REKAP = ['jenis_layanan', 'sasaran_kelas', 'jumlah_siswa', 'waktu', 'bentuk_kegiatan', 'keterangan'];
+          const KOLOM_MASALAH = ['masalah_hari', 'masalah_tanggal', 'masalah_kelas', 'bidang', 'masalah', 'jml_siswa_masalah', 'tindak_awal', 'panggilan_ortu', 'home_visit'];
+          const KOLOM_TINDAK = ['tl_permasalahan', 'tl_layanan', 'tl_tindak_lanjut', 'tl_waktu', 'tl_pihak'];
+
+          function isiBarisTerakhir(tbody, kolom, dataBaris) {
+            const tr = tbody.rows[tbody.rows.length - 1];
+            kolom.forEach((nama) => {
+              const el = tr.querySelector(`[name="${nama}[]"]`);
+              if (el && dataBaris[nama] !== undefined) {
+                el.value = dataBaris[nama];
+                if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
+              }
+            });
+          }
+
+          function restoreSemuaTabel(data) {
+            const rekap = data.rekap || [];
+            const masalah = data.masalah || [];
+            const tindak = data.tindak || [];
+
+            if (rekap.length === 0) {
+              tambahRekap();
+            } else {
+              rekap.forEach((baris) => {
+                tambahRekap();
+                isiBarisTerakhir(document.querySelector('#rekapKegiatan tbody'), KOLOM_REKAP, baris);
+              });
+            }
+
+            if (masalah.length === 0) {
+              tambahMasalah();
+            } else {
+              masalah.forEach((baris) => {
+                tambahMasalah();
+                isiBarisTerakhir(document.querySelector('#rekapMasalah tbody'), KOLOM_MASALAH, baris);
+              });
+            }
+
+            if (tindak.length === 0) {
+              tambahTindak();
+            } else {
+              tindak.forEach((baris) => {
+                tambahTindak();
+                isiBarisTerakhir(document.querySelector('#tindakLanjut tbody'), KOLOM_TINDAK, baris);
+              });
+            }
+          }
 
           function syncPrintText(selectEl, targetId) {
             const target = document.getElementById(targetId);
@@ -1495,25 +2196,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
 
           window.addEventListener('beforeprint', function () {
             document.querySelectorAll('table select').forEach(function (sel) {
-              if (sel.value) {
-                const span = document.createElement('span');
-                span.className = 'print-value-proxy';
-                span.textContent = sel.options[sel.selectedIndex]?.text || sel.value;
-                sel.parentNode.insertBefore(span, sel.nextSibling);
-              }
+              const span = document.createElement('span');
+              span.className = 'print-value-proxy';
+              span.textContent = sel.value
+                ? sel.options[sel.selectedIndex]?.text || sel.value
+                : '';
+              sel.parentNode.insertBefore(span, sel.nextSibling);
             });
 
-            document.querySelectorAll('input[type="date"]').forEach(function (inp) {
+            document.querySelectorAll('table input[type="date"]').forEach(function (inp) {
+              const span = document.createElement('span');
+              span.className = 'print-value-proxy';
+
               if (inp.value) {
                 const d = new Date(inp.value);
                 const bulan = ['Januari','Februari','Maret','April','Mei','Juni',
                                'Juli','Agustus','September','Oktober','November','Desember'];
-                const teks = d.getDate() + ' ' + bulan[d.getMonth()] + ' ' + d.getFullYear();
+                span.textContent = d.getDate() + ' ' + bulan[d.getMonth()] + ' ' + d.getFullYear();
+              } else {
+                span.textContent = '';
+              }
+
+              inp.parentNode.insertBefore(span, inp.nextSibling);
+            });
+
+            document
+              .querySelectorAll('table input[type="text"], table input[type="number"]')
+              .forEach(function (inp) {
                 const span = document.createElement('span');
                 span.className = 'print-value-proxy';
-                span.textContent = teks;
+                span.textContent = inp.value || '';
                 inp.parentNode.insertBefore(span, inp.nextSibling);
-              }
+              });
+
+            document.querySelectorAll('table textarea').forEach(function (ta) {
+              const span = document.createElement('span');
+              span.className = 'print-value-proxy';
+              span.textContent = ta.value || '';
+              ta.parentNode.insertBefore(span, ta.nextSibling);
             });
           });
 
@@ -1521,6 +2241,134 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_laporan'])) {
             document.querySelectorAll('.print-value-proxy').forEach(function (el) {
               el.remove();
             });
+          });
+
+          // ==========================================================
+          // FITUR DRAFT / FINAL — Simpan Dokumen, Finalisasi, Buka Draft
+          // ==========================================================
+          function kumpulkanBarisTabel(tbodySelector, kolom) {
+            const hasil = [];
+            document.querySelectorAll(`${tbodySelector} tr`).forEach((tr) => {
+              const baris = {};
+              let adaIsi = false;
+              kolom.forEach((nama) => {
+                const el = tr.querySelector(`[name="${nama}[]"]`);
+                const val = el ? el.value : '';
+                baris[nama] = val;
+                if (val) adaIsi = true;
+              });
+              if (adaIsi) hasil.push(baris);
+            });
+            return hasil;
+          }
+
+          function kumpulkanDataForm() {
+            const fd = new FormData();
+            fd.append('id_laporan', document.getElementById('idLaporan').value || 0);
+            fd.append('nama_dokumen', document.getElementById('namaDokumen').value);
+            fd.append('semester', document.getElementById('semesterLaporan').value);
+            fd.append('tahun_pelajaran', document.getElementById('tahunPelajaranLaporan').value);
+            fd.append('sasaran', document.getElementById('sasaranLaporan').value);
+            fd.append('tanggal', document.getElementById('tanggalLaporan').value);
+            fd.append('koordinator_nip', document.getElementById('nipKoordinator').value);
+
+            fd.append('rekap_json', JSON.stringify(kumpulkanBarisTabel('#rekapKegiatan tbody', KOLOM_REKAP)));
+            fd.append('masalah_json', JSON.stringify(kumpulkanBarisTabel('#rekapMasalah tbody', KOLOM_MASALAH)));
+            fd.append('tindak_json', JSON.stringify(kumpulkanBarisTabel('#tindakLanjut tbody', KOLOM_TINDAK)));
+
+            return fd;
+          }
+
+          function terapkanStatusUI(status) {
+            document.getElementById('statusLaporan').value = status;
+            const badge = document.getElementById('badgeStatus');
+            const isFinal = status === 'final';
+
+            badge.textContent = isFinal ? '🟢 Final' : '🟡 Draft';
+            badge.className = 'px-3 py-1 rounded-full text-sm font-semibold ' +
+              (isFinal ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
+
+            document.getElementById('btnSimpan').classList.toggle('hidden', isFinal);
+            document.getElementById('btnFinalisasi').classList.toggle('hidden', isFinal);
+            document.getElementById('btnBukaDraft').classList.toggle('hidden', !isFinal);
+            document.getElementById('btnCetak').disabled = !isFinal;
+
+            // Kunci semua input/select/textarea di area form saat final (kecuali tombol)
+            document.querySelectorAll('#main-content input, #main-content select, #main-content textarea').forEach(el => {
+              el.disabled = isFinal;
+            });
+          }
+
+          function simpanDokumen() {
+            const btn = document.getElementById('btnSimpan');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...';
+
+            const fd = kumpulkanDataForm();
+            fd.append('action', 'simpan');
+
+            fetch(window.location.pathname, { method: 'POST', body: fd })
+              .then(res => res.json())
+              .then(data => {
+                if (data.success) {
+                  document.getElementById('idLaporan').value = data.id_laporan;
+                  // Update URL supaya refresh/reload tetap mode edit dokumen ini
+                  const url = new URL(window.location);
+                  url.searchParams.set('id', data.id_laporan);
+                  window.history.replaceState({}, '', url);
+                  alert(data.message);
+                } else {
+                  alert('Gagal: ' + data.message);
+                }
+              })
+              .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
+              .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-2"></i> Simpan Dokumen';
+              });
+          }
+
+          function finalisasiDokumen() {
+            const idLaporan = document.getElementById('idLaporan').value;
+            if (!idLaporan || idLaporan == 0) {
+              alert('Simpan dokumen terlebih dahulu sebelum finalisasi.');
+              return;
+            }
+            if (!confirm('Setelah difinalisasi, dokumen akan terkunci dan hanya bisa dicetak. Lanjutkan?')) return;
+
+            const fd = new FormData();
+            fd.append('action', 'finalisasi');
+            fd.append('id_laporan', idLaporan);
+
+            fetch(window.location.pathname, { method: 'POST', body: fd })
+              .then(res => res.json())
+              .then(data => {
+                alert(data.message);
+                if (data.success) terapkanStatusUI('final');
+              })
+              .catch(() => alert('Terjadi kesalahan koneksi saat finalisasi.'));
+          }
+
+          function bukaSebagaiDraft() {
+            const idLaporan = document.getElementById('idLaporan').value;
+            if (!confirm('Dokumen akan dibuka kembali sebagai draft dan bisa diedit. Lanjutkan?')) return;
+
+            const fd = new FormData();
+            fd.append('action', 'buka_draft');
+            fd.append('id_laporan', idLaporan);
+
+            fetch(window.location.pathname, { method: 'POST', body: fd })
+              .then(res => res.json())
+              .then(data => {
+                alert(data.message);
+                if (data.success) terapkanStatusUI('draft');
+              })
+              .catch(() => alert('Terjadi kesalahan koneksi.'));
+          }
+
+          document.addEventListener('DOMContentLoaded', () => {
+            const statusAwal = document.getElementById('statusLaporan').value;
+            terapkanStatusUI(statusAwal);
           });
         </script>
       </main>

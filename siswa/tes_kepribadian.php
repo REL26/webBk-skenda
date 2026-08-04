@@ -20,7 +20,7 @@ $id_tes_kepribadian = (int) $row_tes['id_tes'];
 
 $localStorageKey = 'testAnswers_kepribadian_siswa' . $id_siswa;
 
-// Bobot skor per huruf jawaban — FIXED untuk semua soal.
+// Bobot skor per huruf jawaban  FIXED untuk semua soal.
 $bobot_skor = ['A' => 4, 'B' => 3, 'C' => 2, 'D' => 1];
 
 if (isset($_POST['submit'])) {

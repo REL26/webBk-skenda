@@ -249,7 +249,7 @@ if (isset($_POST['submit'])) {
             </div>
             <div class="mt-2 p-3 bg-indigo-50 border-l-4 border-indigo-400 text-indigo-800 text-xs sm:text-sm rounded-lg">
                 Sebagian pertanyaan (Bagian D/E/F) hanya akan muncul sesuai dengan rencana utama yang Anda pilih
-                setelah lulus — jumlah total pertanyaan pada peta soal akan otomatis menyesuaikan.
+                setelah lulus  jumlah total pertanyaan pada peta soal akan otomatis menyesuaikan.
             </div>
 
             <div class="mt-4 flex items-center space-x-2">
@@ -434,7 +434,7 @@ if (isset($_POST['submit'])) {
                             <p class="mt-1">Pastikan Anda telah mengisi semua pertanyaan yang berlaku untuk pilihan Anda. Jawaban tidak dapat diubah setelah dikirim.</p>
                         </div>
                         <div class="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-lg text-sm sm:text-base">
-                            Setelah dikirim, Anda akan langsung kembali ke dashboard. Tidak ada skor atau hasil yang ditampilkan di sini — hanya Guru BK yang dapat melihat jawaban ini.
+                            Setelah dikirim, Anda akan langsung kembali ke dashboard. Tidak ada skor atau hasil yang ditampilkan di sini  hanya Guru BK yang dapat melihat jawaban ini.
                         </div>
 
                         <div class="flex justify-between mt-8">

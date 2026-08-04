@@ -412,7 +412,7 @@ if (isset($_POST['submit'])) {
                             <p class="mt-1">Pastikan Anda telah mengisi semua <?= $total_steps; ?> pertanyaan. Jawaban tidak dapat diubah setelah dikirim.</p>
                         </div>
                         <div class="p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-lg text-sm sm:text-base">
-                            Setelah dikirim, Anda akan langsung kembali ke dashboard. Tidak ada skor atau hasil yang ditampilkan di sini — hanya Guru BK yang dapat melihat jawaban ini.
+                            Setelah dikirim, Anda akan langsung kembali ke dashboard. Tidak ada skor atau hasil yang ditampilkan di sini  hanya Guru BK yang dapat melihat jawaban ini.
                         </div>
 
                         <div class="flex justify-between mt-8">

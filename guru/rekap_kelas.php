@@ -90,7 +90,7 @@ $gb_status_text = ($gb_belum_tes > 0)
     ? "Terdapat {$gb_belum_tes} siswa yang belum menyelesaikan Tes Gaya Belajar."
     : "Tes Gaya Belajar sudah diselesaikan oleh semua siswa.";
 
-$query_kelas = "SELECT DISTINCT kelas FROM siswa WHERE kelas IS NOT NULL ORDER BY kelas";
+$query_kelas = "SELECT DISTINCT kelas FROM siswa WHERE kelas IS NOT NULL AND kelas != 'LULUS' ORDER BY kelas";
 $result_kelas = mysqli_query($koneksi, $query_kelas);
 $kelas_options = array_column(mysqli_fetch_all($result_kelas, MYSQLI_ASSOC), 'kelas');
 
@@ -158,7 +158,17 @@ $total_siswa = count($data_siswa);
         html {
             overflow-y: scroll;
         }
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
 
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
 :root {
     /* PRIMARY */
     --primary: #0F3A3A;
@@ -231,60 +241,6 @@ $total_siswa = count($data_siswa);
             50% { opacity: .7; }
         }
 
-        .fade-slide {
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-            opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
-        }
-        
-        .fade-slide.active-transition {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-
-        @media (min-width: 768px) {
-            .sidebar { width: 260px; flex-shrink: 0; transform: translateX(0) !important; position: fixed !important; height: 100vh; top: 0; left: 0; overflow-y: auto; }
-            .content-wrapper { margin-left: 260px; }
-        }
-            .content-wrapper {
-                margin-left: 280px;
-            }
-        
-        .nav-item { 
-            position: relative; 
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .nav-item::before { 
-            content: ''; 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            height: 100%; 
-            width: 4px; 
-            background: var(--accent); 
-            transform: scaleY(0); 
-            transition: transform 0.3s ease; 
-        }
-
-        .nav-item:hover::before, 
-        .nav-item.active::before { 
-            transform: scaleY(1); 
-        }
-
-        .nav-item.active { 
-            background-color: var(--primary-light);
-        }
-
-        .nav-item.active > div:first-child,
-        .nav-item.active { 
-            background-color: var(--primary-light) !important; 
-            color: white !important;
-        }
-
         .glass-effect {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
@@ -338,35 +294,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
 
         .show-on-print-only {
             display: none; 
-        }
-
-        main {
-            width: 100%;
-            box-sizing: border-box;
-            overflow-x: hidden;
-            max-width: 100%;
-        }
-
-        @media (max-width: 767px) {
-            main {
-                margin-left: 0 !important;
-                padding-left: 1rem;
-                padding-right: 1rem;
-                width: 100%;
-            }
-
-            body.overflow-hidden {
-                overflow: hidden;
-                width: 100vw;
-                position: fixed;
-                height: 100vh;
-            }
-        }
-
-        @media (min-width: 768px) {
-            main {
-                margin-left: 280px;
-            }
         }
 
         .grid {
@@ -550,47 +477,9 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
         }
     </style>
 
+    <!-- JS BERSAMA untuk toggle sidebar/submenu - WAJIB ada di semua halaman -->
+    <script src="partials/sidebar-script.js"></script>
     <script>
-        function toggleMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            const overlay = document.getElementById('menuOverlay');
-            const body = document.body;
-
-            if (mobileMenu.classList.contains('active-transition')) {
-                mobileMenu.classList.remove('active-transition');
-                overlay.classList.add('hidden');
-                
-                setTimeout(() => {
-                    mobileMenu.classList.add('hidden');
-                    body.classList.remove('overflow-hidden');
-                }, 300);
-
-            } else {
-                mobileMenu.classList.remove('hidden');
-                
-                setTimeout(() => {
-                    mobileMenu.classList.add('active-transition');
-                }, 10);
-                
-                overlay.classList.remove('hidden');
-                body.classList.add('overflow-hidden');
-            }
-        }
-        
-        function toggleSubMenu(menuId) {
-            const submenu = document.getElementById(menuId);
-            const icon = document.getElementById(menuId + 'Icon');
-            if (submenu) {
-                 if (submenu.classList.contains('hidden')) {
-                    submenu.classList.remove('hidden');
-                    if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                } else {
-                    submenu.classList.add('hidden');
-                    if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-                }
-            }
-        }
-
         function exportToPdf() {
             window.print();
         }
@@ -598,9 +487,6 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
         let gbChartInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const overlay = document.getElementById('menuOverlay');
-            if (overlay) overlay.addEventListener('click', toggleMenu);
-            
             if (document.getElementById('gbChart')) {
                 const gbCtx = document.getElementById('gbChart').getContext('2d');
                 gbChartInstance = new Chart(gbCtx, {
@@ -703,145 +589,8 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-
-    <header class="hide-on-print md:hidden flex justify-between items-center px-4 py-3 glass-effect shadow-lg sticky top-0 z-30">
-        <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-xl primary-gradient flex items-center justify-center shadow-lg">
-                <i class="fas fa-user-tie text-white text-lg"></i>
-            </div>
-            <div>
-                <strong class="text-sm font-bold text-gray-800">Guru BK</strong>
-                <p class="text-xs text-gray-500">SMKN 2 BJM</p>
-            </div>
-        </div>
-        <button onclick="toggleMenu()" class="text-gray-700 text-xl p-2 hover:bg-gray-100 rounded-lg transition">
-            <i class="fas fa-bars"></i>
-        </button>
-    </header>
-
-    <div id="menuOverlay" class="no-print hidden fixed inset-0 bg-black/50 z-20 md:hidden" onclick="toggleMenu()"></div>
-    
-    <div id="mobileMenu" class="no-print fade-slide hidden fixed top-[56px] left-0 w-full bg-white shadow-lg z-30 md:hidden flex flex-col text-sm">
-        <a href="dashboard.php" class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition">
-            <i class="fas fa-home mr-2"></i> Beranda
-        </a>
-        <hr class="border-gray-200">
-        
-        <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer <?php echo $is_profiling_active ? 'bg-gray-100 font-medium' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuMobile')">
-            <div class="flex justify-between">
-                <span class="flex font-medium">
-                    <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
-                </span>
-                <i id="profilingSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
-            </div>
-        </div>
-        <div id="profilingSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-            <a href="hasil_tes.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'hasil_tes.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-list-alt mr-2"></i> Data Hasil Persiswa
-            </a>
-            <a href="rekap_kelas.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition <?php echo $current_page == 'rekap_kelas.php' ? 'text-indigo-600 font-semibold' : ''; ?>">
-                <i class="fas fa-chart-bar mr-2"></i> Data Hasil Perkelas
-            </a>
-        </div>
-        <hr class="border-gray-200">
-
-        <div class="py-3 px-5 text-gray-700 hover:bg-gray-50 transition cursor-pointer" onclick="toggleSubMenu('programBkSubmenuMobile')">
-            <div class="flex justify-between">
-                <span class="flex font-medium">
-                    <i class="fas fa-calendar-alt mr-2"></i> Program BK
-                </span>
-                <i id="programBkSubmenuMobileIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
-            </div>
-        </div>
-        <div id="programBkSubmenuMobile" class="pl-8 space-y-1 py-1 bg-gray-50 border-t border-b border-gray-100 hidden">
-            <a href="konselingindividu.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-user-friends mr-2"></i> Konseling Individu
-            </a>
-             <a href="konselingkelompok.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Konseling Kelompok
-            </a>
-            <a href="#" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Bimbingan Kelompok
-            </a>
-            <a href="laporanbk.php" class="block py-2 px-5 text-gray-700 hover:bg-gray-100 transition">
-                <i class="fas fa-users mr-2"></i> Laporan BK
-            </a>
-        </div>
-        <hr class="border-gray-200">
-
-        <a href="logout.php" class="bg-red-600 text-white py-3 hover:bg-red-700 transition text-sm font-medium flex items-center justify-center">
-            <i class="fas fa-sign-out-alt mr-2"></i> Logout
-        </a>
-    </div>
-    
-    <div class="flex flex-grow">
-        
-        <aside id="sidebar" class="no-print sidebar hidden md:flex primary-gradient shadow-2xl z-40 flex-col text-white">
-            <div class="px-6 py-6 border-b border-white/10">
-                <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shadow-lg animated-icon">
-                        <i class="fas fa-user-tie text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <strong class="text-base font-bold block">Guru BK</strong>
-                        <span class="text-xs text-white/80">SMKN 2 Banjarmasin</span>
-                    </div>
-                </div>
-            </div>
-            
-            <nav class="flex flex-col flex-grow py-4 space-y-1 px-3">
-                <a href="dashboard.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                    <i class="fas fa-home mr-3"></i> Dashboard
-                </a>
-                
-                <div class="nav-item cursor-pointer <?php echo $is_profiling_active ? 'active' : ''; ?>" onclick="toggleSubMenu('profilingSubmenuDesktop')">
-                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                        <span class="flex-item">
-                            <i class="fas fa-user-check mr-2"></i> Data & Laporan Siswa
-                        </span>
-                        <i id="profilingSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300 <?php echo $is_profiling_active ? 'fa-chevron-up' : ''; ?>"></i>
-                    </div>
-                </div>
-                <div id="profilingSubmenuDesktop" class="pl-8 space-y-1 <?php echo $is_profiling_active ? '' : 'hidden'; ?>">
-                    <a href="hasil_tes.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'hasil_tes.php' ? 'text-white font-semibold' : ''; ?>">
-                        <i class="fas fa-list-alt mr-3 w-4"></i> Data Hasil Persiswa
-                    </a>
-                    <a href="rekap_kelas.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200 <?php echo $current_page == 'rekap_kelas.php' ? 'text-white font-semibold' : ''; ?>">
-                        <i class="fas fa-chart-bar mr-3 w-4"></i> Data Hasil Perkelas
-                    </a>
-                </div>
-                <div class="nav-item cursor-pointer" onclick="toggleSubMenu('programBkSubmenuDesktop')">
-                    <div class="flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-200 hover:bg-white/10 rounded-lg transition duration-200">
-                        <span class="flex-item">
-                            <i class="fas fa-calendar-alt mr-2"></i> Program BK
-                        </span>
-                        <i id="programBkSubmenuDesktopIcon" class="fas fa-chevron-down text-xs ml-2 transition-transform duration-300"></i>
-                    </div>
-                </div>
-                <div id="programBkSubmenuDesktop" class="pl-8 space-y-1 hidden">
-                    <a href="konselingindividu.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-user-friends mr-3 w-4"></i> Konseling Individu
-                    </a>
-                    <a href="konselingkelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-users mr-3 w-4"></i> Konseling Kelompok
-                    </a>
-                    <a href="bimbingankelompok.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-users mr-3 w-4"></i> Bimbingan Kelompok
-                    </a>
-                    <a href="laporanbk.php" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition duration-200">
-                        <i class="fas fa-users mr-3 w-4"></i> Laporan BK
-                    </a>
-                </div>
-
-                <div class="mt-auto pt-4 border-t border-white/10">
-                    <a href="logout.php" class="nav-item flex items-center px-4 py-3 text-sm font-medium text-red-300 hover:bg-red-600/50 rounded-lg transition duration-200">
-                        <i class="fas fa-sign-out-alt mr-3"></i> Logout
-                    </a>
-                </div>
-            </nav>
-        </aside>
-
-        <main class="flex-grow p-4 sm:p-6 lg:p-8 md:ml-[280px] w-full">
+<?php include __DIR__ . '/partials/sidebar.php'; ?>
+<main class="flex-1 p-4 sm:p-4 lg:p-6 md:ml-[260px]">
             
             <div class="print-header hidden">
                 <div class="header-content">

@@ -35,23 +35,125 @@ $id_hasil_kepribadian_js = json_encode($id_hasil_kepribadian);
 
 $nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
 
-$is_biodata_complete = true;
-$required_fields = [
-    'nama_panggilan', 'tempat_lahir', 'tanggal_lahir', 'alamat_lengkap', 'berat_badan', 
-    'tinggi_badan', 'agama', 'hobi_kegemaran', 'anak_ke', 'suku', 'cita_cita', 
-    'no_telp', 'email', 'instagram', 'tentang_saya_singkat', 'riwayat_sma_smk_ma', 
-    'riwayat_smp_mts', 'riwayat_sd_mi', 'nama_ayah', 'pekerjaan_ayah', 'nama_ibu', 
-    'pekerjaan_ibu', 'no_hp_ortu', 'status_tempat_tinggal', 'jarak_ke_sekolah', 
-    'transportasi_ke_sekolah', 'memiliki_hp_laptop', 'fasilitas_internet', 
-    'fasilitas_belajar_dirumah', 'pelajaran_disenangi', 'pelajaran_tdk_disenangi', 
-    'buku_pelajaran_dimiliki', 'bahasa_sehari_hari', 'bahasa_asing_dikuasai', 
-    'tempat_curhat', 'kelebihan_diri', 'kekurangan_diri'
+// ============================================================
+// Mapping label field (nama kolom database -> label ramah pengguna)
+// dan pengelompokan per kategori. Ini satu-satunya sumber kebenaran
+// untuk validasi kelengkapan Data Profiling -- kalau ada kolom baru
+// yang wajib diisi, cukup tambahkan di $field_categories di bawah.
+// ============================================================
+$field_labels = [
+    'nama_panggilan'            => 'Nama Panggilan',
+    'tempat_lahir'               => 'Tempat Lahir',
+    'tanggal_lahir'              => 'Tanggal Lahir',
+    'alamat_lengkap'             => 'Alamat Lengkap',
+    'berat_badan'                => 'Berat Badan',
+    'tinggi_badan'               => 'Tinggi Badan',
+    'agama'                      => 'Agama',
+    'suku'                       => 'Suku',
+    'anak_ke'                    => 'Anak Ke',
+    'hobi_kegemaran'             => 'Hobi/Kegemaran',
+    'cita_cita'                  => 'Cita-cita',
+    'tentang_saya_singkat'       => 'Tentang Saya (Singkat)',
+    'no_telp'                    => 'Nomor Telepon',
+    'email'                      => 'Email',
+    'instagram'                  => 'Instagram',
+
+    'riwayat_sma_smk_ma'         => 'Riwayat SMA/SMK/MA',
+    'riwayat_smp_mts'            => 'Riwayat SMP/MTs',
+    'riwayat_sd_mi'              => 'Riwayat SD/MI',
+
+    'nama_ayah'                  => 'Nama Ayah',
+    'tempat_lahir_ayah'          => 'Tempat Lahir Ayah',
+    'tanggal_lahir_ayah'         => 'Tanggal Lahir Ayah',
+    'pekerjaan_ayah'             => 'Pekerjaan Ayah',
+    'penghasilan_ayah'           => 'Penghasilan Ayah',
+    'no_hp_ayah'                 => 'Nomor HP Ayah',
+
+    'nama_ibu'                   => 'Nama Ibu',
+    'tempat_lahir_ibu'           => 'Tempat Lahir Ibu',
+    'tanggal_lahir_ibu'          => 'Tanggal Lahir Ibu',
+    'pekerjaan_ibu'              => 'Pekerjaan Ibu',
+    'penghasilan_ibu'            => 'Penghasilan Ibu',
+    'no_hp_ibu'                  => 'Nomor HP Ibu',
+
+    'status_tempat_tinggal'      => 'Status Tempat Tinggal',
+    'jarak_ke_sekolah'           => 'Jarak ke Sekolah',
+    'transportasi_ke_sekolah'    => 'Transportasi ke Sekolah',
+    'memiliki_hp_laptop'         => 'Kepemilikan HP/Laptop',
+    'fasilitas_internet'         => 'Fasilitas Internet',
+    'fasilitas_belajar_dirumah'  => 'Fasilitas Belajar di Rumah',
+
+    'pelajaran_disenangi'        => 'Pelajaran Disenangi',
+    'pelajaran_tdk_disenangi'    => 'Pelajaran Tidak Disenangi',
+    'buku_pelajaran_dimiliki'    => 'Buku Pelajaran Dimiliki',
+    'bahasa_sehari_hari'         => 'Bahasa Sehari-hari',
+    'bahasa_asing_dikuasai'      => 'Bahasa Asing',
+    'tempat_curhat'              => 'Tempat Curhat',
+    'kelebihan_diri'             => 'Kelebihan Diri',
+    'kekurangan_diri'            => 'Kekurangan Diri',
 ];
 
-foreach ($required_fields as $field) {
-    if (empty($siswa[$field])) {
-        $is_biodata_complete = false;
-        break;
+$field_categories = [
+    'Data Pribadi' => [
+        'icon'   => 'fa-id-card',
+        'fields' => [
+            'nama_panggilan', 'tempat_lahir', 'tanggal_lahir', 'alamat_lengkap',
+            'berat_badan', 'tinggi_badan', 'agama', 'suku', 'anak_ke',
+            'hobi_kegemaran', 'cita_cita', 'tentang_saya_singkat',
+            'no_telp', 'email', 'instagram',
+        ],
+    ],
+    'Data Pendidikan' => [
+        'icon'   => 'fa-graduation-cap',
+        'fields' => ['riwayat_sma_smk_ma', 'riwayat_smp_mts', 'riwayat_sd_mi'],
+    ],
+    'Data Ayah' => [
+        'icon'   => 'fa-male',
+        'fields' => [
+            'nama_ayah', 'tempat_lahir_ayah', 'tanggal_lahir_ayah',
+            'pekerjaan_ayah', 'penghasilan_ayah', 'no_hp_ayah',
+        ],
+    ],
+    'Data Ibu' => [
+        'icon'   => 'fa-female',
+        'fields' => [
+            'nama_ibu', 'tempat_lahir_ibu', 'tanggal_lahir_ibu',
+            'pekerjaan_ibu', 'penghasilan_ibu', 'no_hp_ibu',
+        ],
+    ],
+    'Data Tempat Tinggal' => [
+        'icon'   => 'fa-home',
+        'fields' => [
+            'status_tempat_tinggal', 'jarak_ke_sekolah', 'transportasi_ke_sekolah',
+            'memiliki_hp_laptop', 'fasilitas_internet', 'fasilitas_belajar_dirumah',
+        ],
+    ],
+    'Data Pendukung' => [
+        'icon'   => 'fa-hands-helping',
+        'fields' => [
+            'pelajaran_disenangi', 'pelajaran_tdk_disenangi', 'buku_pelajaran_dimiliki',
+            'bahasa_sehari_hari', 'bahasa_asing_dikuasai', 'tempat_curhat',
+            'kelebihan_diri', 'kekurangan_diri',
+        ],
+    ],
+];
+
+// $required_fields diturunkan dari $field_categories (satu sumber data,
+// tidak ada daftar field yang didefinisikan dua kali secara terpisah).
+$required_fields = [];
+foreach ($field_categories as $kategori) {
+    $required_fields = array_merge($required_fields, $kategori['fields']);
+}
+
+$is_biodata_complete = true;
+$missing_by_category = [];
+
+foreach ($field_categories as $nama_kategori => $kategori) {
+    foreach ($kategori['fields'] as $field) {
+        if (empty($siswa[$field])) {
+            $is_biodata_complete = false;
+            $missing_by_category[$nama_kategori][] = $field_labels[$field] ?? $field;
+        }
     }
 }
 
@@ -59,11 +161,6 @@ $is_tes_kemampuan_done = !empty($id_hasil_kemampuan);
 $is_tes_gayabelajar_done = $siswa['skor_visual'] !== null;
 $is_tes_kepribadian_done = !empty($id_hasil_kepribadian);
 
-// --- Asesmen BK: satu card di dashboard, isinya menyesuaikan tingkat kelas siswa ---
-// siswa.kelas hanya berisi tingkat murni ('X'/'XI'/'XII'/'LULUS' setelah lulus),
-// TIDAK digabung dengan jurusan (jurusan ada di kolom terpisah) -- jadi
-// perbandingan PERSIS (in_array, bukan substring/prefix) sudah aman dan tidak
-// tertukar antara "X", "XI", dan "XII" walau sama-sama diawali huruf "X".
 $tingkat_asesmen      = strtoupper(trim($siswa['kelas'] ?? ''));
 $versi_asesmen_valid  = ['X', 'XI', 'XII'];
 $asesmen_tersedia     = in_array($tingkat_asesmen, $versi_asesmen_valid, true);
@@ -72,7 +169,6 @@ $is_tes_asesmen_done = false;
 $asesmen_href = '#';
 
 if ($asesmen_tersedia) {
-    // asesmen_x.php / asesmen_xi.php / asesmen_xii.php
     $asesmen_href = 'asesmen_' . strtolower($tingkat_asesmen) . '.php';
 
     $id_siswa_int = (int) $id_siswa;
@@ -392,14 +488,31 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         </h2>
         
         <?php if (!$is_biodata_complete): ?>
-        <div class="max-w-4xl mx-auto bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-10 rounded-lg shadow-xl" role="alert">
-            <div class="flex items-start">
-                <div class="pt-1"><i class="fas fa-lock mr-3 text-3xl"></i></div>
-                <div>
-                    <p class="font-bold text-lg">AKSES TES TERKUNCI!</p>
-                    <p class="text-sm">Anda wajib melengkapi semua data di menu 
-                        <a href="data_profiling.php" class="font-extrabold underline text-red-700 hover:text-red-800 transition">Data Profiling</a> sebelum dapat memulai tes minat bakat.
+        <div class="max-w-4xl mx-auto bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-5 mb-10 rounded-lg shadow-xl" role="alert">
+            <div class="flex items-start gap-3">
+                <div class="pt-1"><i class="fas fa-lock text-3xl"></i></div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-bold text-lg mb-1">AKSES TES TERKUNCI!</p>
+                    <p class="text-sm mb-4">
+                        Profil Anda belum lengkap. Silakan lengkapi data berikut di menu
+                        <a href="data_profiling.php" class="font-extrabold underline text-red-700 hover:text-red-800 transition">Data Profiling</a>:
                     </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <?php foreach ($missing_by_category as $nama_kategori => $daftar_field): ?>
+                        <div class="bg-white/60 rounded-lg p-3 border border-yellow-300">
+                            <p class="font-bold text-sm mb-2 flex items-center gap-2 text-yellow-900">
+                                <i class="fas <?php echo $field_categories[$nama_kategori]['icon']; ?>"></i>
+                                <?php echo htmlspecialchars($nama_kategori); ?>
+                            </p>
+                            <ul class="text-sm space-y-1 list-disc list-inside text-yellow-800">
+                                <?php foreach ($daftar_field as $label): ?>
+                                <li><?php echo htmlspecialchars($label); ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
         </div>

@@ -75,10 +75,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $riwayat_penyakit = mysqli_real_escape_string($koneksi, $_POST['riwayat_penyakit'] ?? '');
 
     $nama_ayah = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
+    $tempat_lahir_ayah = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir_ayah'] ?? '');
+    $tanggal_lahir_ayah = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir_ayah'] ?? '');
     $pekerjaan_ayah = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
+    $penghasilan_ayah = mysqli_real_escape_string($koneksi, $_POST['penghasilan_ayah'] ?? '');
+    $no_hp_ayah = mysqli_real_escape_string($koneksi, $_POST['no_hp_ayah'] ?? '');
     $nama_ibu = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
+    $tempat_lahir_ibu = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir_ibu'] ?? '');
+    $tanggal_lahir_ibu = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir_ibu'] ?? '');
     $pekerjaan_ibu = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
-    $no_hp_ortu = mysqli_real_escape_string($koneksi, $_POST['no_hp_ortu'] ?? '');
+    $penghasilan_ibu = mysqli_real_escape_string($koneksi, $_POST['penghasilan_ibu'] ?? '');
+    $no_hp_ibu = mysqli_real_escape_string($koneksi, $_POST['no_hp_ibu'] ?? '');
 
     $status_tempat_tinggal = mysqli_real_escape_string($koneksi, $_POST['status_tempat_tinggal'] ?? '');
     $jarak_ke_sekolah = mysqli_real_escape_string($koneksi, $_POST['jarak_ke_sekolah'] ?? '');
@@ -126,6 +133,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     
     if (empty($pesan_error)) {
+        // Kolom bertipe decimal/date tidak menerima string kosong di
+        // beberapa mode MySQL/MariaDB (STRICT_TRANS_TABLES) -- dikonversi
+        // ke NULL kalau memang tidak diisi.
+        $penghasilan_ayah_sql = ($penghasilan_ayah === '') ? 'NULL' : "'$penghasilan_ayah'";
+        $penghasilan_ibu_sql  = ($penghasilan_ibu === '') ? 'NULL' : "'$penghasilan_ibu'";
+        $tanggal_lahir_ayah_sql = ($tanggal_lahir_ayah === '') ? 'NULL' : "'$tanggal_lahir_ayah'";
+        $tanggal_lahir_ibu_sql  = ($tanggal_lahir_ibu === '') ? 'NULL' : "'$tanggal_lahir_ibu'";
+
         $update_query = "
             UPDATE siswa SET 
                 nama_panggilan = '$nama_panggilan',
@@ -152,10 +167,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 cita_cita = '$cita_cita',
                 riwayat_penyakit = '$riwayat_penyakit',
                 nama_ayah = '$nama_ayah',
+                tempat_lahir_ayah = '$tempat_lahir_ayah',
+                tanggal_lahir_ayah = $tanggal_lahir_ayah_sql,
                 pekerjaan_ayah = '$pekerjaan_ayah',
+                penghasilan_ayah = $penghasilan_ayah_sql,
+                no_hp_ayah = '$no_hp_ayah',
                 nama_ibu = '$nama_ibu',
+                tempat_lahir_ibu = '$tempat_lahir_ibu',
+                tanggal_lahir_ibu = $tanggal_lahir_ibu_sql,
                 pekerjaan_ibu = '$pekerjaan_ibu',
-                no_hp_ortu = '$no_hp_ortu',
+                penghasilan_ibu = $penghasilan_ibu_sql,
+                no_hp_ibu = '$no_hp_ibu',
                 status_tempat_tinggal = '$status_tempat_tinggal',
                 jarak_ke_sekolah = '$jarak_ke_sekolah',
                 transportasi_ke_sekolah = '$transportasi_ke_sekolah',
@@ -599,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-            <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <form id="formProfiling" method="POST" enctype="multipart/form-data" class="space-y-6">
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-8 items-start mb-10">
                     
@@ -819,43 +841,121 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="accordion-group border rounded-xl shadow-lg">
-                        <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
-                            <h3 class="text-lg font-semibold primary-color">
-                                <i class="fas fa-user-friends mr-2"></i> 4. Data Orang Tua/Wali
-                            </h3>
-                            <i class="fas fa-chevron-down accordion-icon text-lg primary-color"></i>
-                        </div>
-                        <div class="accordion-content p-6 md:p-8 collapsed">
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            
-                                <div class="col-span-1">
-                                    <label for="nama_ayah" class="form-label"><i class="fas fa-male mr-1"></i> Nama Ayah</label>
-                                    <input type="text" id="nama_ayah" name="nama_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['nama_ayah'] ?? ''); ?>" maxlength="100" placeholder="Nama Lengkap Ayah">
-                                </div>
-                                
-                                <div class="col-span-1">
-                                    <label for="pekerjaan_ayah" class="form-label"><i class="fas fa-briefcase mr-1"></i> Pekerjaan Ayah</label>
-                                    <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>" maxlength="100" placeholder="Masukkan pekerjaan Ayah anda">
-                                </div>
-                                
-                                <div class="col-span-1">
-                                    <label for="nama_ibu" class="form-label"><i class="fas fa-female mr-1"></i> Nama Ibu</label>
-                                    <input type="text" id="nama_ibu" name="nama_ibu" class="form-input" value="<?php echo htmlspecialchars($siswa['nama_ibu'] ?? ''); ?>" maxlength="100" placeholder="Nama Lengkap Ibu">
-                                </div>
-                                
-                                <div class="col-span-1">
-                                    <label for="pekerjaan_ibu" class="form-label"><i class="fas fa-briefcase mr-1"></i> Pekerjaan Ibu</label>
-                                    <input type="text" id="pekerjaan_ibu" name="pekerjaan_ibu" class="form-input" value="<?php echo htmlspecialchars($siswa['pekerjaan_ibu'] ?? ''); ?>" maxlength="100" placeholder="Cth: Ibu Rumah Tangga, Guru">
-                                </div>
-                                
-                                <div class="col-span-1">
-                                    <label for="no_hp_ortu" class="form-label"><i class="fas fa-mobile-alt mr-1"></i> Nomor HP Orang Tua</label>
-                                    <input type="number" id="no_hp_ortu" name="no_hp_ortu" class="form-input" value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>" maxlength="20" placeholder="Nomor yang bisa dihubungi">
-                                </div>
-                                
-                            </div>
-                        </div>
-                    </div>
+    <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
+        <h3 class="text-lg font-semibold primary-color">
+            <i class="fas fa-user-friends mr-2"></i> 4. Data Orang Tua
+        </h3>
+        <i class="fas fa-chevron-down accordion-icon text-lg primary-color"></i>
+    </div>
+
+    <div class="accordion-content p-6 md:p-8 collapsed">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+            <div class="space-y-4">
+                <h4 class="font-semibold text-gray-700 border-b pb-2">
+                    <i class="fas fa-male mr-2"></i>Data Ayah
+                </h4>
+
+                <div>
+                    <label for="nama_ayah" class="form-label">Nama Ayah</label>
+                    <input type="text" id="nama_ayah" name="nama_ayah"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['nama_ayah'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="tempat_lahir_ayah" class="form-label">Tempat Lahir</label>
+                    <input type="text" id="tempat_lahir_ayah" name="tempat_lahir_ayah"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['tempat_lahir_ayah'] ?? '') ?>"
+                        placeholder="Contoh: Banjarmasin">
+                </div>
+
+                <div>
+                    <label for="tanggal_lahir_ayah" class="form-label">Tanggal Lahir</label>
+                    <input type="date" id="tanggal_lahir_ayah" name="tanggal_lahir_ayah"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['tanggal_lahir_ayah'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="pekerjaan_ayah" class="form-label">Pekerjaan</label>
+                    <input type="text" id="pekerjaan_ayah" name="pekerjaan_ayah"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['pekerjaan_ayah'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="penghasilan_ayah" class="form-label">Penghasilan Ayah</label>
+                    <input type="text" id="penghasilan_ayah" name="penghasilan_ayah"
+                        class="form-input input-rupiah"
+                        value="<?= !empty($siswa['penghasilan_ayah']) ? (int)$siswa['penghasilan_ayah   '] : '' ?>"
+                        placeholder="Contoh: Rp 3.000.000" inputmode="numeric" autocomplete="off">
+                </div>
+
+                <div>
+                    <label for="no_hp_ayah" class="form-label">Nomor HP</label>
+                    <input type="text" id="no_hp_ayah" name="no_hp_ayah"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['no_hp_ayah'] ?? '') ?>">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="font-semibold text-gray-700 border-b pb-2">
+                    <i class="fas fa-female mr-2"></i>Data Ibu
+                </h4>
+
+                <div>
+                    <label for="nama_ibu" class="form-label">Nama Ibu</label>
+                    <input type="text" id="nama_ibu" name="nama_ibu"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['nama_ibu'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="tempat_lahir_ibu" class="form-label">Tempat Lahir</label>
+                    <input type="text" id="tempat_lahir_ibu" name="tempat_lahir_ibu"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['tempat_lahir_ibu'] ?? '') ?>"
+                        placeholder="Contoh: Martapura">
+                </div>
+
+                <div>
+                    <label for="tanggal_lahir_ibu" class="form-label">Tanggal Lahir</label>
+                    <input type="date" id="tanggal_lahir_ibu" name="tanggal_lahir_ibu"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['tanggal_lahir_ibu'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="pekerjaan_ibu" class="form-label">Pekerjaan</label>
+                    <input type="text" id="pekerjaan_ibu" name="pekerjaan_ibu"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['pekerjaan_ibu'] ?? '') ?>">
+                </div>
+
+                <div>
+                    <label for="penghasilan_ibu" class="form-label">Penghasilan Ibu</label>
+                    <input type="text" id="penghasilan_ibu" name="penghasilan_ibu"
+                        class="form-input input-rupiah"
+                        value="<?= !empty($siswa['penghasilan_ibu']) ? (int)$siswa['penghasilan_ibu'] : '' ?>"
+                        placeholder="Contoh: Rp 2.500.000" inputmode="numeric" autocomplete="off">
+                </div>
+
+                <div>
+                    <label for="no_hp_ibu" class="form-label">Nomor HP</label>
+                    <input type="text" id="no_hp_ibu" name="no_hp_ibu"
+                        class="form-input"
+                        value="<?= htmlspecialchars($siswa['no_hp_ibu'] ?? '') ?>">
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
 
                     <div class="accordion-group border rounded-xl shadow-lg">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
@@ -1000,6 +1100,47 @@ document.addEventListener('DOMContentLoaded', function() {
             </script>
             
 
+            <script>
+                // ============================================================
+                // Format Rupiah untuk input Penghasilan Ayah/Ibu (vanilla JS,
+                // tanpa library eksternal). Tampilan: "Rp 3.000.000".
+                // Nilai yang benar-benar dikirim ke PHP saat submit: angka
+                // murni tanpa "Rp", titik, atau spasi (mis. "3000000").
+                // ============================================================
+                function formatRupiah(input) {
+                    const angka = input.value.replace(/[^0-9]/g, '');
+                    if (angka === '') {
+                        input.value = '';
+                        return;
+                    }
+                    input.value = 'Rp ' + new Intl.NumberFormat('id-ID').format(angka);
+                    // Jaga posisi kursor tetap di akhir teks setelah diformat ulang.
+                    const posisiAkhir = input.value.length;
+                    input.setSelectionRange(posisiAkhir, posisiAkhir);
+                }
+
+                function unformatRupiah(input) {
+                    input.value = input.value.replace(/[^0-9]/g, '');
+                }
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    const inputRupiah = document.querySelectorAll('.input-rupiah');
+
+                    inputRupiah.forEach(input => {
+                        // Data lama dari database berupa angka murni -> format begitu halaman dibuka.
+                        formatRupiah(input);
+                        input.addEventListener('input', () => formatRupiah(input));
+                    });
+
+                    const formProfiling = document.getElementById('formProfiling');
+                    if (formProfiling) {
+                        formProfiling.addEventListener('submit', () => {
+                            inputRupiah.forEach(input => unformatRupiah(input));
+                        });
+                    }
+                });
+            </script>
+
         </div>
     </section>
 
@@ -1054,4 +1195,4 @@ document.addEventListener('DOMContentLoaded', function() {
     </footer>
 
 </body>
-</html> 
+</html>

@@ -156,11 +156,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $suku                       = mysqli_real_escape_string($koneksi, $_POST['suku'] ?? '');
     $cita_cita                  = mysqli_real_escape_string($koneksi, $_POST['cita_cita'] ?? '');
     $riwayat_penyakit           = mysqli_real_escape_string($koneksi, $_POST['riwayat_penyakit'] ?? '');
-    $nama_ayah                  = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
-    $pekerjaan_ayah             = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
-    $nama_ibu                   = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
-    $pekerjaan_ibu              = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
-    $no_hp_ortu                 = mysqli_real_escape_string($koneksi, $_POST['no_hp_ortu'] ?? '');
+    $nama_ayah           = mysqli_real_escape_string($koneksi, $_POST['nama_ayah'] ?? '');
+$tempat_lahir_ayah   = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir_ayah'] ?? '');
+$tanggal_lahir_ayah  = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir_ayah'] ?? '');
+$pekerjaan_ayah      = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ayah'] ?? '');
+$penghasilan_ayah = preg_replace('/[^0-9]/', '', $_POST['penghasilan_ayah'] ?? '');
+$penghasilan_ayah = mysqli_real_escape_string($koneksi, $penghasilan_ayah);
+$no_hp_ayah          = mysqli_real_escape_string($koneksi, $_POST['no_hp_ayah'] ?? '');
+
+$nama_ibu            = mysqli_real_escape_string($koneksi, $_POST['nama_ibu'] ?? '');
+$tempat_lahir_ibu    = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir_ibu'] ?? '');
+$tanggal_lahir_ibu   = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir_ibu'] ?? '');
+$pekerjaan_ibu       = mysqli_real_escape_string($koneksi, $_POST['pekerjaan_ibu'] ?? '');
+$penghasilan_ibu = preg_replace('/[^0-9]/', '', $_POST['penghasilan_ibu'] ?? '');
+$penghasilan_ibu = mysqli_real_escape_string($koneksi, $penghasilan_ibu);
+$no_hp_ibu           = mysqli_real_escape_string($koneksi, $_POST['no_hp_ibu'] ?? '');
     $status_tempat_tinggal      = mysqli_real_escape_string($koneksi, $_POST['status_tempat_tinggal'] ?? '');
     $jarak_ke_sekolah           = mysqli_real_escape_string($koneksi, $_POST['jarak_ke_sekolah'] ?? '');
     $transportasi_ke_sekolah    = mysqli_real_escape_string($koneksi, $_POST['transportasi_ke_sekolah'] ?? '');
@@ -230,11 +240,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 suku                        = '$suku',
                 cita_cita                   = '$cita_cita',
                 riwayat_penyakit            = '$riwayat_penyakit',
-                nama_ayah                   = '$nama_ayah',
-                pekerjaan_ayah              = '$pekerjaan_ayah',
-                nama_ibu                    = '$nama_ibu',
-                pekerjaan_ibu               = '$pekerjaan_ibu',
-                no_hp_ortu                  = '$no_hp_ortu',
+               nama_ayah              = '$nama_ayah',
+tempat_lahir_ayah      = '$tempat_lahir_ayah',
+tanggal_lahir_ayah     = " . (empty($tanggal_lahir_ayah) ? "NULL" : "'$tanggal_lahir_ayah'") . ",
+pekerjaan_ayah         = '$pekerjaan_ayah',
+penghasilan_ayah       = '$penghasilan_ayah',
+no_hp_ayah             = '$no_hp_ayah',
+
+nama_ibu               = '$nama_ibu',
+tempat_lahir_ibu       = '$tempat_lahir_ibu',
+tanggal_lahir_ibu      = " . (empty($tanggal_lahir_ibu) ? "NULL" : "'$tanggal_lahir_ibu'") . ",
+pekerjaan_ibu          = '$pekerjaan_ibu',
+penghasilan_ibu        = '$penghasilan_ibu',
+no_hp_ibu              = '$no_hp_ibu',
                 status_tempat_tinggal       = '$status_tempat_tinggal',
                 jarak_ke_sekolah            = '$jarak_ke_sekolah',
                 transportasi_ke_sekolah     = '$transportasi_ke_sekolah',
@@ -425,6 +443,37 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
         .btn-print-cv .btn-badge {
             background: var(--accent);
             color: var(--primary-dark);
+        }
+
+        .btn-print-data {
+            background: linear-gradient(135deg, #2f6fa3 0%, #1a4d73 60%, #123a57 100%);
+            color: var(--white);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-print-data::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.25) 45%, transparent 70%);
+            transform: translateX(-120%);
+            transition: transform .6s ease;
+        }
+
+        .btn-print-data:hover::before {
+            transform: translateX(120%);
+        }
+
+        .btn-print-data:hover {
+            box-shadow: 0 10px 25px -5px rgba(26, 77, 115, 0.45);
+            transform: translateY(-2px);
+        }
+
+        .btn-print-data .btn-badge {
+            background: #4a90c4;
+            color: #ffffff;
         }
 
         .btn-back {
@@ -1124,18 +1173,32 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                             <?php echo htmlspecialchars($siswa['nis']); ?>
                         </p>
                     </div>
-                    <a href="#" id="btnExportCV" class="btn-print-cv group inline-flex items-center gap-4 px-6 py-3.5 rounded-2xl transition-all duration-300">
-                        <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-white/15">
-                            <i class="fas fa-file-pdf text-xl"></i>
-                        </div>
-                        <div class="text-left leading-tight">
-                            <span class="block uppercase tracking-widest font-extrabold text-sm">Cetak CV Siswa</span>
-                            <span class="block text-[11px] font-medium text-white/75 mt-0.5">Unduh profil lengkap dalam format PDF</span>
-                        </div>
-                        <span class="btn-badge ml-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                            <i class="fas fa-print mr-1"></i>PDF
-                        </span>
-                    </a>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <a href="#" id="btnExportCV" class="btn-print-cv group inline-flex items-center gap-4 px-6 py-3.5 rounded-2xl transition-all duration-300">
+                            <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-white/15">
+                                <i class="fas fa-file-pdf text-xl"></i>
+                            </div>
+                            <div class="text-left leading-tight">
+                                <span class="block uppercase tracking-widest font-extrabold text-sm">Cetak CV Siswa</span>
+                                <span class="block text-[11px] font-medium text-white/75 mt-0.5">Unduh profil lengkap dalam 1 PDF</span>
+                            </div>
+                            <span class="btn-badge ml-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                <i class="fas fa-print"></i>
+                            </span>
+                        </a>
+                        <a href="#" id="btnExportDataLengkap" class="btn-print-data group inline-flex items-center gap-4 px-6 py-3.5 rounded-2xl transition-all duration-300">
+                            <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-white/15">
+                                <i class="fas fa-file-lines text-xl"></i>
+                            </div>
+                            <div class="text-left leading-tight">
+                                <span class="block uppercase tracking-widest font-extrabold text-sm">Cetak Data Lengkap</span>
+                                <span class="block text-[11px] font-medium text-white/75 mt-0.5">Seluruh data dalam 1 PDF</span>
+                            </div>
+                            <span class="btn-badge ml-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
+                                <i class="fas fa-print"></i>
+                            </span>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -1587,77 +1650,135 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
                         <div id="data-orang-tua"
                             class="tab-content bg-white p-8 rounded-b-2xl shadow-xl border border-gray-100 space-y-8 hidden">
                             <h3 class="text-2xl font-bold text-gray-800 pb-4 border-b-2 border-indigo-100 section-header">
-                                <i class="fas fa-users text-indigo-600 mr-3"></i> Data Orang Tua/Wali
+                                <i class="fas fa-users text-indigo-600 mr-3"></i> Data Orang Tua
                             </h3>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div
-                                    class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-md">
-                                    <h4 class="font-bold text-blue-800 mb-4 flex items-center text-lg">
-                                        <i class="fas fa-male text-2xl mr-3"></i> Data Ayah
-                                    </h4>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nama
-                                                Ayah</label>
-                                            <input type="text" name="nama_ayah"
-                                                value="<?php echo htmlspecialchars($siswa['nama_ayah'] ?? ''); ?>"
-                                                class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-3 text-sm bg-white"
-                                                placeholder="Nama Lengkap Ayah">
-                                        </div>
-                                        <div>
-                                            <label
-                                                class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
-                                            <input type="text" name="pekerjaan_ayah"
-                                                value="<?php echo htmlspecialchars($siswa['pekerjaan_ayah'] ?? ''); ?>"
-                                                class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 p-3 text-sm bg-white"
-                                                placeholder="Wiraswasta, PNS, dll">
-                                        </div>
-                                    </div>
-                                </div>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                <div
-                                    class="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-pink-200 shadow-md">
-                                    <h4 class="font-bold text-pink-800 mb-4 flex items-center text-lg">
-                                        <i class="fas fa-female text-2xl mr-3"></i> Data Ibu
-                                    </h4>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-2">Nama
-                                                Ibu</label>
-                                            <input type="text" name="nama_ibu"
-                                                value="<?php echo htmlspecialchars($siswa['nama_ibu'] ?? ''); ?>"
-                                                class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 p-3 text-sm bg-white"
-                                                placeholder="Nama Lengkap Ibu">
-                                        </div>
-                                        <div>
-                                            <label
-                                                class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
-                                            <input type="text" name="pekerjaan_ibu"
-                                                value="<?php echo htmlspecialchars($siswa['pekerjaan_ibu'] ?? ''); ?>"
-                                                class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 p-3 text-sm bg-white"
-                                                placeholder="IRT, Guru, dll">
-                                        </div>
-                                    </div>
-                                </div>
+    <!-- ================= AYAH ================= -->
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-200 shadow-md">
+        <h4 class="font-bold text-blue-800 mb-4 flex items-center text-lg">
+            <i class="fas fa-male text-2xl mr-3"></i> Data Ayah
+        </h4>
 
-                                <div class="md:col-span-2 mt-4">
-                                    <div
-                                        class="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200">
-                                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                            <i class="fas fa-phone-volume text-green-600 mr-2"></i>Nomor HP Orang
-                                            Tua/Wali
-                                        </label>
-                                        <input type="tel" name="no_hp_ortu"
-                                            value="<?php echo htmlspecialchars($siswa['no_hp_ortu'] ?? ''); ?>"
-                                            class="w-full rounded-xl border-2 border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 p-3 text-sm bg-white"
-                                            placeholder="0812xxxxxxxx">
-                                        <p class="text-xs text-gray-600 mt-2"><i
-                                                class="fas fa-info-circle mr-1"></i>Nomor yang aktif dan dapat dihubungi
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+        <div class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Ayah</label>
+                <input type="text" name="nama_ayah"
+                    value="<?= htmlspecialchars($siswa['nama_ayah'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Nama Lengkap Ayah">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tempat Lahir</label>
+                <input type="text" name="tempat_lahir_ayah"
+                    value="<?= htmlspecialchars($siswa['tempat_lahir_ayah'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Contoh: Banjarmasin">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Lahir</label>
+                <input type="date" name="tanggal_lahir_ayah"
+                    value="<?= htmlspecialchars($siswa['tanggal_lahir_ayah'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
+                <input type="text" name="pekerjaan_ayah"
+                    value="<?= htmlspecialchars($siswa['pekerjaan_ayah'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Wiraswasta, PNS, dll">
+            </div>
+
+           <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Penghasilan Ayah</label>
+                <input type="text" name="penghasilan_ayah"
+                    value="<?= !empty($siswa['penghasilan_ayah']) ? (int)$siswa['penghasilan_ayah'] : '' ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3 input-rupiah"
+                    placeholder="Rp 0"
+                    inputmode="numeric"
+                    autocomplete="off">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Nomor HP Ayah</label>
+                <input type="tel" name="no_hp_ayah"
+                    value="<?= htmlspecialchars($siswa['no_hp_ayah'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="08xxxxxxxxxx">
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================= IBU ================= -->
+    <div class="bg-gradient-to-br from-pink-50 to-rose-50 p-6 rounded-2xl border-2 border-pink-200 shadow-md">
+
+        <h4 class="font-bold text-pink-800 mb-4 flex items-center text-lg">
+            <i class="fas fa-female text-2xl mr-3"></i> Data Ibu
+        </h4>
+
+        <div class="space-y-4">
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Nama Ibu</label>
+                <input type="text" name="nama_ibu"
+                    value="<?= htmlspecialchars($siswa['nama_ibu'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Nama Lengkap Ibu">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tempat Lahir</label>
+                <input type="text" name="tempat_lahir_ibu"
+                    value="<?= htmlspecialchars($siswa['tempat_lahir_ibu'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Contoh: Banjarmasin">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Tanggal Lahir</label>
+                <input type="date" name="tanggal_lahir_ibu"
+                    value="<?= htmlspecialchars($siswa['tanggal_lahir_ibu'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Pekerjaan</label>
+                <input type="text" name="pekerjaan_ibu"
+                    value="<?= htmlspecialchars($siswa['pekerjaan_ibu'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="Ibu Rumah Tangga, Guru, dll">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Penghasilan Ibu</label>
+                <input type="text" name="penghasilan_ibu"
+                    value="<?= !empty($siswa['penghasilan_ibu']) ? (int)$siswa['penghasilan_ibu'] : '' ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3 input-rupiah"
+                    placeholder="Rp 0"
+                    inputmode="numeric"
+                    autocomplete="off">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Nomor HP Ibu</label>
+                <input type="tel" name="no_hp_ibu"
+                    value="<?= htmlspecialchars($siswa['no_hp_ibu'] ?? '') ?>"
+                    class="w-full rounded-xl border-2 border-gray-300 p-3"
+                    placeholder="08xxxxxxxxxx">
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+                            
                             <div class="flex flex-col md:flex-col items-center gap-4 mt-10 no-print">
                                 <button type="submit"
                                     class="w-full md:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-8 rounded-[1rem] shadow-xl shadow-blue-100 flex items-center justify-center gap-3 group transition-all">
@@ -1941,6 +2062,48 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
 
                             setTimeout(triggerPrint, 2500);
                         });
+
+                        document.getElementById('btnExportDataLengkap').addEventListener('click', function (e) {
+                            e.preventDefault();
+                            const idSiswa = "<?php echo $id_siswa; ?>";
+                            const btn = this;
+                            const originalContent = btn.innerHTML;
+
+                            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                            btn.classList.add('opacity-50', 'pointer-events-none');
+
+                            const url = 'cetak_data_lengkap.php?id_siswa=' + idSiswa;
+                            const printWindow = window.open(url, '_blank');
+
+                            if (!printWindow) {
+                                btn.innerHTML = originalContent;
+                                btn.classList.remove('opacity-50', 'pointer-events-none');
+                                alert('Mohon izinkan pop-up di browser kamu untuk mencetak data lengkap.');
+                                return;
+                            }
+
+                            const restoreBtnData = function () {
+                                btn.innerHTML = originalContent;
+                                btn.classList.remove('opacity-50', 'pointer-events-none');
+                            };
+
+                            let alreadyTriggeredData = false;
+                            const triggerPrintData = function () {
+                                if (alreadyTriggeredData) return;
+                                alreadyTriggeredData = true;
+                                restoreBtnData();
+                                try {
+                                    printWindow.focus();
+                                    printWindow.print();
+                                } catch (err) {
+                                    console.error('Gagal memicu print otomatis:', err);
+                                }
+                            };
+
+                            printWindow.addEventListener('load', triggerPrintData);
+
+                            setTimeout(triggerPrintData, 2500);
+                        });
                     </script>
                 </div>
         </div>
@@ -2123,7 +2286,26 @@ $url_foto_display = $siswa['url_foto'] ? '../' . $siswa['url_foto'] : 'https://w
             card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
             observer.observe(card);
         });
+    document.querySelectorAll('.input-rupiah').forEach(function(input){
+
+    function formatRupiah(value){
+        value = value.replace(/[^0-9]/g,'');
+
+        if(value === '') return '';
+
+        return 'Rp ' + value.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    }
+
+    input.value = formatRupiah(input.value);
+
+    input.addEventListener('input', function(){
+        this.value = formatRupiah(this.value);
+    });
+
+});
     </script>
+
+</script>
 </body>
 
 </html>
