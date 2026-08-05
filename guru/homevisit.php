@@ -188,6 +188,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .primary-bg { background-color: var(--primary-light); }
       .secondary-bg { background-color: #E6EEF0; }
 
+      .action-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; transition: all 0.15s ease; }
+      .action-btn:hover { transform: translateY(-1px); }
+      .action-btn-view { color: #475569; background: #f1f5f9; }
+      .action-btn-view:hover { background: #e2e8f0; }
+      .action-btn-edit { color: #2563eb; background: #eff6ff; }
+      .action-btn-edit:hover { background: #dbeafe; }
+      .action-btn-delete { color: #dc2626; background: #fef2f2; }
+      .action-btn-delete:hover { background: #fee2e2; }
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; color: #94a3b8; }
+      .empty-state i { font-size: 2.5rem; margin-bottom: 0.75rem; color: #cbd5e1; }
+      .empty-state p.empty-title { font-weight: 600; color: #64748b; margin-bottom: 0.25rem; }
+      .empty-state p.empty-desc { font-size: 0.8rem; }
+
       #printAreaVisit, #printAreaDinas { display: none; }
       body.mode-cetak > *:not(#printAreaVisit):not(#printAreaDinas) { display: none !important; }
       body.mode-cetak.cetak-visit #printAreaVisit { display: block !important; }
@@ -231,9 +244,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         table.tabel-visit th.col-hasil, table.tabel-visit td.col-hasil { width: 24%; }
         table.tabel-visit th.col-ket, table.tabel-visit td.col-ket { width: 30%; }
         .foto-wrap { margin-top: 12px; page-break-before: always; break-before: page; }
-        .foto-wrap p.foto-judul { font-weight: bold; font-size: 11pt; margin-bottom: 10px; }
-        .foto-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; width: 100%; }
-        .foto-grid img { width: 100% !important; height: 160px !important; object-fit: cover; border: 1px solid #000; page-break-inside: avoid; }
+        .foto-wrap p.foto-judul { font-weight: bold; font-size: 12pt; margin-bottom: 14px; }
+        .foto-grid { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 18px !important; width: 100%; }
+        .foto-grid .foto-frame { width: 480px; height: 300px; max-width: 100%; background: #fff; border: 1px solid #000; border-radius: 2px; display: flex; align-items: center; justify-content: center; overflow: hidden; page-break-inside: avoid; margin: 0 auto; }
+        .foto-grid .foto-frame img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto; }
         .ttd-wrap { display: flex; justify-content: space-between; margin-top: 40px; }
         .ttd-box { text-align: center; width: 45%; }
         .ttd-space { height: 55px; }
@@ -261,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         <input type="text" id="kotakCari" placeholder="Cari nama siswa, kelas, atau alamat..."
           class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
-      <button onclick="bukaModalTambah()" class="btn-action bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+      <button onclick="bukaModalTambah()" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Tambah catatan Home Visit baru">
         <i class="fas fa-plus mr-1"></i> Tambah Data
       </button>
     </div>
@@ -304,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           </div>
         </div>
 
-        <h3 class="text-sm font-bold text-gray-700 pt-2 border-t">Data Kunjungan</h3>
+        <h3 class="text-sm font-bold text-gray-700 pt-2 border-t flex items-center gap-2"><i class="fas fa-clipboard-list text-blue-500"></i> Data Kunjungan</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa *</label>
@@ -344,8 +358,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           <textarea id="fTindakLanjut" rows="2" class="w-full px-3 py-2 border rounded text-sm"></textarea>
         </div>
 
-        <h3 class="text-sm font-bold text-gray-700 pt-2 border-t">Data untuk Laporan Perjalanan Dinas</h3>
-        <p class="text-xs text-gray-400">Bagian ini dipakai khusus saat mencetak Laporan Hasil Perjalanan Dinas.</p>
+        <div class="pt-2 border-t">
+          <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="fas fa-route text-indigo-500"></i> Data untuk Laporan Perjalanan Dinas</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Bagian ini dipakai khusus saat mencetak Laporan Hasil Perjalanan Dinas.</p>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Petugas</label>
@@ -370,14 +386,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Foto Dokumentasi (maks. 8 foto, @2MB)</label>
+          <label class="block text-sm font-medium text-red-700 mb-1">Foto Dokumentasi (maks. 8 foto, @2MB)</label>
+          <label class="block text-[12px] text-gray-700 mb-1">Disarankan foto landscape</label>
           <input type="file" id="fFotoInput" accept="image/*" multiple onchange="previewFotoHV(event)" class="mb-3 text-sm border rounded-lg px-3 py-2 w-full">
           <div id="boxFotoHV" class="grid grid-cols-3 gap-3"></div>
         </div>
       </div>
       <div class="px-6 py-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
-        <button onclick="tutupModal()" class="px-4 py-2 rounded-lg border text-sm">Batal</button>
-        <button onclick="simpanVisit()" id="btnSimpanHV" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">
+        <button onclick="tutupModal()" class="px-4 py-2 rounded-lg border hover:bg-gray-50 text-sm">Batal</button>
+        <button onclick="simpanVisit()" id="btnSimpanHV" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
           <i class="fas fa-save mr-1"></i> Simpan
         </button>
       </div>
@@ -391,12 +408,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         <button onclick="document.getElementById('modalDetail').classList.remove('open')" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
       </div>
       <div class="p-6 text-sm space-y-2" id="isiDetailHV"></div>
+      <div class="px-6 pt-2 pb-4 flex items-center gap-2 text-xs text-gray-400">
+        <i class="fas fa-circle-info"></i> Pilih salah satu dokumen di bawah untuk dicetak sebagai PDF.
+      </div>
       <div class="px-6 py-4 border-t flex flex-wrap justify-end gap-2">
-        <button onclick="cetakKunjungan()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold">
-          <i class="fas fa-file-pdf mr-1"></i> Cetak Form Kunjungan Rumah
+        <button onclick="cetakKunjungan()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold" title="Cetak formulir Kunjungan Rumah (Home Visit) ke PDF">
+          <i class="fas fa-file-pdf mr-1"></i> Cetak PDF Home Visit
         </button>
-        <button onclick="cetakDinas()" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold">
-          <i class="fas fa-file-pdf mr-1"></i> Cetak Laporan Perjalanan Dinas
+        <button onclick="cetakDinas()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold" title="Cetak Laporan Hasil Perjalanan Dinas ke PDF">
+          <i class="fas fa-file-pdf mr-1"></i> Cetak PDF Perjalanan Dinas
         </button>
       </div>
     </div>
@@ -532,7 +552,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   function renderTabel() {
     const tbody = document.getElementById('isiTabelVisit');
     if (dataVisit.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">Belum ada data. Klik "Tambah Data" untuk mulai mencatat.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="7">
+        <div class="empty-state">
+          <i class="fas fa-house-circle-check"></i>
+          <p class="empty-title">Belum ada data Home Visit</p>
+          <p class="empty-desc">Klik tombol "Tambah Data" di atas untuk mulai mencatat kunjungan rumah.</p>
+        </div>
+      </td></tr>`;
       return;
     }
     tbody.innerHTML = dataVisit.map((d, i) => `
@@ -544,9 +570,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         <td class="px-3 py-2">${escapeHtml(d.nama_ortu_wali || '-')}</td>
         <td class="px-3 py-2 max-w-xs truncate" title="${escapeHtml(d.alamat || '')}">${escapeHtml(d.alamat || '-')}</td>
         <td class="px-3 py-2 text-center whitespace-nowrap">
-          <button onclick="lihatDetail(${d.id_visit})" class="text-gray-600 hover:text-gray-900 mr-2" title="Lihat Detail & Cetak"><i class="fas fa-eye"></i></button>
-          <button onclick="bukaModalEdit(${d.id_visit})" class="text-blue-600 hover:text-blue-800 mr-2" title="Edit"><i class="fas fa-pen"></i></button>
-          <button onclick="hapusData(${d.id_visit})" class="text-red-500 hover:text-red-700" title="Hapus"><i class="fas fa-trash"></i></button>
+          <button onclick="lihatDetail(${d.id_visit})" class="action-btn action-btn-view mr-1" title="Lihat detail & cetak PDF"><i class="fas fa-eye"></i></button>
+          <button onclick="bukaModalEdit(${d.id_visit})" class="action-btn action-btn-edit mr-1" title="Edit data ini"><i class="fas fa-pen"></i></button>
+          <button onclick="hapusData(${d.id_visit})" class="action-btn action-btn-delete" title="Hapus data ini"><i class="fas fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
@@ -696,21 +722,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     let foto = [];
     try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
     const fotoHtml = foto.length
-      ? `<div class="grid grid-cols-2 gap-2 mt-2">${foto.map(f => `<img src="${BASE_URL}${f}" class="w-full h-48 object-cover rounded border">`).join('')}</div>`
-      : '<p class="text-gray-400 text-xs mt-1">Tidak ada foto.</p>';
+      ? `<div class="grid grid-cols-2 gap-3 mt-2">${foto.map(f => `<img src="${BASE_URL}${f}" class="w-full h-40 object-contain bg-white rounded-lg border shadow-sm p-1">`).join('')}</div>`
+      : `<div class="mt-2 border border-dashed rounded-lg py-6 text-center text-gray-300"><i class="fas fa-image text-2xl mb-1"></i><p class="text-xs text-gray-400">Belum ada foto dokumentasi</p></div>`;
+
+    const item = (label, value, full) => `
+      <div class="${full ? 'col-span-2' : ''}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">${label}</p>
+        <p class="text-sm text-gray-800 leading-relaxed">${value || '<span class="text-gray-300">-</span>'}</p>
+      </div>`;
 
     document.getElementById('isiDetailHV').innerHTML = `
-      <p><b>Nama Siswa:</b> ${escapeHtml(d.nama_siswa)}</p>
-      <p><b>Kelas:</b> ${escapeHtml(d.kelas || '-')}</p>
-      <p><b>Hari/Tanggal:</b> ${formatTgl(d.hari_tanggal)}</p>
-      <p><b>Orang Tua/Wali:</b> ${escapeHtml(d.nama_ortu_wali || '-')}</p>
-      <p><b>Alamat:</b> ${escapeHtml(d.alamat || '-')}</p>
-      <p><b>Masalah:</b> ${escapeHtml(d.masalah || '-')}</p>
-      <p><b>Hasil yang Dicapai:</b> ${escapeHtml(d.hasil_dicapai || '-')}</p>
-      <p><b>Keterangan:</b> ${escapeHtml(d.keterangan || '-')}</p>
-      <p><b>Tindak Lanjut:</b> ${escapeHtml(d.tindak_lanjut || '-')}</p>
-      <p><b>Foto Dokumentasi:</b></p>
-      ${fotoHtml}
+      <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+        ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
+        ${item('Kelas', escapeHtml(d.kelas || '-'))}
+        ${item('Hari/Tanggal', formatTgl(d.hari_tanggal))}
+        ${item('Orang Tua/Wali', escapeHtml(d.nama_ortu_wali || '-'))}
+      </div>
+      <div class="space-y-4 py-4 border-b border-gray-100">
+        ${item('Alamat', escapeHtml(d.alamat || '-'), true)}
+        ${item('Masalah', escapeHtml(d.masalah || '-'), true)}
+        ${item('Hasil yang Dicapai', escapeHtml(d.hasil_dicapai || '-'), true)}
+        ${item('Keterangan', escapeHtml(d.keterangan || '-'), true)}
+        ${item('Tindak Lanjut', escapeHtml(d.tindak_lanjut || '-'), true)}
+      </div>
+      <div class="pt-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Foto Dokumentasi</p>
+        ${fotoHtml}
+      </div>
     `;
     document.getElementById('modalDetail').classList.add('open');
   }
@@ -728,11 +766,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       wrap.className = 'relative group';
       const img = document.createElement('img');
       img.src = URL.createObjectURL(file);
-      img.className = 'w-full h-24 object-cover rounded border';
+      img.className = 'w-full h-24 object-contain bg-white rounded-lg border shadow-sm p-1';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.innerHTML = '<i class="fas fa-times"></i>';
-      btn.className = 'absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs';
+      btn.title = 'Hapus foto';
+      btn.className = 'absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-xs shadow';
       btn.onclick = () => { fotoBaruHV[idx] = null; wrap.remove(); };
       wrap.appendChild(img); wrap.appendChild(btn);
       box.appendChild(wrap);
@@ -749,11 +788,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       wrap.className = 'relative group';
       const img = document.createElement('img');
       img.src = BASE_URL + path;
-      img.className = 'w-full h-24 object-cover rounded border';
+      img.className = 'w-full h-24 object-contain bg-white rounded-lg border shadow-sm p-1';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.innerHTML = '<i class="fas fa-times"></i>';
-      btn.className = 'absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs';
+      btn.title = 'Hapus foto';
+      btn.className = 'absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-xs shadow';
       btn.onclick = () => { fotoLamaHV = fotoLamaHV.filter(p => p !== path); wrap.remove(); };
       wrap.appendChild(img); wrap.appendChild(btn);
       box.appendChild(wrap);
@@ -776,23 +816,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
     let foto = [];
     try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
-    console.log('DEBUG dokumentasi mentah dari database:', d.dokumentasi);
-    console.log('DEBUG hasil parsing (daftar path foto):', foto);
-    console.log('DEBUG BASE_URL terhitung:', BASE_URL);
     const fotoWrap = document.getElementById('pvFotoWrap');
     const fotoGrid = document.getElementById('pvFotoGrid');
     fotoGrid.innerHTML = '';
     if (foto.length > 0) {
       fotoWrap.style.display = 'block';
       foto.forEach(f => {
+        const frame = document.createElement('div');
+        frame.className = 'foto-frame';
         const img = document.createElement('img');
         img.src = BASE_URL + f;
-        img.style.marginRight = '5px';
-        fotoGrid.appendChild(img);
+        frame.appendChild(img);
+        fotoGrid.appendChild(frame);
       });
     } else {
       fotoWrap.style.display = 'none';
-      console.warn('DEBUG data dokumentasi kosong untuk id_visit ini, jadi tidak ada foto untuk ditampilkan.');
     }
 
     document.body.classList.add('mode-cetak', 'cetak-visit');
@@ -806,9 +844,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       if (img.complete && img.naturalWidth > 0) { resolve(); return; }
       img.onload = resolve;
       img.onerror = function () {
-        console.error('DEBUG gagal memuat foto, URL yang dicoba:', img.src);
         const errBox = document.createElement('div');
-        errBox.style.cssText = 'width:100%;height:160px;border:2px dashed red;display:flex;align-items:center;justify-content:center;font-size:8pt;color:red;text-align:center;padding:4px;word-break:break-all;';
+        errBox.style.cssText = 'width:100%;height:220px;border:2px dashed red;display:flex;align-items:center;justify-content:center;font-size:8pt;color:red;text-align:center;padding:4px;word-break:break-all;';
         errBox.textContent = 'Foto tidak ditemukan: ' + img.src;
         img.replaceWith(errBox);
         resolve();

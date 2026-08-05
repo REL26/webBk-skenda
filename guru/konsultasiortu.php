@@ -12,6 +12,7 @@ $nama_kepsek = "Novie Bambang Rumadi, S.T., M.Pd";
 $nip_kepsek  = "19781102006041005";
 $bulan_indo  = ['January'=>'Januari','February'=>'Februari','March'=>'Maret','April'=>'April','May'=>'Mei','June'=>'Juni','July'=>'Juli','August'=>'Agustus','September'=>'September','October'=>'Oktober','November'=>'November','December'=>'Desember'];
 $tgl_sekarang = date('d') . ' ' . $bulan_indo[date('F')] . ' ' . date('Y');
+$base_url_folder = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/') . '/';
 
 /* ==========================================================
    HANDLER AJAX (semua aksi CRUD lewat sini, respon JSON)
@@ -74,13 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 if (is_string($p) && strpos($p, 'uploads/konsultasi_ortu/') === 0) $fotoFinal[] = $p;
             }
         }
+        $fotoFinal = array_slice($fotoFinal, 0, 1);
         if (isset($_FILES['foto_baru']) && is_array($_FILES['foto_baru']['name'])) {
             $allowedExt = ['jpg','jpeg','png','webp','gif'];
             $maxSize = 2 * 1024 * 1024;
             $total = count($_FILES['foto_baru']['name']);
+            $fotoBaru = [];
             for ($i = 0; $i < $total; $i++) {
                 if ($_FILES['foto_baru']['error'][$i] !== UPLOAD_ERR_OK) continue;
-                if (count($fotoFinal) >= 8) break;
+                if (count($fotoBaru) >= 1) break;
                 $tmp = $_FILES['foto_baru']['tmp_name'][$i];
                 $orig = $_FILES['foto_baru']['name'][$i];
                 $size = $_FILES['foto_baru']['size'][$i];
@@ -88,9 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                 if (!in_array($ext, $allowedExt) || $size > $maxSize) continue;
                 $namaBaru = 'ko' . $id_guru_login . '_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
                 if (move_uploaded_file($tmp, $uploadDir . $namaBaru)) {
-                    $fotoFinal[] = 'uploads/konsultasi_ortu/' . $namaBaru;
+                    $fotoBaru[] = 'uploads/konsultasi_ortu/' . $namaBaru;
                 }
             }
+            if (count($fotoBaru) > 0) $fotoFinal = $fotoBaru;
         }
         $dokumentasi = mysqli_real_escape_string($koneksi, json_encode($fotoFinal));
 
@@ -198,7 +202,19 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       .primary-bg { background-color: var(--primary-light); }
       .secondary-bg { background-color: #E6EEF0; }
 
-      /* ================= CETAK / EXPORT PDF ================= */
+      .action-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; transition: all 0.15s ease; }
+      .action-btn:hover { transform: translateY(-1px); }
+      .action-btn-view { color: #475569; background: #f1f5f9; }
+      .action-btn-view:hover { background: #e2e8f0; }
+      .action-btn-edit { color: #2563eb; background: #eff6ff; }
+      .action-btn-edit:hover { background: #dbeafe; }
+      .action-btn-delete { color: #dc2626; background: #fef2f2; }
+      .action-btn-delete:hover { background: #fee2e2; }
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; color: #94a3b8; }
+      .empty-state i { font-size: 2.5rem; margin-bottom: 0.75rem; color: #cbd5e1; }
+      .empty-state p.empty-title { font-weight: 600; color: #64748b; margin-bottom: 0.25rem; }
+      .empty-state p.empty-desc { font-size: 0.8rem; }
+
       #printAreaKonsultasi { display: none; }
       body.mode-cetak > *:not(#printAreaKonsultasi) { display: none !important; }
       body.mode-cetak #printAreaKonsultasi { display: block !important; }
@@ -206,10 +222,12 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       @media print {
         @page { size: A4 landscape; margin: 12mm; }
         body { background: #fff !important; }
-        #printAreaKonsultasi table { width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', serif; }
-        #printAreaKonsultasi th, #printAreaKonsultasi td { border: 1px solid #000; padding: 4px 6px; text-align: left; vertical-align: top; }
+        #printAreaKonsultasi table { width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', serif; table-layout: fixed; }
+        #printAreaKonsultasi th, #printAreaKonsultasi td { border: 1px solid #000; padding: 5px 6px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
         #printAreaKonsultasi th { background: #eee !important; -webkit-print-color-adjust: exact; text-align: center; }
-        #printAreaKonsultasi img { max-width: 60px; max-height: 60px; object-fit: cover; }
+        #printAreaKonsultasi td:last-child { text-align: center; }
+        #printAreaKonsultasi .foto-frame-pdf { width: 150px; height: 130px; max-width: 100%; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto; overflow: hidden; }
+        #printAreaKonsultasi .foto-frame-pdf img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto; }
       }
       .print-kop { text-align: center; font-family: 'Times New Roman', serif; margin-bottom: 12px; }
     </style>
@@ -233,10 +251,10 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
       <div class="flex gap-2">
-        <button onclick="cetakRekap()" class="btn-action bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        <button onclick="cetakRekap()" class="btn-action bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Cetak rekap seluruh data konsultasi ke PDF">
           <i class="fas fa-file-pdf mr-1"></i> Export PDF (Rekap)
         </button>
-        <button onclick="bukaModalTambah()" class="btn-action bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        <button onclick="bukaModalTambah()" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Tambah catatan konsultasi orang tua baru">
           <i class="fas fa-plus mr-1"></i> Tambah Data
         </button>
       </div>
@@ -283,6 +301,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           <p class="text-xs text-gray-400 mt-1">Kalau ditemukan, Nama & Kelas akan otomatis terisi. Kalau tidak ada NIS-nya, isi manual saja di bawah.</p>
         </div>
 
+        <h3 class="text-sm font-bold text-gray-700 pt-2 border-t flex items-center gap-2"><i class="fas fa-people-arrows text-blue-500"></i> Data Konsultasi</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa *</label>
@@ -329,14 +348,14 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Foto Dokumentasi (maks. 8 foto, @2MB)</label>
-          <input type="file" id="fFotoInput" accept="image/*" multiple onchange="previewFotoKO(event)" class="mb-3 text-sm border rounded-lg px-3 py-2 w-full">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Foto Dokumentasi <span class="text-gray-400 font-normal">(maks. 1 foto, 2MB)</span></label>
+          <input type="file" id="fFotoInput" accept="image/*" onchange="previewFotoKO(event)" class="mb-3 text-sm border rounded-lg px-3 py-2 w-full">
           <div id="boxFotoKO" class="grid grid-cols-3 gap-3"></div>
         </div>
       </div>
       <div class="px-6 py-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
-        <button onclick="tutupModal()" class="px-4 py-2 rounded-lg border text-sm">Batal</button>
-        <button onclick="simpanKonsultasi()" id="btnSimpanKO" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">
+        <button onclick="tutupModal()" class="px-4 py-2 rounded-lg border hover:bg-gray-50 text-sm">Batal</button>
+        <button onclick="simpanKonsultasi()" id="btnSimpanKO" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm">
           <i class="fas fa-save mr-1"></i> Simpan
         </button>
       </div>
@@ -361,6 +380,10 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       <p style="font-size:10pt;">SMK Negeri 2 Banjarmasin</p>
     </div>
     <table>
+      <colgroup>
+        <col style="width:3%;"><col style="width:12%;"><col style="width:6%;"><col style="width:12%;">
+        <col style="width:9%;"><col style="width:9%;"><col style="width:19%;"><col style="width:10%;"><col style="width:20%;">
+      </colgroup>
       <thead>
         <tr>
           <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Nama Orang Tua/Wali</th>
@@ -373,6 +396,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
   </div>
 
 <script>
+  const BASE_URL = "<?php echo htmlspecialchars($base_url_folder, ENT_QUOTES); ?>";
   let dataKonsultasi = [];
   let fotoBaruKO = [];
   let fotoLamaKO = [];
@@ -394,7 +418,13 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
   function renderTabel() {
     const tbody = document.getElementById('isiTabelKonsultasi');
     if (dataKonsultasi.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-gray-400">Belum ada data. Klik "Tambah Data" untuk mulai mencatat.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="8">
+        <div class="empty-state">
+          <i class="fas fa-comments"></i>
+          <p class="empty-title">Belum ada data Konsultasi Orang Tua</p>
+          <p class="empty-desc">Klik tombol "Tambah Data" di atas untuk mulai mencatat.</p>
+        </div>
+      </td></tr>`;
       return;
     }
     tbody.innerHTML = dataKonsultasi.map((d, i) => `
@@ -407,9 +437,9 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
         <td class="px-3 py-2">${formatTgl(d.tanggal_kedatangan)}</td>
         <td class="px-3 py-2 max-w-xs truncate" title="${escapeHtml(d.permasalahan || '')}">${escapeHtml(d.permasalahan || '-')}</td>
         <td class="px-3 py-2 text-center whitespace-nowrap">
-          <button onclick="lihatDetail(${d.id_konsultasi})" class="text-gray-600 hover:text-gray-900 mr-2" title="Lihat Detail"><i class="fas fa-eye"></i></button>
-          <button onclick="bukaModalEdit(${d.id_konsultasi})" class="text-blue-600 hover:text-blue-800 mr-2" title="Edit"><i class="fas fa-pen"></i></button>
-          <button onclick="hapusData(${d.id_konsultasi})" class="text-red-500 hover:text-red-700" title="Hapus"><i class="fas fa-trash"></i></button>
+          <button onclick="lihatDetail(${d.id_konsultasi})" class="action-btn action-btn-view mr-1" title="Lihat detail & cetak PDF"><i class="fas fa-eye"></i></button>
+          <button onclick="bukaModalEdit(${d.id_konsultasi})" class="action-btn action-btn-edit mr-1" title="Edit data ini"><i class="fas fa-pen"></i></button>
+          <button onclick="hapusData(${d.id_konsultasi})" class="action-btn action-btn-delete" title="Hapus data ini"><i class="fas fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
@@ -563,68 +593,88 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     let foto = [];
     try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
     const fotoHtml = foto.length
-      ? `<div class="grid grid-cols-3 gap-2 mt-2">${foto.map(f => `<img src="../${f}" class="w-full h-24 object-cover rounded border">`).join('')}</div>`
-      : '<p class="text-gray-400 text-xs mt-1">Tidak ada foto.</p>';
+      ? `<img src="${BASE_URL}${foto[0]}" class="w-full max-w-xs h-48 object-contain bg-white rounded-lg border shadow-sm mt-2 p-1">`
+      : `<div class="mt-2 border border-dashed rounded-lg py-6 text-center text-gray-300"><i class="fas fa-image text-2xl mb-1"></i><p class="text-xs text-gray-400">Belum ada foto dokumentasi</p></div>`;
+
+    const item = (label, value, full) => `
+      <div class="${full ? 'col-span-2' : ''}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">${label}</p>
+        <p class="text-sm text-gray-800 leading-relaxed">${value || '<span class="text-gray-300">-</span>'}</p>
+      </div>`;
 
     document.getElementById('isiDetailKO').innerHTML = `
-      <p><b>Nama Siswa:</b> ${escapeHtml(d.nama_siswa)}</p>
-      <p><b>Kelas:</b> ${escapeHtml(d.kelas || '-')}</p>
-      <p><b>Nama Orang Tua/Wali:</b> ${escapeHtml(d.nama_ortu || '-')}</p>
-      <p><b>No Telp/HP:</b> ${escapeHtml(d.no_telp || '-')}</p>
-      <p><b>Tanggal Pemanggilan:</b> ${formatTgl(d.tanggal_pemanggilan)}</p>
-      <p><b>Tanggal Kedatangan:</b> ${formatTgl(d.tanggal_kedatangan)}</p>
-      <p><b>Permasalahan:</b> ${escapeHtml(d.permasalahan || '-')}</p>
-      <p><b>Hasil Konsultasi:</b> ${escapeHtml(d.hasil_konsultasi || '-')}</p>
-      <p><b>Kesepakatan:</b> ${escapeHtml(d.kesepakatan || '-')}</p>
-      <p><b>Tindak Lanjut:</b> ${escapeHtml(d.tindak_lanjut || '-')}</p>
-      <p><b>Foto Dokumentasi:</b></p>
-      ${fotoHtml}
+      <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+        ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
+        ${item('Kelas', escapeHtml(d.kelas || '-'))}
+        ${item('Orang Tua/Wali', escapeHtml(d.nama_ortu || '-'))}
+        ${item('No Telp/HP', escapeHtml(d.no_telp || '-'))}
+        ${item('Tanggal Pemanggilan', formatTgl(d.tanggal_pemanggilan))}
+        ${item('Tanggal Kedatangan', formatTgl(d.tanggal_kedatangan))}
+      </div>
+      <div class="space-y-4 py-4 border-b border-gray-100">
+        ${item('Permasalahan', escapeHtml(d.permasalahan || '-'), true)}
+        ${item('Hasil Konsultasi', escapeHtml(d.hasil_konsultasi || '-'), true)}
+        ${item('Kesepakatan', escapeHtml(d.kesepakatan || '-'), true)}
+        ${item('Tindak Lanjut', escapeHtml(d.tindak_lanjut || '-'), true)}
+      </div>
+      <div class="pt-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Foto Dokumentasi</p>
+        ${fotoHtml}
+      </div>
     `;
     document.getElementById('modalDetail').classList.add('open');
   }
 
   // ---------- FOTO ----------
   function previewFotoKO(event) {
-    const box = document.getElementById('boxFotoKO');
-    if (box.querySelector('p')) box.innerHTML = '';
-    Array.from(event.target.files).forEach(file => {
-      if (!file.type.startsWith('image/')) { alert('File ' + file.name + ' bukan foto.'); return; }
-      if (file.size > 2 * 1024 * 1024) { alert('Foto ' + file.name + ' terlalu besar (maks 2MB).'); return; }
-      if (document.querySelectorAll('#boxFotoKO img').length >= 8) { alert('Maksimal 8 foto.'); return; }
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('File ' + file.name + ' bukan foto.'); event.target.value = ''; return; }
+    if (file.size > 2 * 1024 * 1024) { alert('Foto ' + file.name + ' terlalu besar (maks 2MB).'); event.target.value = ''; return; }
 
-      fotoBaruKO.push(file);
-      const idx = fotoBaruKO.length - 1;
-      const wrap = document.createElement('div');
-      wrap.className = 'relative group';
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      img.className = 'w-full h-24 object-cover rounded border';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.innerHTML = '<i class="fas fa-times"></i>';
-      btn.className = 'absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs';
-      btn.onclick = () => { fotoBaruKO[idx] = null; wrap.remove(); };
-      wrap.appendChild(img); wrap.appendChild(btn);
-      box.appendChild(wrap);
-    });
+    fotoBaruKO = [file];
+    fotoLamaKO = [];
+    const box = document.getElementById('boxFotoKO');
+    box.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'relative group';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.className = 'w-full h-28 object-contain bg-white rounded-lg border shadow-sm p-1';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.innerHTML = '<i class="fas fa-times"></i>';
+    btn.title = 'Hapus foto';
+    btn.className = 'absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-xs shadow';
+    btn.onclick = () => { fotoBaruKO = []; wrap.remove(); tampilkanKosongFotoKOJikaPerlu(); };
+    wrap.appendChild(img); wrap.appendChild(btn);
+    box.appendChild(wrap);
     event.target.value = '';
+  }
+
+  function tampilkanKosongFotoKOJikaPerlu() {
+    const box = document.getElementById('boxFotoKO');
+    if (!box.querySelector('img')) {
+      box.innerHTML = '<p class="text-xs text-gray-400 col-span-3">Belum ada foto.</p>';
+    }
   }
 
   function renderFotoLamaKO(paths) {
     const box = document.getElementById('boxFotoKO');
-    if (box.querySelector('p')) box.innerHTML = '';
-    fotoLamaKO = paths.slice();
-    paths.forEach(path => {
+    box.innerHTML = '';
+    fotoLamaKO = paths.slice(0, 1);
+    fotoLamaKO.forEach(path => {
       const wrap = document.createElement('div');
       wrap.className = 'relative group';
       const img = document.createElement('img');
-      img.src = '../' + path;
-      img.className = 'w-full h-24 object-cover rounded border';
+      img.src = BASE_URL + path;
+      img.className = 'w-full h-28 object-contain bg-white rounded-lg border shadow-sm p-1';
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.innerHTML = '<i class="fas fa-times"></i>';
-      btn.className = 'absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs';
-      btn.onclick = () => { fotoLamaKO = fotoLamaKO.filter(p => p !== path); wrap.remove(); };
+      btn.title = 'Hapus foto';
+      btn.className = 'absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 text-xs shadow';
+      btn.onclick = () => { fotoLamaKO = fotoLamaKO.filter(p => p !== path); wrap.remove(); tampilkanKosongFotoKOJikaPerlu(); };
       wrap.appendChild(img); wrap.appendChild(btn);
       box.appendChild(wrap);
     });
@@ -637,7 +687,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     tbody.innerHTML = dataKonsultasi.map((d, i) => {
       let foto = [];
       try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
-      const fotoHtml = foto.length ? `<img src="../${foto[0]}">` : '-';
+      const fotoHtml = foto.length ? `<div class="foto-frame-pdf"><img src="${BASE_URL}${foto[0]}"></div>` : '-';
       return `
         <tr>
           <td style="text-align:center;">${i + 1}</td>
@@ -654,7 +704,13 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     }).join('');
 
     document.body.classList.add('mode-cetak');
-    window.print();
+    const imgs = Array.from(tbody.querySelectorAll('img'));
+    if (imgs.length === 0) { window.print(); return; }
+    Promise.all(imgs.map(img => new Promise(resolve => {
+      if (img.complete && img.naturalWidth > 0) { resolve(); return; }
+      img.onload = resolve;
+      img.onerror = resolve;
+    }))).then(() => window.print());
   }
 
   window.addEventListener('afterprint', () => {
