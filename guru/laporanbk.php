@@ -328,6 +328,58 @@ if ($laporan_id > 0) {
               .print-value-proxy {
                 display: none;
               }
+
+              .sign-header {
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+                min-height: 64px;
+                margin-bottom: 0.5rem;
+              }
+
+              .sign-header .no-print {
+                width: 100%;
+              }
+
+              .report-section {
+                border: 1px solid var(--gray-200);
+                border-radius: 0.75rem;
+                overflow: hidden;
+                background: var(--white);
+              }
+
+              .report-section > summary {
+                list-style: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 1rem 1.25rem;
+                background: var(--gray-50);
+              }
+
+              .report-section > summary::-webkit-details-marker {
+                display: none;
+              }
+
+              .report-section > summary .section-title {
+                display: flex;
+                align-items: center;
+                margin: 0;
+              }
+
+              .report-section > summary .chevron {
+                transition: transform 0.2s ease;
+                color: var(--primary);
+              }
+
+              .report-section[open] > summary .chevron {
+                transform: rotate(180deg);
+              }
+
+              .report-section > .report-section-body {
+                padding: 1.25rem;
+              }
               
               /* Style untuk input tanggal */
               .date-input-wrapper {
@@ -402,12 +454,17 @@ if ($laporan_id > 0) {
               }
 
               /* ============================================================
-                 PERBAIKAN UNTUK KOLOM KELAS - WRAP OTOMATIS
+                 KOLOM TABEL IV (setelah kolom Hari dihapus): No, Tanggal,
+                 Kelas, Bidang, Permasalahan, Jumlah Siswa, Tindak Awal, Aksi
                  ============================================================ */
-              
-              /* Kolom Kelas di tabel IV - menggunakan word-wrap untuk wrap otomatis */
-              #rekapMasalah td:nth-child(4),
-              #rekapMasalah th:nth-child(4) {
+
+              #rekapMasalah thead th {
+                text-align: center !important;
+                vertical-align: middle !important;
+              }
+
+              #rekapMasalah td:nth-child(3),
+              #rekapMasalah th:nth-child(3) {
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
                 word-break: break-word !important;
@@ -415,10 +472,10 @@ if ($laporan_id > 0) {
                 text-align: center !important;
                 vertical-align: middle !important;
                 padding: 4px 2px !important;
+                width: 10% !important;
               }
-              
-              /* Select di kolom Kelas - styling seperti dropdown Sasaran */
-              #rekapMasalah td:nth-child(4) select {
+
+              #rekapMasalah td:nth-child(3) select {
                 width: 100% !important;
                 min-height: 34px;
                 word-wrap: break-word !important;
@@ -439,63 +496,22 @@ if ($laporan_id > 0) {
                 background-size: 12px 12px !important;
                 position: relative !important;
               }
-              
-              /* Opsi select juga bisa wrap */
-              #rekapMasalah td:nth-child(4) select option {
+
+              #rekapMasalah td:nth-child(3) select option {
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
                 padding: 2px 4px !important;
               }
-              
-              /* Lebar kolom Kelas tetap 9% seperti sebelumnya */
-              #rekapMasalah colgroup col:nth-child(4) {
-                width: 9% !important;
-              }
 
-              /* ============================================================
-                 PERBAIKAN LEBAR KOLOM PERMASALAHAN & TINDAK AWAL
-                 ============================================================ */
-              
-              /* Kolom Permasalahan - dikurangi sedikit lebarnya */
-              #rekapMasalah colgroup col:nth-child(6) {
-                width: 12% !important;
-              }
-              
-              /* Kolom Tindak Awal - dikurangi sedikit lebarnya */
-              #rekapMasalah colgroup col:nth-child(8) {
-                width: 11% !important;
-              }
-              
-              /* Kolom Jumlah Siswa - diperlebar */
-              #rekapMasalah colgroup col:nth-child(7) {
-                width: 9% !important;
-              }
-              
-              /* ============================================================
-                 PERBAIKAN HEADER - RATA TENGAH & WRAP BAIK
-                 ============================================================ */
-              
-              /* Semua header di tabel IV rata tengah */
-              #rekapMasalah thead th {
-                text-align: center !important;
-                vertical-align: middle !important;
-              }
-              
-              /* Header Permasalahan - rata tengah */
+              #rekapMasalah colgroup col:nth-child(3) { width: 10% !important; }
+              #rekapMasalah colgroup col:nth-child(5) { width: 22% !important; }
+              #rekapMasalah colgroup col:nth-child(7) { width: 22% !important; }
+              #rekapMasalah colgroup col:nth-child(6) { width: 10% !important; }
+
+              #rekapMasalah thead th:nth-child(5),
+              #rekapMasalah thead th:nth-child(7),
               #rekapMasalah thead th:nth-child(6) {
-                text-align: center !important;
-                vertical-align: middle !important;
-              }
-              
-              /* Header Tindak Awal - rata tengah */
-              #rekapMasalah thead th:nth-child(8) {
-                text-align: center !important;
-                vertical-align: middle !important;
-              }
-              
-              /* Header Jumlah Siswa - 2 baris */
-              #rekapMasalah thead th:nth-child(7) {
                 text-align: center !important;
                 vertical-align: middle !important;
                 line-height: 1.3 !important;
@@ -503,109 +519,12 @@ if ($laporan_id > 0) {
                 overflow-wrap: break-word !important;
                 white-space: normal !important;
               }
-              
-              /* Isi kolom Permasalahan tetap rata kiri */
-              #rekapMasalah tbody td:nth-child(6) {
+
+              #rekapMasalah tbody td:nth-child(5),
+              #rekapMasalah tbody td:nth-child(7) {
                 text-align: left !important;
                 vertical-align: middle !important;
               }
-              
-              /* Isi kolom Tindak Awal tetap rata kiri */
-              #rekapMasalah tbody td:nth-child(8) {
-                text-align: left !important;
-                vertical-align: middle !important;
-              }
-              
-              /* Saat print - kolom Kelas tetap wrap */
-              @media print {
-                /* Kolom Kelas di print - wrap otomatis */
-                #rekapMasalah td:nth-child(4),
-                #rekapMasalah th:nth-child(4) {
-                  word-wrap: break-word !important;
-                  overflow-wrap: break-word !important;
-                  word-break: break-word !important;
-                  white-space: normal !important;
-                  text-align: center !important;
-                  vertical-align: middle !important;
-                  padding: 4pt 2pt !important;
-                  width: 9% !important;
-                  min-width: 45pt !important;
-                }
-                
-                /* Nilai proxy di kolom Kelas - wrap otomatis */
-                #rekapMasalah td:nth-child(4) .print-value-proxy {
-                  display: block !important;
-                  font-family: "Times New Roman", Times, serif !important;
-                  font-size: 10pt !important;
-                  color: #000 !important;
-                  padding: 0 !important;
-                  margin: 0 !important;
-                  line-height: 1.4 !important;
-                  word-wrap: break-word !important;
-                  overflow-wrap: break-word !important;
-                  word-break: break-word !important;
-                  white-space: normal !important;
-                  text-align: center !important;
-                }
-                
-                /* Sembunyikan select di print */
-                #rekapMasalah td:nth-child(4) select {
-                  display: none !important;
-                }
-
-                /* Print - Lebar kolom Permasalahan & Tindak Awal */
-                #rekapMasalah td:nth-child(6),
-                #rekapMasalah th:nth-child(6) {
-                  width: 12% !important;
-                  min-width: 48pt !important;
-                }
-                
-                #rekapMasalah td:nth-child(8),
-                #rekapMasalah th:nth-child(8) {
-                  width: 11% !important;
-                  min-width: 44pt !important;
-                }
-                
-                #rekapMasalah td:nth-child(7),
-                #rekapMasalah th:nth-child(7) {
-                  width: 9% !important;
-                  min-width: 34pt !important;
-                }
-
-                /* Print - Header rata tengah */
-                #rekapMasalah thead th {
-                  text-align: center !important;
-                  vertical-align: middle !important;
-                }
-                
-                #rekapMasalah thead th:nth-child(6),
-                #rekapMasalah thead th:nth-child(8) {
-                  text-align: center !important;
-                  vertical-align: middle !important;
-                }
-
-                /* Print - Isi Permasalahan & Tindak Awal rata kiri */
-                #rekapMasalah tbody td:nth-child(6) {
-                  text-align: left !important;
-                  vertical-align: middle !important;
-                }
-                
-                #rekapMasalah tbody td:nth-child(8) {
-                  text-align: left !important;
-                  vertical-align: middle !important;
-                }
-
-                /* Print - header Jumlah Siswa 2 baris */
-                #rekapMasalah thead th:nth-child(7) {
-                  white-space: normal !important;
-                  word-wrap: break-word !important;
-                  overflow-wrap: break-word !important;
-                  line-height: 1.3 !important;
-                  text-align: center !important;
-                  vertical-align: middle !important;
-                }
-              }
-
               @media print {
 
   /* ═══════════════════════════════════════════
@@ -917,6 +836,27 @@ if ($laporan_id > 0) {
     display: block !important;
   }
 
+  .sign-header {
+    min-height: 34pt !important;
+    justify-content: flex-end !important;
+  }
+
+  .report-section {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .report-section > summary {
+    display: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .report-section > .report-section-body {
+    display: block !important;
+    padding: 0 !important;
+  }
+
   /* ═══════════════════════════════════════════
      ELEMEN HIDDEN YANG HARUS MUNCUL SAAT PRINT
   ═══════════════════════════════════════════ */
@@ -1045,7 +985,7 @@ if ($laporan_id > 0) {
   /* ============================================================
      ATURAN KHUSUS UNTUK SETIAP KOLOM DI TABEL IV
      ============================================================ */
-  
+
   /* Kolom No - tetap satu baris, kecil */
   #rekapMasalah td:nth-child(1),
   #rekapMasalah th:nth-child(1) {
@@ -1056,19 +996,10 @@ if ($laporan_id > 0) {
     text-align: center !important;
   }
 
-  /* Kolom Hari - tetap satu baris, kecil */
+  /* Kolom Tanggal - wrap alami jika perlu */
   #rekapMasalah td:nth-child(2),
   #rekapMasalah th:nth-child(2) {
-    width: 6% !important;
-    min-width: 30pt !important;
-    white-space: nowrap !important;
-    text-align: center !important;
-  }
-
-  /* Kolom Tanggal - wrap alami jika perlu */
-  #rekapMasalah td:nth-child(3),
-  #rekapMasalah th:nth-child(3) {
-    width: 11% !important;
+    width: 12% !important;
     min-width: 60pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
@@ -1077,9 +1008,9 @@ if ($laporan_id > 0) {
   }
 
   /* Kolom Kelas - WRAP OTOMATIS sesuai permintaan */
-  #rekapMasalah td:nth-child(4),
-  #rekapMasalah th:nth-child(4) {
-    width: 9% !important;
+  #rekapMasalah td:nth-child(3),
+  #rekapMasalah th:nth-child(3) {
+    width: 10% !important;
     min-width: 45pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
@@ -1091,9 +1022,9 @@ if ($laporan_id > 0) {
   }
 
   /* Kolom Bidang - WRAP otomatis */
-  #rekapMasalah td:nth-child(5),
-  #rekapMasalah th:nth-child(5) {
-    width: 9% !important;
+  #rekapMasalah td:nth-child(4),
+  #rekapMasalah th:nth-child(4) {
+    width: 10% !important;
     min-width: 35pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
@@ -1102,10 +1033,10 @@ if ($laporan_id > 0) {
   }
 
   /* Kolom Permasalahan - WRAP otomatis, dikurangi sedikit lebarnya */
-  #rekapMasalah td:nth-child(6),
-  #rekapMasalah th:nth-child(6) {
-    width: 12% !important;
-    min-width: 48pt !important;
+  #rekapMasalah td:nth-child(5),
+  #rekapMasalah th:nth-child(5) {
+    width: 22% !important;
+    min-width: 60pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
@@ -1113,9 +1044,9 @@ if ($laporan_id > 0) {
   }
 
   /* Kolom Jumlah Siswa - WRAP untuk header, isi tetap satu baris, diperlebar */
-  #rekapMasalah td:nth-child(7),
-  #rekapMasalah th:nth-child(7) {
-    width: 9% !important;
+  #rekapMasalah td:nth-child(6),
+  #rekapMasalah th:nth-child(6) {
+    width: 10% !important;
     min-width: 34pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
@@ -1124,46 +1055,24 @@ if ($laporan_id > 0) {
   }
 
   /* Kolom Tindak Awal - WRAP otomatis, header di tengah, dikurangi sedikit lebarnya */
-  #rekapMasalah td:nth-child(8),
-  #rekapMasalah th:nth-child(8) {
-    width: 11% !important;
-    min-width: 44pt !important;
+  #rekapMasalah td:nth-child(7),
+  #rekapMasalah th:nth-child(7) {
+    width: 22% !important;
+    min-width: 60pt !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     text-align: left !important;
   }
 
-  /* Kolom Panggilan Orang Tua - WRAP untuk header, isi tetap satu baris */
-  #rekapMasalah td:nth-child(9),
-  #rekapMasalah th:nth-child(9) {
-    width: 9% !important;
-    min-width: 38pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  /* Kolom Home Visit - WRAP untuk header, isi tetap satu baris */
-  #rekapMasalah td:nth-child(10),
-  #rekapMasalah th:nth-child(10) {
-    width: 7% !important;
-    min-width: 30pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
   /* Sembunyikan kolom Aksi di tabel IV saat print */
-  #rekapMasalah td:nth-child(11),
-  #rekapMasalah th:nth-child(11) {
+  #rekapMasalah td:nth-child(8),
+  #rekapMasalah th:nth-child(8) {
     display: none !important;
   }
 
   /* Hilangkan colgroup untuk kolom aksi di print */
-  #rekapMasalah colgroup col:nth-child(11) {
+  #rekapMasalah colgroup col:nth-child(8) {
     display: none !important;
   }
 
@@ -1178,8 +1087,16 @@ if ($laporan_id > 0) {
     line-height: 1.4 !important;
   }
 
+  /* TANGGAL - wrap alami */
+  #rekapMasalah td:nth-child(2) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: center !important;
+  }
+
   /* KELAS - wrap otomatis, rata tengah */
-  #rekapMasalah td:nth-child(4) .print-value-proxy {
+  #rekapMasalah td:nth-child(3) .print-value-proxy {
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
@@ -1187,36 +1104,8 @@ if ($laporan_id > 0) {
     text-align: center !important;
   }
 
-  /* HARI - tetap satu baris */
-  #rekapMasalah td:nth-child(2) .print-value-proxy {
-    white-space: nowrap !important;
-    overflow: visible !important;
-  }
-
-  /* PANGGILAN ORANG TUA - isi tetap satu baris */
-  #rekapMasalah td:nth-child(9) .print-value-proxy {
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-align: center !important;
-  }
-
-  /* HOME VISIT - isi tetap satu baris */
-  #rekapMasalah td:nth-child(10) .print-value-proxy {
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-align: center !important;
-  }
-
-  /* TANGGAL - wrap alami */
-  #rekapMasalah td:nth-child(3) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
   /* BIDANG - wrap otomatis */
-  #rekapMasalah td:nth-child(5) .print-value-proxy {
+  #rekapMasalah td:nth-child(4) .print-value-proxy {
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
@@ -1224,26 +1113,27 @@ if ($laporan_id > 0) {
   }
 
   /* PERMASALAHAN - wrap otomatis, rata kiri */
+  #rekapMasalah td:nth-child(5) .print-value-proxy {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+  }
+
+  /* JUMLAH SISWA - wrap otomatis */
   #rekapMasalah td:nth-child(6) .print-value-proxy {
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
-    text-align: left !important;
+    text-align: center !important;
   }
 
   /* TINDAK AWAL - wrap otomatis, rata kiri */
-  #rekapMasalah td:nth-child(8) .print-value-proxy {
+  #rekapMasalah td:nth-child(7) .print-value-proxy {
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     text-align: left !important;
-  }
-
-  /* JUMLAH SISWA - isi tetap satu baris */
-  #rekapMasalah td:nth-child(7) .print-value-proxy {
-    white-space: nowrap !important;
-    overflow: visible !important;
-    text-align: center !important;
   }
 
   /* Header tabel IV - biarkan wrap alami untuk header yang panjang */
@@ -1324,29 +1214,16 @@ if ($laporan_id > 0) {
             <?php if ($laporan): ?>
             <table class="print-info-table" style="width:100%; margin-bottom:10pt; border-collapse:collapse;">
               <tr>
-                <td style="width:22%; padding:2pt 0; font-weight:bold;">Nama Dokumen</td>
-                <td style="width:2%;">:</td>
-                <td><?php echo htmlspecialchars($laporan['nama_dokumen']); ?></td>
+                <td style="padding:2pt 0; font-weight:bold; text-align:center;"><?php echo htmlspecialchars($laporan['nama_dokumen']); ?></td>
               </tr>
               <tr>
-                <td style="padding:2pt 0; font-weight:bold;">Semester</td>
-                <td>:</td>
-                <td><?php echo htmlspecialchars($laporan['semester']); ?></td>
+                <td style="padding:2pt 0; text-align:center;"><?php echo htmlspecialchars($laporan['semester']); ?> &mdash; <?php echo htmlspecialchars($laporan['tahun_pelajaran']); ?></td>
               </tr>
               <tr>
-                <td style="padding:2pt 0; font-weight:bold;">Tahun Pelajaran</td>
-                <td>:</td>
-                <td><?php echo htmlspecialchars($laporan['tahun_pelajaran']); ?></td>
+                <td style="padding:2pt 0; text-align:center;"><?php echo htmlspecialchars($laporan['sasaran']); ?></td>
               </tr>
               <tr>
-                <td style="padding:2pt 0; font-weight:bold;">Sasaran</td>
-                <td>:</td>
-                <td><?php echo htmlspecialchars($laporan['sasaran']); ?></td>
-              </tr>
-              <tr>
-                <td style="padding:2pt 0; font-weight:bold;">Tanggal Laporan</td>
-                <td>:</td>
-                <td><?php echo $laporan['tanggal'] ? date('d F Y', strtotime($laporan['tanggal'])) : '-'; ?></td>
+                <td style="padding:2pt 0; text-align:center;"><?php echo $laporan['tanggal'] ? date('d F Y', strtotime($laporan['tanggal'])) : '-'; ?></td>
               </tr>
             </table>
             <?php endif; ?>
@@ -1420,119 +1297,128 @@ if ($laporan_id > 0) {
             </div>
           </div>
 
-          <div class="mb-8">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-              <i class="no-print fas fa-list-check text-blue-600 mr-2"></i>
-              III. REKAPITULASI KEGIATAN LAYANAN BK
-            </h3>
-            <div class="table-scroll-wrapper">
-              <table
-                id="rekapKegiatan"
-                class="w-full border-collapse border border-gray-300"
+          <details class="report-section mb-8 no-print-toggle" open>
+            <summary>
+              <h3 class="text-lg font-bold text-gray-800 section-title">
+                <i class="no-print fas fa-list-check text-blue-600 mr-2"></i>
+                III. REKAPITULASI KEGIATAN LAYANAN BK
+              </h3>
+              <i class="fas fa-chevron-down chevron no-print"></i>
+            </summary>
+            <div class="report-section-body">
+              <div class="table-scroll-wrapper">
+                <table
+                  id="rekapKegiatan"
+                  class="w-full border-collapse border border-gray-300"
+                >
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Jenis Layanan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:12%;">Sasaran</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:8%;">Jumlah Siswa</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Waktu</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Bentuk Kegiatan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Keterangan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <button
+                onclick="tambahRekap()"
+                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
               >
-                <thead>
-                  <tr class="bg-gray-200">
-                    <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Jenis Layanan</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:12%;">Sasaran</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:8%;">Jumlah Siswa</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Tanggal</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Bentuk Kegiatan</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Keterangan</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+                <i class="fas fa-plus mr-2"></i> Tambah Baris
+              </button>
             </div>
-            <button
-              onclick="tambahRekap()"
-              class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
-            >
-              <i class="fas fa-plus mr-2"></i> Tambah Baris
-            </button>
-          </div>
+          </details>
 
-          <div class="mb-8">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-              <i
-                class="no-print fas fa-exclamation-triangle text-blue-600 mr-2"
-              ></i>
-              IV. REKAP PERMASALAHAN PESERTA DIDIK
-            </h3>
-            <div class="table-scroll-wrapper">
-              <table
-                id="rekapMasalah"
-                class="w-full border-collapse border border-gray-300"
+          <details class="report-section mb-8 no-print-toggle" open>
+            <summary>
+              <h3 class="text-lg font-bold text-gray-800 section-title">
+                <i class="no-print fas fa-exclamation-triangle text-blue-600 mr-2"></i>
+                IV. REKAP PERMASALAHAN PESERTA DIDIK
+              </h3>
+              <i class="fas fa-chevron-down chevron no-print"></i>
+            </summary>
+            <div class="report-section-body">
+              <div class="table-scroll-wrapper">
+                <table
+                  id="rekapMasalah"
+                  class="w-full border-collapse border border-gray-300"
+                >
+                  <colgroup>
+                    <col style="width: 4%;" />
+                    <col style="width: 12%;" />
+                    <col style="width: 10%;" />
+                    <col style="width: 10%;" />
+                    <col style="width: 22%;" />
+                    <col style="width: 10%;" />
+                    <col style="width: 22%;" />
+                    <col style="width: 5%;" />
+                  </colgroup>
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tanggal</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Kelas</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tindak Awal</th>
+                      <th class="border border-gray-300 px-1 py-2 text-sm text-center no-print">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <button
+                onclick="tambahMasalah()"
+                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
               >
-                <colgroup>
-                  <col style="width: 4%;" />
-                  <col style="width: 6%;" />
-                  <col style="width: 11%;" />
-                  <col style="width: 9%;" />
-                  <col style="width: 9%;" />
-                  <col style="width: 12%;" />
-                  <col style="width: 9%;" />
-                  <col style="width: 11%;" />
-                  <col style="width: 9%;" />
-                  <col style="width: 7%;" />
-                  <col style="width: 4%;" />
-                </colgroup>
-                <thead>
-                  <tr class="bg-gray-200">
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Hari</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Nama Siswa </th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Kelas</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tindak Awal</th>
-                    <th class="border border-gray-300 px-1 py-2 text-sm text-center no-print">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+                <i class="fas fa-plus mr-2"></i> Tambah Baris
+              </button>
             </div>
-            <button
-              onclick="tambahMasalah()"
-              class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
-            >
-              <i class="fas fa-plus mr-2"></i> Tambah Baris
-            </button>
-          </div>
+          </details>
 
-          <div class="mb-8">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-              <i class="no-print fas fa-tasks text-blue-600 mr-2"></i>
-              V. TINDAK LANJUT
-            </h3>
-            <div class="table-scroll-wrapper">
-              <table
-                id="tindakLanjut"
-                class="w-full border-collapse border border-gray-300"
+          <details class="report-section mb-8 no-print-toggle" open>
+            <summary>
+              <h3 class="text-lg font-bold text-gray-800 section-title">
+                <i class="no-print fas fa-tasks text-blue-600 mr-2"></i>
+                V. TINDAK LANJUT
+              </h3>
+              <i class="fas fa-chevron-down chevron no-print"></i>
+            </summary>
+            <div class="report-section-body">
+              <div class="table-scroll-wrapper">
+                <table
+                  id="tindakLanjut"
+                  class="w-full border-collapse border border-gray-300"
+                >
+                  <thead>
+                    <tr class="bg-gray-200">
+                      <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:18%;">Permasalahan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Layanan BK</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Tindak Lanjut</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Bulan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Pihak Terkait</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <button
+                onclick="tambahTindak()"
+                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
               >
-                <thead>
-                  <tr class="bg-gray-200">
-                    <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:18%;">Permasalahan</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Layanan BK</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Tindak Lanjut</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Bulan</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Pihak Terkait</th>
-                    <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+                <i class="fas fa-plus mr-2"></i> Tambah Baris
+              </button>
             </div>
-            <button
-              onclick="tambahTindak()"
-              class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
-            >
-              <i class="fas fa-plus mr-2"></i> Tambah Baris
-            </button>
-          </div>
+          </details>
 
           <div class="penutup-ttd-wrap">
           <div class="judul hidden print:block mb-6">
@@ -1559,8 +1445,10 @@ if ($laporan_id > 0) {
           <div class="signature-area grid grid-cols-2 gap-16 mt-6 print:mt-8 text-center">
 
   <div>
-    <p class="text-sm font-semibold mb-1">Mengetahui,</p>
-    <p class="text-sm mb-4">Kepala Sekolah atau Koordinator BK</p>
+    <div class="sign-header">
+      <p class="text-sm font-semibold mb-1">Mengetahui,</p>
+      <p class="text-sm mb-0">Kepala Sekolah atau Koordinator BK</p>
+    </div>
 
     <select
       id="pilihKoordinator"
@@ -1598,13 +1486,15 @@ if ($laporan_id > 0) {
   </div>
 
   <div>
-    <div class="no-print mb-2">
-      <input type="date" id="inputTglTtd" class="w-40 px-2 py-1 border rounded text-sm text-center" onchange="formatTanggalTtd(this.value)">
+    <div class="sign-header">
+      <div class="no-print">
+        <input type="date" id="inputTglTtd" class="w-40 px-2 py-1 border rounded text-sm text-center mb-1" onchange="formatTanggalTtd(this.value)">
+      </div>
+      <p id="teksTglTtd" class="hidden print:block text-sm font-semibold mb-1">
+        <?php echo $tgl_sekarang?>
+      </p>
+      <p class="text-sm mb-0">Guru Bimbingan dan Konseling</p>
     </div>
-    <p id="teksTglTtd" class="hidden print:block text-sm font-semibold mb-1">
-      <?php echo $tgl_sekarang?>
-    </p>
-    <p class="text-sm mb-4">Guru Bimbingan dan Konseling</p>
 
     <select
       id="pilihGuruBK"
@@ -1789,35 +1679,6 @@ if ($laporan_id > 0) {
             el.style.height = el.scrollHeight + "px";
           }
 
-          function hitungHari(inputEl) {
-            const row = inputEl.closest("tr");
-            const hariField = row.querySelector('input[name="masalah_hari[]"]');
-
-            if (!inputEl.value) {
-              if (hariField) hariField.value = "";
-              return;
-            }
-
-            const namaHari = [
-              "Minggu",
-              "Senin",
-              "Selasa",
-              "Rabu",
-              "Kamis",
-              "Jumat",
-              "Sabtu",
-            ];
-
-            const parts = inputEl.value.split("-");
-            const tanggalObj = new Date(
-              parseInt(parts[0], 10),
-              parseInt(parts[1], 10) - 1,
-              parseInt(parts[2], 10),
-            );
-
-            if (hariField) hariField.value = namaHari[tanggalObj.getDay()];
-          }
-
           function parseKelasItem(item) {
             const tokens = item.trim().split(/\s+/).filter(Boolean);
             const tingkatList = ["XIII", "XII", "XI", "X"];
@@ -1912,11 +1773,8 @@ if ($laporan_id > 0) {
             row.innerHTML = `
             <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="masalah_hari[]" readonly class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="Hari">
-            </td>
-            <td class="border border-gray-300 px-1 py-1">
                 <div class="date-input-wrapper">
-                    <input type="date" name="masalah_tanggal[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="hitungHari(this); updateTanggalDisplay(this)">
+                    <input type="date" name="masalah_tanggal[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
                 </div>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center" style="word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;white-space:normal;vertical-align:middle;">
@@ -1964,9 +1822,21 @@ if ($laporan_id > 0) {
                 <textarea name="tl_tindak_lanjut[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak lanjut" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <div class="date-input-wrapper">
-                    <input type="date" name="tl_waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
-                </div>
+                <select name="tl_waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer">
+                    <option value="">Pilih Bulan</option>
+                    <option value="Januari">Januari</option>
+                    <option value="Februari">Februari</option>
+                    <option value="Maret">Maret</option>
+                    <option value="April">April</option>
+                    <option value="Mei">Mei</option>
+                    <option value="Juni">Juni</option>
+                    <option value="Juli">Juli</option>
+                    <option value="Agustus">Agustus</option>
+                    <option value="September">September</option>
+                    <option value="Oktober">Oktober</option>
+                    <option value="November">November</option>
+                    <option value="Desember">Desember</option>
+                </select>
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="tl_pihak[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Pihak terkait" oninput="autoResizeTextarea(this)"></textarea>
@@ -2119,7 +1989,7 @@ if ($laporan_id > 0) {
 
           // Kolom tiap tabel, urut sesuai HTML row template masing-masing
           const KOLOM_REKAP = ['jenis_layanan', 'sasaran_kelas', 'jumlah_siswa', 'waktu', 'bentuk_kegiatan', 'keterangan'];
-          const KOLOM_MASALAH = ['masalah_hari', 'masalah_tanggal', 'masalah_kelas', 'bidang', 'masalah', 'jml_siswa_masalah', 'tindak_awal', 'panggilan_ortu', 'home_visit'];
+          const KOLOM_MASALAH = ['masalah_tanggal', 'masalah_kelas', 'bidang', 'masalah', 'jml_siswa_masalah', 'tindak_awal'];
           const KOLOM_TINDAK = ['tl_permasalahan', 'tl_layanan', 'tl_tindak_lanjut', 'tl_waktu', 'tl_pihak'];
 
           function isiBarisTerakhir(tbody, kolom, dataBaris) {
@@ -2217,6 +2087,19 @@ if ($laporan_id > 0) {
           window.addEventListener('afterprint', function () {
             document.querySelectorAll('.print-value-proxy').forEach(function (el) {
               el.remove();
+            });
+            document.querySelectorAll('.report-section[data-was-closed]').forEach(function (el) {
+              el.open = false;
+              el.removeAttribute('data-was-closed');
+            });
+          });
+
+          window.addEventListener('beforeprint', function () {
+            document.querySelectorAll('.report-section').forEach(function (el) {
+              if (!el.open) {
+                el.setAttribute('data-was-closed', '1');
+                el.open = true;
+              }
             });
           });
 

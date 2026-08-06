@@ -14,28 +14,23 @@ $bulan_indo  = ['January'=>'Januari','February'=>'Februari','March'=>'Maret','Ap
 $tgl_sekarang = date('d') . ' ' . $bulan_indo[date('F')] . ' ' . date('Y');
 $base_url_folder = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/') . '/';
 
-/* ==========================================================
-   HANDLER AJAX (semua aksi CRUD lewat sini, respon JSON)
-   ========================================================== */
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
 
-    // ---------- CARI SISWA (autofill NIS -> Nama/Kelas) ----------
     if ($action === 'cari_siswa') {
         $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
-        $q = mysqli_query($koneksi, "SELECT nama, kelas, nama_ayah, nama_ibu, no_hp_ayah, no_hp_ibu FROM siswa WHERE nis = '$nis' LIMIT 1");
+        $q = mysqli_query($koneksi, "SELECT nama, kelas, jurusan, nama_ayah, nama_ibu, no_hp_ayah, no_hp_ibu FROM siswa WHERE nis = '$nis' LIMIT 1");
         $row = $q ? mysqli_fetch_assoc($q) : null;
         echo json_encode(['success' => (bool) $row, 'data' => $row]);
         exit;
     }
 
-    // ---------- LIST / SEARCH ----------
     if ($action === 'list') {
         $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword'] ?? '');
         $where = "WHERE id_guru = $id_guru_login";
         if ($keyword !== '') {
-            $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR nama_ortu LIKE '%$keyword%' OR permasalahan LIKE '%$keyword%')";
+            $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR nama_ortu LIKE '%$keyword%' OR permasalahan LIKE '%$keyword%')";
         }
         $q = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu $where ORDER BY tanggal_pemanggilan DESC, id_konsultasi DESC");
         $data = [];
@@ -50,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
         $nama_siswa = mysqli_real_escape_string($koneksi, $_POST['nama_siswa'] ?? '');
         $kelas = mysqli_real_escape_string($koneksi, $_POST['kelas'] ?? '');
+        $jurusan = mysqli_real_escape_string($koneksi, $_POST['jurusan'] ?? '');
         $nama_ortu = mysqli_real_escape_string($koneksi, $_POST['nama_ortu'] ?? '');
         $no_telp = mysqli_real_escape_string($koneksi, $_POST['no_telp'] ?? '');
         $tgl_panggil = mysqli_real_escape_string($koneksi, $_POST['tanggal_pemanggilan'] ?? '');
@@ -107,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             }
             $tgl_datang_sql = $tgl_datang !== '' ? "'$tgl_datang'" : 'NULL';
             $query = "UPDATE konsultasi_ortu SET
-                        nis='$nis', nama_siswa='$nama_siswa', kelas='$kelas', nama_ortu='$nama_ortu', no_telp='$no_telp',
+                        nis='$nis', nama_siswa='$nama_siswa', kelas='$kelas', jurusan='$jurusan', nama_ortu='$nama_ortu', no_telp='$no_telp',
                         tanggal_pemanggilan='$tgl_panggil', tanggal_kedatangan=$tgl_datang_sql,
                         permasalahan='$permasalahan', hasil_konsultasi='$hasil', kesepakatan='$kesepakatan',
                         tindak_lanjut='$tindak_lanjut', dokumentasi='$dokumentasi'
@@ -115,9 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         } else {
             $tgl_datang_sql = $tgl_datang !== '' ? "'$tgl_datang'" : 'NULL';
             $query = "INSERT INTO konsultasi_ortu
-                        (nis, nama_siswa, kelas, nama_ortu, no_telp, tanggal_pemanggilan, tanggal_kedatangan, permasalahan, hasil_konsultasi, kesepakatan, tindak_lanjut, dokumentasi, id_guru)
+                        (nis, nama_siswa, kelas, jurusan, nama_ortu, no_telp, tanggal_pemanggilan, tanggal_kedatangan, permasalahan, hasil_konsultasi, kesepakatan, tindak_lanjut, dokumentasi, id_guru)
                       VALUES
-                        ('$nis','$nama_siswa','$kelas','$nama_ortu','$no_telp','$tgl_panggil',$tgl_datang_sql,'$permasalahan','$hasil','$kesepakatan','$tindak_lanjut','$dokumentasi',$id_guru_login)";
+                        ('$nis','$nama_siswa','$kelas','$jurusan','$nama_ortu','$no_telp','$tgl_panggil',$tgl_datang_sql,'$permasalahan','$hasil','$kesepakatan','$tindak_lanjut','$dokumentasi',$id_guru_login)";
         }
 
         if (mysqli_query($koneksi, $query)) {
@@ -220,16 +216,21 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       body.mode-cetak #printAreaKonsultasi { display: block !important; }
 
       @media print {
-        @page { size: A4 landscape; margin: 12mm; }
+        @page { size: A4 landscape; margin: 10mm 8mm; }
         body { background: #fff !important; }
-        #printAreaKonsultasi table { width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Times New Roman', serif; table-layout: fixed; }
-        #printAreaKonsultasi th, #printAreaKonsultasi td { border: 1px solid #000; padding: 5px 6px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
-        #printAreaKonsultasi th { background: #eee !important; -webkit-print-color-adjust: exact; text-align: center; }
+        #printAreaKonsultasi table { width: 100%; border-collapse: collapse; font-size: 8.5pt; font-family: 'Times New Roman', serif; table-layout: fixed; }
+        #printAreaKonsultasi thead { display: table-header-group; }
+        #printAreaKonsultasi tr { page-break-inside: avoid; }
+        #printAreaKonsultasi th, #printAreaKonsultasi td { border: 0.75pt solid #000; padding: 4px 5px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3; }
+        #printAreaKonsultasi th { background: #eaeaea !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; text-align: center; font-size: 8.5pt; font-weight: bold; padding: 5px 4px; line-height: 1.25; }
+        #printAreaKonsultasi td:first-child, #printAreaKonsultasi th:first-child { text-align: center; }
         #printAreaKonsultasi td:last-child { text-align: center; }
-        #printAreaKonsultasi .foto-frame-pdf { width: 150px; height: 130px; max-width: 100%; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto; overflow: hidden; }
+        #printAreaKonsultasi .foto-frame-pdf { width: 100px; height: 78px; max-width: 100%; background: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto; overflow: hidden; }
         #printAreaKonsultasi .foto-frame-pdf img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; margin: 0 auto; }
       }
-      .print-kop { text-align: center; font-family: 'Times New Roman', serif; margin-bottom: 12px; }
+      .print-kop { text-align: center; font-family: 'Times New Roman', serif; margin-bottom: 10px; }
+      .print-kop h2 { margin: 0 0 2px; letter-spacing: 0.3pt; }
+      .print-kop p { margin: 0; color: #333; }
     </style>
   </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
@@ -266,7 +267,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           <tr class="bg-gray-100 text-left text-gray-700">
             <th class="px-3 py-2 border-b">No</th>
             <th class="px-3 py-2 border-b">Nama Siswa</th>
-            <th class="px-3 py-2 border-b">Kelas</th>
+            <th class="px-3 py-2 border-b">Kelas/Jurusan</th>
             <th class="px-3 py-2 border-b">Orang Tua/Wali</th>
             <th class="px-3 py-2 border-b">Tgl Pemanggilan</th>
             <th class="px-3 py-2 border-b">Tgl Kedatangan</th>
@@ -310,6 +311,10 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
             <input type="text" id="fKelas" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+            <input type="text" id="fJurusan" class="w-full px-3 py-2 border rounded text-sm">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nama Orang Tua/Wali</label>
@@ -378,17 +383,19 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     <div class="print-kop">
       <h2 style="font-weight:bold; font-size:14pt;">REKAP KONSULTASI ORANG TUA</h2>
       <p style="font-size:10pt;">SMK Negeri 2 Banjarmasin</p>
+      <!-- <p style="font-size:9pt; margin-top:2px;">Dicetak: <?php echo htmlspecialchars($tgl_sekarang); ?></p> -->
     </div>
     <table>
       <colgroup>
-        <col style="width:3%;"><col style="width:12%;"><col style="width:6%;"><col style="width:12%;">
-        <col style="width:9%;"><col style="width:9%;"><col style="width:19%;"><col style="width:10%;"><col style="width:20%;">
+        <col style="width:3%;"><col style="width:11%;"><col style="width:6%;"><col style="width:8%;">
+        <col style="width:11%;"><col style="width:9%;"><col style="width:9%;"><col style="width:18%;">
+        <col style="width:10%;"><col style="width:15%;">
       </colgroup>
       <thead>
         <tr>
-          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Nama Orang Tua/Wali</th>
-          <th>Hari/Tanggal Pemanggilan</th><th>Hari/Tanggal Kedatangan</th>
-          <th>Permasalahan</th><th>No Telp/Hp</th><th>Foto Dokumentasi</th>
+          <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Jurusan</th><th>Orang Tua/Wali</th>
+          <th>Tgl.<br>Pemanggilan</th><th>Tgl.<br>Kedatangan</th>
+          <th>Permasalahan</th><th>No Telp/HP</th><th>Foto Dokumentasi</th>
         </tr>
       </thead>
       <tbody id="isiPrintKonsultasi"></tbody>
@@ -431,7 +438,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       <tr class="border-b hover:bg-gray-50">
         <td class="px-3 py-2">${i + 1}</td>
         <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
-        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}</td>
+        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}${d.jurusan ? ' / ' + escapeHtml(d.jurusan) : ''}</td>
         <td class="px-3 py-2">${escapeHtml(d.nama_ortu || '-')}</td>
         <td class="px-3 py-2">${formatTgl(d.tanggal_pemanggilan)}</td>
         <td class="px-3 py-2">${formatTgl(d.tanggal_kedatangan)}</td>
@@ -465,7 +472,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
   // ---------- MODAL TAMBAH/EDIT ----------
   function kosongkanForm() {
     document.getElementById('fId').value = '';
-    ['fNis','fNamaSiswa','fKelas','fNamaOrtu','fNoTelp','fTglPanggil','fTglDatang','fPermasalahan','fHasil','fKesepakatan','fTindakLanjut'].forEach(id => {
+    ['fNis','fNamaSiswa','fKelas','fJurusan','fNamaOrtu','fNoTelp','fTglPanggil','fTglDatang','fPermasalahan','fHasil','fKesepakatan','fTindakLanjut'].forEach(id => {
       document.getElementById(id).value = '';
     });
     fotoBaruKO = [];
@@ -488,6 +495,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     document.getElementById('fNis').value = d.nis || '';
     document.getElementById('fNamaSiswa').value = d.nama_siswa || '';
     document.getElementById('fKelas').value = d.kelas || '';
+    document.getElementById('fJurusan').value = d.jurusan || '';
     document.getElementById('fNamaOrtu').value = d.nama_ortu || '';
     document.getElementById('fNoTelp').value = d.no_telp || '';
     document.getElementById('fTglPanggil').value = d.tanggal_pemanggilan || '';
@@ -521,6 +529,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
         if (data.success && data.data) {
           document.getElementById('fNamaSiswa').value = data.data.nama || '';
           document.getElementById('fKelas').value = data.data.kelas || '';
+          document.getElementById('fJurusan').value = data.data.jurusan || '';
           if (!document.getElementById('fNamaOrtu').value) {
             document.getElementById('fNamaOrtu').value = data.data.nama_ayah || data.data.nama_ibu || '';
           }
@@ -547,6 +556,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     fd.append('nis', document.getElementById('fNis').value);
     fd.append('nama_siswa', namaSiswa);
     fd.append('kelas', document.getElementById('fKelas').value);
+    fd.append('jurusan', document.getElementById('fJurusan').value);
     fd.append('nama_ortu', document.getElementById('fNamaOrtu').value);
     fd.append('no_telp', document.getElementById('fNoTelp').value);
     fd.append('tanggal_pemanggilan', document.getElementById('fTglPanggil').value);
@@ -606,6 +616,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
         ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
         ${item('Kelas', escapeHtml(d.kelas || '-'))}
+        ${item('Jurusan', escapeHtml(d.jurusan || '-'))}
         ${item('Orang Tua/Wali', escapeHtml(d.nama_ortu || '-'))}
         ${item('No Telp/HP', escapeHtml(d.no_telp || '-'))}
         ${item('Tanggal Pemanggilan', formatTgl(d.tanggal_pemanggilan))}
@@ -693,6 +704,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           <td style="text-align:center;">${i + 1}</td>
           <td>${escapeHtml(d.nama_siswa)}</td>
           <td>${escapeHtml(d.kelas || '-')}</td>
+          <td>${escapeHtml(d.jurusan || '-')}</td>
           <td>${escapeHtml(d.nama_ortu || '-')}</td>
           <td>${formatTgl(d.tanggal_pemanggilan)}</td>
           <td>${formatTgl(d.tanggal_kedatangan)}</td>

@@ -13,8 +13,7 @@ if (!isset($_SESSION['filter_kelompok_bk'])) {
     $_SESSION['filter_kelompok_bk'] = [
         'search'  => '',
         'kelas'   => '',
-        'jurusan' => '',
-        'tahun'   => ''
+        'jurusan' => ''
     ];
 }
 
@@ -22,8 +21,7 @@ if (isset($_GET['reset']) && $_GET['reset'] == '1') {
     $_SESSION['filter_kelompok_bk'] = [
         'search'  => '',
         'kelas'   => '',
-        'jurusan' => '',
-        'tahun'   => ''
+        'jurusan' => ''
     ];
     header("Location: konselingkelompok.php");
     exit;
@@ -32,12 +30,10 @@ if (isset($_GET['reset']) && $_GET['reset'] == '1') {
 if (isset($_GET['search']))  $_SESSION['filter_kelompok_bk']['search']  = trim($_GET['search']);
 if (isset($_GET['kelas']))   $_SESSION['filter_kelompok_bk']['kelas']   = trim($_GET['kelas']);
 if (isset($_GET['jurusan'])) $_SESSION['filter_kelompok_bk']['jurusan'] = trim($_GET['jurusan']);
-if (isset($_GET['tahun']))   $_SESSION['filter_kelompok_bk']['tahun']   = trim($_GET['tahun']);
 
 $filter_search  = mysqli_real_escape_string($koneksi, $_SESSION['filter_kelompok_bk']['search']);
 $filter_kelas   = mysqli_real_escape_string($koneksi, $_SESSION['filter_kelompok_bk']['kelas']);
 $filter_jurusan = mysqli_real_escape_string($koneksi, $_SESSION['filter_kelompok_bk']['jurusan']);
-$filter_tahun   = mysqli_real_escape_string($koneksi, $_SESSION['filter_kelompok_bk']['tahun']);
 
 $where_clauses = [];
 $where_clauses[] = "s.kelas != 'LULUS'";
@@ -50,9 +46,6 @@ if (!empty($filter_kelas)) {
 }
 if (!empty($filter_jurusan)) {
     $where_clauses[] = "s.jurusan = '$filter_jurusan'";
-}
-if (!empty($filter_tahun)) {
-    $where_clauses[] = "s.tahun_ajaran_id = '$filter_tahun'";
 }
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
@@ -68,8 +61,6 @@ $query_count = "
         COUNT(s.id_siswa) AS total_rows
     FROM 
         siswa s
-    LEFT JOIN 
-        tahun_ajaran t ON s.tahun_ajaran_id = t.id_tahun
     {$where_sql}
 ";
 $result_count = mysqli_query($koneksi, $query_count);
@@ -107,10 +98,6 @@ $query_jurusan = "SELECT DISTINCT jurusan FROM siswa WHERE jurusan IS NOT NULL A
 $result_jurusan = mysqli_query($koneksi, $query_jurusan);
 $jurusan_options = mysqli_fetch_all($result_jurusan, MYSQLI_ASSOC);
 $jurusan_options = array_column($jurusan_options, 'jurusan');
-
-$query_tahun = "SELECT id_tahun, tahun FROM tahun_ajaran ORDER BY tahun DESC";
-$result_tahun = mysqli_query($koneksi, $query_tahun);
-$data_tahun = mysqli_fetch_all($result_tahun, MYSQLI_ASSOC);
 
 $current_filters = [
     'limit' => $limit_per_page
@@ -191,10 +178,16 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
         .btn-action {
             transition: all 0.2s ease;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            will-change: transform;
         }
 
         .btn-action:hover {
-            transform: scale(1.05);
+            -webkit-transform: scale(1.05) translateZ(0);
+            transform: scale(1.05) translateZ(0);
         }
 
         .stat-card {
@@ -259,6 +252,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
         .grid>* {
             overflow-x: hidden;
+            overflow-y: hidden;
         }
     </style>
 
@@ -423,7 +417,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
             document.getElementById('pdfIframeTitle').textContent = 'Laporan Konseling Kelompok';
             iframe.src = pdfUrl;
-            exportBtn.href = pdfUrl;
+            if (exportBtn) exportBtn.href = pdfUrl;
 
             modal.classList.add('open');
             document.body.classList.add('overflow-hidden');
@@ -455,6 +449,27 @@ $waktu_durasi_options = [15, 30, 45, 60];
             $("#submitGroupBtn").click(function (e) {
                 e.preventDefault();
 
+                // --- VALIDASI GAMBAR FRONTEND ---
+                let fileInput = document.getElementById('dokumentasi');
+                if (fileInput.files.length > 12) {
+                    alert("Maksimal 12 gambar dokumentasi yang diperbolehkan!");
+                    return false;
+                }
+
+                let validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    let file = fileInput.files[i];
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert("Ukuran gambar '" + file.name + "' melebihi 2 MB!");
+                        return false;
+                    }
+                    if (!validTypes.includes(file.type) && !validTypes.includes('image/' + file.name.split('.').pop().toLowerCase())) {
+                        alert("Format gambar '" + file.name + "' tidak didukung! Harap gunakan JPG, JPEG, PNG, atau WEBP.");
+                        return false;
+                    }
+                }
+                // ---------------------------------
+
                 let form = document.getElementById("konselingFormGroup");
                 let formData = new FormData(form);
                 const submitButton = document.getElementById('submitGroupBtn');
@@ -482,10 +497,11 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         updateSelectedStudentsDisplay(true);
 
                         if (res.status === "success") {
+                            // Langsung buka preview PDF
                             if (res.pdf_url) {
                                 openPdfViewerModal(res.pdf_url);
                             } else {
-                                alert("Laporan konseling kelompok berhasil disimpan! Namun, gagal mendapatkan URL PDF.");
+                                alert("Laporan konseling kelompok berhasil disimpan!");
                             }
                         }
                         else {
@@ -599,7 +615,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                     <i class="fas fa-filter primary-color mr-2"></i> Filter Pencarian Siswa
                 </h3>
                 <form method="GET" action="konselingkelompok.php"
-                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                     <input type="hidden" name="limit" value="<?= $limit_per_page ?>">
 
                     <div class="md:col-span-1">
@@ -618,12 +634,11 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         <select name="kelas" id="kelas"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                             <option value="">Semua Kelas</option>
-                            <?php foreach($kelas_options as $kelas): 
-                                if (trim($kelas) === 'LULUS') continue;
+                            <?php foreach($kelas_options as $kelas):
+                                if (strtoupper($kelas) === 'LULUS') continue;
                             ?>
                             <option value="<?= $kelas ?>" <?=($filter_kelas==$kelas) ? 'selected' : '' ?>>
-                                Kelas
-                                <?= htmlspecialchars($kelas) ?>
+                                Kelas <?= htmlspecialchars($kelas) ?>
                             </option>
                             <?php endforeach; ?>
                         </select>
@@ -644,7 +659,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         </select>
                     </div>
 
-                    <div class="flex space-x-2 overflow-y-hidden">
+                    <div class="flex space-x-2">
                         <button type="submit"
                             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition duration-200 flex items-center justify-center text-sm font-semibold shadow-md btn-action">
                             <i class="fas fa-filter mr-2"></i> Terapkan
@@ -659,24 +674,29 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
             <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 animate-slide-in">
 
-                <div
-                    class="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm">
-                    <div class="w-full md:w-2/3">
-                        <h3 class="text-base font-bold text-blue-900 mb-1">Pilih Siswa untuk Konseling Kelompok</h3>
-                        <p class="text-sm text-blue-700 leading-relaxed">Minimal 2 siswa harus dipilih untuk membuat
-                            laporan konseling kelompok.</p>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-5 bg-blue-50 border border-blue-100 rounded-xl">
+                    
+                    <div class="flex-1">
+                        <h3 class="text-base font-bold text-blue-900 mb-1">
+                            Pilih Siswa untuk Konseling Kelompok
+                        </h3>
+                        <p class="text-sm text-blue-700 leading-relaxed">
+                            Minimal 2 siswa harus dipilih untuk membuat laporan konseling kelompok.
+                        </p>
                     </div>
 
-                    <a href="riwayat_kelompok.php"
-                        class="w-full md:w-auto bg-[#0F3A3A] text-white px-4 py-3 rounded-lg hover:bg-[#123E44] transition duration-200 flex items-center justify-center text-sm font-medium shadow-md whitespace-nowrap">
-                        <i class="fas fa-list-ul mr-2 text-[#5FA8A1]"></i> Riwayat Kelompok
-                    </a>
+                    <div class="flex flex-col sm:flex-row gap-3 shrink-0">
+                        <a href="riwayat_kelompok.php"
+                            class="inline-flex items-center justify-center px-5 py-2.5 bg-[#0F3A3A] hover:bg-[#123E44] text-white rounded-lg transition duration-200 text-sm font-medium shadow-md whitespace-nowrap">
+                            <i class="fas fa-list-ul mr-2 text-[#5FA8A1]"></i> Riwayat Kelompok
+                        </a>
 
-                    <button type="button" onclick="openModalGroup()" id="openModalGroupBtn" disabled
-                        class="w-full md:w-auto px-6 py-3 bg-gray-400 text-white rounded-lg flex items-center justify-center text-sm font-bold shadow transition-all duration-200 cursor-not-allowed whitespace-nowrap">
-                        <i class="fas fa-file-alt mr-2"></i>
-                        <span>Buat Laporan Kelompok</span>
-                    </button>
+                        <button type="button" onclick="openModalGroup()" id="openModalGroupBtn" disabled
+                            class="inline-flex items-center justify-center px-5 py-2.5 bg-gray-400 text-white rounded-lg text-sm font-bold shadow transition-all duration-200 cursor-not-allowed whitespace-nowrap">
+                            <i class="fas fa-file-alt mr-2"></i>
+                            <span>Buat Laporan Kelompok</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="p-4 border rounded-lg mb-6 bg-gray-50" id="selectedStudentsListContainer">
@@ -862,7 +882,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
             </div>
 
             <div class="p-8">
-                <form id="konselingFormGroup" onsubmit="return false;">
+                <form id="konselingFormGroup" onsubmit="return false;" enctype="multipart/form-data">
                     <input type="hidden" name="selected_student_ids" id="selected_student_ids_input">
                     <input type="hidden" name="status_konseling" value="Terlaksana">
                     <input type="hidden" name="tempat" value="Ruang BK">
@@ -914,7 +934,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             <label for="pertemuan_ke" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-list-ol mr-1"></i> Pertemuan Ke-
                             </label>
-                            <input type="number" name="pertemuan_ke" id="pertemuan_ke" value="1" min="1" required
+                            <input type="number" name="pertemuan_ke" id="pertemuan_ke" min="1" required placeholder="Masukkan nomor pertemuan..."
                                 class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                         </div>
                     </div>
@@ -945,6 +965,15 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         <textarea name="hasil_yang_dicapai" id="hasil_layanan" rows="3" required
                             placeholder="Deskripsikan proses dan hasil progress yang dicapai..."
                             class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="dokumentasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-1"></i> Dokumentasi Kegiatan <span class="text-xs text-gray-500">(Opsional, Maks 12 foto, Max 2MB/foto)</span>
+                        </label>
+                        <input type="file" name="dokumentasi[]" id="dokumentasi" multiple accept=".jpg,.jpeg,.png,.webp"
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Format diperbolehkan: JPG, JPEG, PNG, WEBP.</p>
                     </div>
 
                     <div class="mb-6">
@@ -982,6 +1011,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
         </div>
     </div>
 
+    <!-- ===== MODAL PDF VIEWER (dengan tombol Lihat Riwayat) ===== -->
     <div id="pdfViewerModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
         <div
             class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[90vh] flex flex-col transform scale-100 transition-all">
@@ -1006,6 +1036,10 @@ $waktu_durasi_options = [15, 30, 45, 60];
                     class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md btn-action">
                     <i class="fas fa-arrow-left mr-2"></i> Kembali
                 </button>
+                <a href="riwayat_kelompok.php"
+                    class="px-6 py-3 bg-[#0F3A3A] hover:bg-[#123E44] text-white rounded-lg transition font-semibold shadow-md btn-action inline-flex items-center">
+                    <i class="fas fa-list-ul mr-2"></i> Lihat Riwayat
+                </a>
                 <a id="exportPdfBtn" href="#" target="_blank"
                     class="hidden px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition font-semibold shadow-md btn-action inline-flex items-center">
                     <i class="fas fa-download mr-2"></i> Download PDF

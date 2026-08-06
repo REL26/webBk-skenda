@@ -311,7 +311,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
             document.getElementById('pdfIframeTitle').textContent = 'Laporan Konseling Individu';
             iframe.src = pdfUrl;
-            exportBtn.href = pdfUrl;
+            if(exportBtn) exportBtn.href = pdfUrl;
 
             modal.classList.add('open');
             document.body.classList.add('overflow-hidden');
@@ -329,6 +329,27 @@ $waktu_durasi_options = [15, 30, 45, 60];
         $(document).ready(function () {
             $("#submitBtn").click(function (e) {
                 e.preventDefault();
+
+                // --- VALIDASI GAMBAR FRONTEND ---
+                let fileInput = document.getElementById('dokumentasi');
+                if (fileInput.files.length > 12) {
+                    alert("Maksimal 12 gambar dokumentasi yang diperbolehkan!");
+                    return false;
+                }
+                
+                let validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    let file = fileInput.files[i];
+                    if (file.size > 2 * 1024 * 1024) { 
+                        alert("Ukuran gambar '" + file.name + "' melebihi 2 MB!");
+                        return false;
+                    }
+                    if (!validTypes.includes(file.type) && !validTypes.includes('image/' + file.name.split('.').pop().toLowerCase())) {
+                        alert("Format gambar '" + file.name + "' tidak didukung! Harap gunakan JPG, JPEG, PNG, atau WEBP.");
+                        return false;
+                    }
+                }
+                // ---------------------------------
 
                 let form = document.getElementById("konselingForm");
                 let formData = new FormData(form);
@@ -352,14 +373,13 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         closeModal();
 
                         if (res.status === "success") {
+                            alert("Laporan konseling individu berhasil disimpan!");
                             if (res.pdf_url) {
                                 openPdfViewerModal(res.pdf_url);
-                            } else {
-                                alert("Laporan konseling berhasil disimpan! Namun, gagal mendapatkan URL PDF.");
                             }
                         }
                         else {
-                            alert("Gagal menyimpan laporan: " + res.message);
+                            alert("Gagal menyimpan laporan konseling individu: " + (res.message || "Terjadi kesalahan."));
                         }
                     },
 
@@ -367,18 +387,14 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         submitButton.innerHTML = originalText;
                         submitButton.disabled = false;
 
-                        let errorMessage = "Terjadi error saat mengirim data (Kesalahan Jaringan/Server).";
+                        let errorMessage = "Gagal menyimpan laporan konseling individu.";
                         try {
                             const errorJson = JSON.parse(xhr.responseText);
                             if (errorJson && errorJson.message) {
-                                errorMessage = "Gagal menyimpan: " + errorJson.message;
-                            } else {
-                                console.error("AJAX Error Response:", xhr.responseText);
-                                errorMessage += "\n\nDetail Error (Cek Konsol Browser untuk detail penuh).";
+                                errorMessage = "Gagal menyimpan laporan konseling individu: " + errorJson.message;
                             }
                         } catch (e) {
-                            console.error("AJAX Error Response (Raw):", xhr.responseText);
-                            errorMessage += "\n\nTerdeteksi Fatal Error di Server! Cek konsol browser untuk detail.";
+                            // biarkan pesan default
                         }
                         alert(errorMessage);
                     }
@@ -408,68 +424,32 @@ $waktu_durasi_options = [15, 30, 45, 60];
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
             <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition">
-
                 <div class="flex items-start justify-between">
-
                     <div>
-                        <p class="text-sm font-medium text-gray-500">
-                            Total Siswa
-                        </p>
-
-                        <h3 class="text-4xl font-bold mt-2">
-                            <?= $row_count ?>
-                        </h3>
-
-                        <p class="text-xs text-gray-500 mt-2">
-                            Jumlah seluruh data siswa
-                        </p>
+                        <p class="text-sm font-medium text-gray-500">Total Siswa</p>
+                        <h3 class="text-4xl font-bold mt-2"><?= $row_count ?></h3>
+                        <p class="text-xs text-gray-500 mt-2">Jumlah seluruh data siswa</p>
                     </div>
-
-
                     <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
                         <i class="fas fa-users text-blue-600 text-2xl"></i>
                     </div>
-
                 </div>
-
             </div>
 
             <div class="bg-white p-5 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition">
-
                 <div class="flex items-start justify-between">
-
                     <div>
-
-                        <p class="text-sm font-medium text-gray-500">
-                            Halaman Data
-                        </p>
-
-
+                        <p class="text-sm font-medium text-gray-500">Halaman Data</p>
                         <h3 class="text-4xl font-bold mt-2">
                             <?= $current_page_num ?>
-                            <span class="text-xl">
-                                /
-                                <?= $total_pages ?>
-                            </span>
+                            <span class="text-xl"> / <?= $total_pages ?></span>
                         </h3>
-
-
-                        <p class="text-xs text-gray-500 mt-2">
-                            Posisi halaman saat ini
-                        </p>
-
-
+                        <p class="text-xs text-gray-500 mt-2">Posisi halaman saat ini</p>
                     </div>
-
-
                     <div class="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
-
                         <i class="fas fa-file-lines text-blue-600 text-2xl"></i>
-
                     </div>
-
                 </div>
-
             </div>
 
         </div>
@@ -502,8 +482,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             if (strtoupper($kelas) === 'LULUS') continue;
                         ?>
                         <option value="<?= $kelas ?>" <?=($filter_kelas==$kelas) ? 'selected' : '' ?>>
-                            Kelas
-                            <?= htmlspecialchars($kelas) ?>
+                            Kelas <?= htmlspecialchars($kelas) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>
@@ -525,32 +504,14 @@ $waktu_durasi_options = [15, 30, 45, 60];
                 </div>
 
                 <div>
-
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-history mr-1"></i>
-                        Riwayat Konseling
+                        <i class="fas fa-history mr-1"></i> Riwayat Konseling
                     </label>
-
-
                     <select name="riwayat" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-
-                        <option value="">
-                            Semua Siswa
-                        </option>
-
-
-                        <option value="ada" <?=($filter_riwayat=="ada" )?'selected':'' ?>>
-                            Pernah Dilayani
-                        </option>
-
-
-                        <option value="belum" <?=($filter_riwayat=="belum" )?'selected':'' ?>>
-                            Belum Pernah Dilayani
-                        </option>
-
-
+                        <option value="">Semua Siswa</option>
+                        <option value="ada" <?=($filter_riwayat=="ada" )?'selected':'' ?>>Pernah Dilayani</option>
+                        <option value="belum" <?=($filter_riwayat=="belum" )?'selected':'' ?>>Belum Pernah Dilayani</option>
                     </select>
-
                 </div>
 
                 <div class="flex space-x-2">
@@ -571,31 +532,24 @@ $waktu_durasi_options = [15, 30, 45, 60];
                 <table class="min-w-full divide-y divide-gray-200 data-table-report">
                     <thead class="primary-bg">
                         <tr>
-                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">No
-                            </th>
-                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Nama
-                                Siswa</th>
-                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kelas
-                                & Jurusan</th>
-                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">NIS
-                            </th>
-                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">
-                                Pertemuan Ke-</th>
-                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">
-                                Panggilan Ke-</th>
-                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Aksi
-                            </th>
+                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">No</th>
+                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Nama Siswa</th>
+                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Kelas / Jurusan</th>
+                            <th class="px-4 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">NIS</th>
+                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Pertemuan Ke-</th>
+                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Panggilan Ke-</th>
+                            <th class="px-4 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <?php if (mysqli_num_rows($result_siswa) > 0): ?>
                         <?php 
-                                $no = $start_from + 1;
-                                while($data = mysqli_fetch_assoc($result_siswa)): 
-                                    $latest_session = get_latest_session_data($koneksi, $data['id_siswa']);
-                                    $pertemuan_ke = $latest_session['pertemuan_ke'];
-                                    $panggilan_ke = $latest_session['panggilan_ke'];
-                                ?>
+                            $no = $start_from + 1;
+                            while($data = mysqli_fetch_assoc($result_siswa)): 
+                                $session_data = get_latest_session_data($koneksi, $data['id_siswa']);
+                                $pertemuan_ke = $session_data['pertemuan_ke'];
+                                $panggilan_ke = $session_data['panggilan_ke'];
+                        ?>
                         <tr class="hover:bg-gray-50 transition duration-150">
                             <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700">
                                 <?= $no++ ?>
@@ -618,10 +572,8 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             </td>
 
                             <td class="px-4 py-4 whitespace-nowrap">
-                                <span
-                                    class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    <?= htmlspecialchars($data['kelas']) ?>
-                                    <?= htmlspecialchars($data['jurusan']) ?>
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    <?= htmlspecialchars($data['kelas']) ?> <?= htmlspecialchars($data['jurusan']) ?>
                                 </span>
                             </td>
 
@@ -630,15 +582,13 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             </td>
 
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <span
-                                    class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800">
                                     <?= $pertemuan_ke ?: '0' ?>
                                 </span>
                             </td>
 
                             <td class="px-4 py-4 whitespace-nowrap text-center">
-                                <span
-                                    class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800">
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full bg-purple-100 text-purple-800">
                                     <?= $panggilan_ke ?: '0' ?>
                                 </span>
                             </td>
@@ -681,31 +631,18 @@ $waktu_durasi_options = [15, 30, 45, 60];
             </div>
 
             <?php if ($total_pages > 1): ?>
-            <div
-                class="no-print mt-6 flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200">
+            <div class="no-print mt-6 flex flex-col md:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200">
                 <div class="text-sm text-gray-700 text-center md:text-left">
-                    <p class="font-semibold">Menampilkan <span class="text-blue-600">
-                            <?= mysqli_num_rows($result_siswa) ?>
-                        </span> dari <span class="text-blue-600">
-                            <?= $row_count ?>
-                        </span> total siswa</p>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Halaman
-                        <?= $current_page_num ?> dari
-                        <?= $total_pages ?>
-                        <span class="hidden md:inline">(
-                            <?= $limit_per_page ?> baris per halaman)
-                        </span>
-                        <span class="md:hidden">(
-                            <?= $limit_per_page ?> data - Mode Mobile)
-                        </span>
+                    <p class="font-semibold">Menampilkan <span class="text-blue-600"><?= mysqli_num_rows($result_siswa) ?></span> dari <span class="text-blue-600"><?= $row_count ?></span> total siswa</p>
+                    <p class="text-xs text-gray-500 mt-1">Halaman <?= $current_page_num ?> dari <?= $total_pages ?>
+                        <span class="hidden md:inline">(<?= $limit_per_page ?> baris per halaman)</span>
+                        <span class="md:hidden">(<?= $limit_per_page ?> data - Mode Mobile)</span>
                     </p>
                 </div>
 
                 <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px" aria-label="Pagination">
                     <?php if ($current_page_num > 1): ?>
-                    <a href="<?= get_pagination_url($current_page_num - 1, $current_filters) ?>"
-                        class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-l-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                    <a href="<?= get_pagination_url($current_page_num - 1, $current_filters) ?>" class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-l-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
                         <i class="fas fa-chevron-left"></i>
                     </a>
                     <?php endif; ?>
@@ -724,9 +661,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
 
                         for ($i = $start_loop; $i <= $end_loop; $i++):
                         ?>
-                    <a href="<?= get_pagination_url($i, $current_filters) ?>"
-                        class="relative inline-flex items-center px-3 md:px-4 py-2 border text-sm font-semibold transition
-                            <?= ($i == $current_page_num) ? 'z-10 primary-bg text-white border-blue-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' ?>">
+                    <a href="<?= get_pagination_url($i, $current_filters) ?>" class="relative inline-flex items-center px-3 md:px-4 py-2 border text-sm font-semibold transition <?= ($i == $current_page_num) ? 'z-10 primary-bg text-white border-blue-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' ?>">
                         <?= $i ?>
                     </a>
                     <?php endfor; 
@@ -740,8 +675,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         ?>
 
                     <?php if ($current_page_num < $total_pages): ?>
-                    <a href="<?= get_pagination_url($current_page_num + 1, $current_filters) ?>"
-                        class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-r-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
+                    <a href="<?= get_pagination_url($current_page_num + 1, $current_filters) ?>" class="relative inline-flex items-center px-2 md:px-3 py-2 rounded-r-lg border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition">
                         <i class="fas fa-chevron-right"></i>
                     </a>
                     <?php endif; ?>
@@ -774,7 +708,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
         </div>
 
         <div class="p-8">
-            <form id="konselingForm" onsubmit="return false;">
+            <form id="konselingForm" onsubmit="return false;" enctype="multipart/form-data">
                 <input type="hidden" name="id_siswa" id="id_siswa">
 
                 <div
@@ -891,6 +825,15 @@ $waktu_durasi_options = [15, 30, 45, 60];
                     <textarea name="hasil_dicapai" id="hasil_dicapai" rows="3" required
                         placeholder="Deskripsikan hasil atau progress yang dicapai dalam sesi ini..."
                         class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"></textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label for="dokumentasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-camera mr-1"></i> Dokumentasi Kegiatan <span class="text-xs text-gray-500">(Opsional, Maks 12 foto, Max 2MB/foto)</span>
+                    </label>
+                    <input type="file" name="dokumentasi[]" id="dokumentasi" multiple accept=".jpg,.jpeg,.png,.webp"
+                        class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white text-sm">
+                    <p class="text-xs text-gray-500 mt-1">Format diperbolehkan: JPG, JPEG, PNG, WEBP.</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

@@ -9,6 +9,24 @@ if (isset($_GET['hapus'])) {
 
     $id_kelompok = intval($_GET['hapus']);
 
+    // --- HAPUS FILE DOKUMENTASI FISIK DAN DATA DARI DATABASE ---
+    $stmt_docs = $koneksi->prepare("SELECT file_path FROM dokumentasi_kelompok WHERE id_kelompok = ?");
+    $stmt_docs->bind_param("i", $id_kelompok);
+    $stmt_docs->execute();
+    $res_docs = $stmt_docs->get_result();
+
+    while($doc = $res_docs->fetch_assoc()) {
+        $file_path = dirname(dirname(__FILE__)) . '/' . str_replace('../', '', $doc['file_path']);
+        if(file_exists($file_path)) {
+            unlink($file_path);
+        }
+    }
+
+    $stmt_del_docs = $koneksi->prepare("DELETE FROM dokumentasi_kelompok WHERE id_kelompok = ?");
+    $stmt_del_docs->bind_param("i", $id_kelompok);
+    $stmt_del_docs->execute();
+    // -----------------------------------------------------------
+
     $stmt = $koneksi->prepare(
         "DELETE FROM detail_kelompok WHERE id_kelompok=?"
     );
@@ -75,20 +93,30 @@ if (!empty($filter_guru)) {
 }
 
 if (!empty($filter_search)) {
-    $where_clauses[] = " k.id_kelompok IN (
-        SELECT dk.id_kelompok
-        FROM detail_kelompok dk
-        JOIN siswa s ON dk.id_siswa = s.id_siswa
-        WHERE s.nama LIKE ? OR s.nis LIKE ?
+    // Pencarian gabungan: Siswa (nama/NIS) ATAU Guru (nama_guru) ATAU Topik
+    // (teknik_pendekatan/catatan_khusus, teknik_konseling, gejala/hasil_layanan)
+    $where_clauses[] = " (
+        k.id_kelompok IN (
+            SELECT dk.id_kelompok
+            FROM detail_kelompok dk
+            JOIN siswa s ON dk.id_siswa = s.id_siswa
+            WHERE s.nama LIKE ? OR s.nis LIKE ?
+        )
+        OR k.nama_guru LIKE ?
+        OR k.catatan_khusus LIKE ?
+        OR k.teknik_konseling LIKE ?
+        OR k.hasil_layanan LIKE ?
     ) ";
-    
-    $bind_params .= 'ss';
+
+    $bind_params .= 'ssssss';
     $search_term = "%$filter_search%";
-    $bind_values[] = $search_term;
-    $bind_values[] = $search_term;
+    $bind_values[] = $search_term; // siswa.nama
+    $bind_values[] = $search_term; // siswa.nis
+    $bind_values[] = $search_term; // nama_guru
+    $bind_values[] = $search_term; // catatan_khusus (teknik pendekatan)
+    $bind_values[] = $search_term; // teknik_konseling
+    $bind_values[] = $search_term; // hasil_layanan (gejala & hasil)
 }
-
-
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
 
@@ -118,7 +146,7 @@ $query_riwayat = "
         riwayat_kelompok rk ON k.id_kelompok = rk.id_kelompok
     " . $where_sql . "
     ORDER BY 
-        k.tanggal_pelaksanaan DESC, k.created_at DESC
+        k.tanggal_pelaksanaan ASC, k.created_at ASC
     LIMIT ? OFFSET ?
 ";
 $stmt_riwayat = $koneksi->prepare($query_riwayat);
@@ -136,6 +164,56 @@ $start_number = $offset + 1;
 
 $query_gurus = "SELECT DISTINCT nama_guru FROM kelompok ORDER BY nama_guru ASC";
 $result_gurus = $koneksi->query($query_gurus);
+
+// ===== AJAX ENDPOINT UNTUK EDIT =====
+if (isset($_GET['action']) && $_GET['action'] === 'get_edit_data') {
+    header('Content-Type: application/json');
+    $id_kelompok = (int)$_GET['id_kelompok'];
+
+    $stmt = $koneksi->prepare("SELECT k.*, rk.file_pdf FROM kelompok k LEFT JOIN riwayat_kelompok rk ON k.id_kelompok = rk.id_kelompok WHERE k.id_kelompok = ?");
+    $stmt->bind_param("i", $id_kelompok);
+    $stmt->execute();
+    $report = $stmt->get_result()->fetch_assoc();
+
+    if (!$report) {
+        echo json_encode(["status" => "error", "message" => "Data tidak ditemukan"]);
+        exit;
+    }
+
+    // Siswa
+    $stmt_s = $koneksi->prepare("SELECT s.id_siswa, s.nama, s.kelas, s.jurusan FROM detail_kelompok dk JOIN siswa s ON dk.id_siswa = s.id_siswa WHERE dk.id_kelompok = ? ORDER BY s.kelas, s.nama");
+    $stmt_s->bind_param("i", $id_kelompok);
+    $stmt_s->execute();
+    $res_s = $stmt_s->get_result();
+    $students = [];
+    $student_ids = [];
+    while ($row = $res_s->fetch_assoc()) {
+        $students[] = $row;
+        $student_ids[] = $row['id_siswa'];
+    }
+
+    // Dokumentasi
+    $stmt_d = $koneksi->prepare("SELECT file_path FROM dokumentasi_kelompok WHERE id_kelompok = ?");
+    $stmt_d->bind_param("i", $id_kelompok);
+    $stmt_d->execute();
+    $res_d = $stmt_d->get_result();
+    $docs = [];
+    while ($row = $res_d->fetch_assoc()) {
+        $docs[] = ['file_path' => $row['file_path']];
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "data" => [
+            "report" => $report,
+            "students" => $students,
+            "student_ids" => $student_ids,
+            "docs" => $docs
+        ]
+    ]);
+    exit;
+}
+
 if (isset($_GET['action']) && $_GET['action'] === 'get_report_full_detail') {
     header('Content-Type: application/json');
     $id_kelompok = (int)$_GET['id_kelompok'];
@@ -144,7 +222,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_report_full_detail') {
     $stmt->bind_param("i", $id_kelompok);
     $stmt->execute();
     $report = $stmt->get_result()->fetch_assoc();
-$query_siswa = "SELECT s.nama, s.kelas, s.jurusan 
+    $query_siswa = "SELECT s.nama, s.kelas, s.jurusan 
                 FROM detail_kelompok dk
                 JOIN siswa s ON dk.id_siswa = s.id_siswa 
                 WHERE dk.id_kelompok = ?";
@@ -163,7 +241,7 @@ $query_siswa = "SELECT s.nama, s.kelas, s.jurusan
     "data" => [
         "report" => $report,
         "students" => $students,
-        "pdf_url" => $report['file_pdf']
+        "pdf_url" => $report['file_pdf'] ?? null
     ]
 ]);
 
@@ -207,7 +285,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_detail') {
     exit;
 }
 
-$koneksi->close(); 
+$waktu_durasi_options = [30, 45, 60, 90];
 ?>
 
 <!DOCTYPE html>
@@ -312,6 +390,52 @@ $koneksi->close();
                 display: none !important;
             }
         }
+
+        .doc-preview-item {
+            position: relative;
+            display: inline-block;
+            margin: 4px;
+        }
+        .doc-preview-item img {
+            width: 100px;
+            height: 75px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 2px solid #e5e7eb;
+        }
+        .doc-preview-item .btn-remove-doc {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #dc2626;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .doc-preview-item.marked-delete {
+            opacity: 0.4;
+        }
+        .doc-preview-item.marked-delete::after {
+            content: 'HAPUS';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #dc2626;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
     </style>
 
     <script>
@@ -356,11 +480,6 @@ $koneksi->close();
                 const curhat = getRatingStatus(item.aspek_kemudahan_curhat);
                 const kepercayaan = getRatingStatus(item.aspek_kepercayaan);
                 const pemecahan = getRatingStatus(item.aspek_pemecahan_masalah);
-
-                const statusPenerimaan = getRatingStatus(item.aspek_penerimaan);
-                const statusKepercayaan = getRatingStatus(item.aspek_kepercayaan);
-
-
 
                 const overallStatus = parseInt(item.aspek_penerimaan) > 0 ?
                     `<span class="text-green-600 font-semibold text-xs">Sudah diisi ${item.tanggal_isi ? new Date(item.tanggal_isi).toLocaleDateString('id-ID') : ''}</span>` :
@@ -513,17 +632,188 @@ $koneksi->close();
             document.getElementById('pdfIframe').src = '';
         }
 
+        // ===== EDIT MODAL =====
+        let deletedDocs = [];
+
+        function openEditModal(id_kelompok) {
+            const modal = document.getElementById('editKelompokModal');
+            document.getElementById('editModalTitle').textContent = 'Edit Laporan Konseling Kelompok';
+            document.getElementById('editExistingDocs').innerHTML = '<p class="text-sm text-gray-500 italic">Memuat data...</p>';
+            deletedDocs = [];
+            document.getElementById('edit_deleted_docs').value = '[]';
+
+            $.ajax({
+                url: 'riwayat_kelompok.php',
+                method: 'GET',
+                data: { action: 'get_edit_data', id_kelompok: id_kelompok },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status !== 'success') {
+                        alert('Gagal memuat data: ' + (res.message || 'Unknown error'));
+                        return;
+                    }
+                    const r = res.data.report;
+                    const students = res.data.students;
+                    const student_ids = res.data.student_ids;
+                    const docs = res.data.docs || [];
+
+                    document.getElementById('edit_id_kelompok').value = r.id_kelompok;
+                    document.getElementById('edit_selected_student_ids').value = student_ids.join(',');
+
+                    // Tampilkan daftar siswa
+                    let siswaHtml = '';
+                    if (students.length > 0) {
+                        siswaHtml = students.map(s => 
+                            `<span class="inline-block bg-blue-200 text-blue-800 text-xs px-3 py-1 rounded-full m-1">${s.nama} (${s.kelas})</span>`
+                        ).join('');
+                    } else {
+                        siswaHtml = '<span class="text-xs text-gray-500">Tidak ada siswa.</span>';
+                    }
+                    document.getElementById('editSelectedStudentsInModal').innerHTML = siswaHtml;
+
+                    document.getElementById('edit_tanggal_pelaksanaan').value = r.tanggal_pelaksanaan || '';
+                    document.getElementById('edit_waktu_durasi').value = r.waktu_durasi || '';
+                    document.getElementById('edit_pertemuan_ke').value = r.pertemuan_ke || '';
+                    document.getElementById('edit_catatan_khusus').value = r.catatan_khusus || '';
+                    document.getElementById('edit_teknik_konseling').value = r.teknik_konseling || '';
+                    document.getElementById('edit_hasil_layanan').value = r.hasil_layanan || '';
+                    document.getElementById('edit_guru_pembimbing').value = r.nama_guru || '';
+                    document.getElementById('edit_tempat').value = r.tempat || 'Ruang BK';
+
+                    // Dokumentasi lama
+                    const container = document.getElementById('editExistingDocs');
+                    container.innerHTML = '';
+                    if (docs.length > 0) {
+                        docs.forEach((doc, idx) => {
+                            const div = document.createElement('div');
+                            div.className = 'doc-preview-item';
+                            div.dataset.path = doc.file_path;
+                            // path di DB biasanya "../uploads/..." atau "uploads/..."
+                            let src = doc.file_path;
+                            if (src.startsWith('../')) src = src; // biarkan relatif
+                            div.innerHTML = `
+                                <img src="${src}" alt="Doc ${idx+1}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2275%22%3E%3Crect fill=%22%23e5e7eb%22 width=%22100%22 height=%2275%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%239ca3af%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2210%22%3ENo Preview%3C/text%3E%3C/svg%3E'">
+                                <span class="btn-remove-doc" onclick="toggleDeleteDoc(this)" title="Hapus foto ini"><i class="fas fa-times"></i></span>
+                            `;
+                            container.appendChild(div);
+                        });
+                    } else {
+                        container.innerHTML = '<p class="text-sm text-gray-500 italic">Tidak ada dokumentasi sebelumnya.</p>';
+                    }
+
+                    document.getElementById('edit_dokumentasi').value = '';
+
+                    modal.classList.add('open');
+                    document.body.classList.add('overflow-hidden');
+                },
+                error: function () {
+                    alert('Gagal memuat data laporan. Coba lagi.');
+                }
+            });
+        }
+
+        function toggleDeleteDoc(btn) {
+            const item = btn.closest('.doc-preview-item');
+            const path = item.dataset.path;
+            if (item.classList.contains('marked-delete')) {
+                item.classList.remove('marked-delete');
+                deletedDocs = deletedDocs.filter(p => p !== path);
+            } else {
+                item.classList.add('marked-delete');
+                if (!deletedDocs.includes(path)) deletedDocs.push(path);
+            }
+            document.getElementById('edit_deleted_docs').value = JSON.stringify(deletedDocs);
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editKelompokModal');
+            modal.classList.remove('open');
+            document.body.classList.remove('overflow-hidden');
+            document.getElementById('editKelompokForm').reset();
+            deletedDocs = [];
+        }
+
+        $(document).ready(function () {
+            $("#editSubmitBtn").click(function (e) {
+                e.preventDefault();
+
+                let fileInput = document.getElementById('edit_dokumentasi');
+                if (fileInput.files.length > 12) {
+                    alert("Maksimal 12 gambar dokumentasi yang diperbolehkan!");
+                    return false;
+                }
+
+                let validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    let file = fileInput.files[i];
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert("Ukuran gambar '" + file.name + "' melebihi 2 MB!");
+                        return false;
+                    }
+                    if (!validTypes.includes(file.type) && !validTypes.includes('image/' + file.name.split('.').pop().toLowerCase())) {
+                        alert("Format gambar '" + file.name + "' tidak didukung! Harap gunakan JPG, JPEG, PNG, atau WEBP.");
+                        return false;
+                    }
+                }
+
+                let form = document.getElementById("editKelompokForm");
+                let formData = new FormData(form);
+                formData.set('deleted_docs', document.getElementById('edit_deleted_docs').value || '[]');
+
+                const submitButton = document.getElementById('editSubmitBtn');
+                const originalText = submitButton.innerHTML;
+
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan Perubahan...';
+
+                $.ajax({
+                    url: "laporan_kelompokkon.php",
+                    method: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: "json",
+
+                    success: function (res) {
+                        submitButton.innerHTML = originalText;
+                        submitButton.disabled = false;
+                        closeEditModal();
+
+                        if (res.status === "success") {
+                            alert("Laporan konseling kelompok berhasil diperbarui.");
+                            window.location.reload();
+                        } else {
+                            alert("Gagal memperbarui laporan: " + (res.message || "Terjadi kesalahan."));
+                        }
+                    },
+
+                    error: function (xhr) {
+                        submitButton.innerHTML = originalText;
+                        submitButton.disabled = false;
+
+                        let errorMessage = "Gagal memperbarui laporan konseling kelompok.";
+                        try {
+                            const errorJson = JSON.parse(xhr.responseText);
+                            if (errorJson && errorJson.message) {
+                                errorMessage = "Gagal memperbarui: " + errorJson.message;
+                            }
+                        } catch (e) {}
+                        alert(errorMessage);
+                    }
+                });
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             const currentLimit = <?= $limit ?>;
             const urlParams = new URLSearchParams(window.location.search);
-
 
             function determineLimit() {
                 if (window.innerWidth < 640 && currentLimit !== limit_mobile) return limit_mobile;
                 if (window.innerWidth >= 640 && currentLimit !== limit_desktop) return limit_desktop;
                 return currentLimit;
             }
-
+            
             const responsiveLimit = determineLimit();
             if (currentLimit !== responsiveLimit) {
                 urlParams.set('limit', responsiveLimit);
@@ -533,11 +823,13 @@ $koneksi->close();
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === "Escape") {
-                    if (document.getElementById('kepuasanModal').classList.contains('open')) {
+                    if (document.getElementById('kepuasanModal')?.classList.contains('open')) {
                         closeModal('kepuasanModal');
-                    } else if (document.getElementById('pdfViewerModal').classList.contains('open')) {
-                        closeModal('pdfViewerModal');
-                    } else if (document.getElementById('reportDetailModal').classList.contains('open')) {
+                    } else if (document.getElementById('pdfViewerModal')?.classList.contains('open')) {
+                        closePdfViewerModal();
+                    } else if (document.getElementById('editKelompokModal')?.classList.contains('open')) {
+                        closeEditModal();
+                    } else if (document.getElementById('reportDetailModal')?.classList.contains('open')) {
                         closeModal('reportDetailModal');
                     }
                 }
@@ -555,8 +847,7 @@ $koneksi->close();
 
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <header
-        class="fixed top-0 left-0 w-full bg-white shadow-lg z-30 flex items-center justify-between h-[64px] px-4 md:px-8 border-b primary-color border-gray-100">
+    <header class="fixed top-0 left-0 w-full bg-white shadow-lg z-30 flex items-center justify-between h-[64px] px-4 md:px-8 border-b primary-color border-gray-100">
         <a href="#" class="flex items-center space-x-2">
             <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-10 w-10">
             <span class="text-xl font-bold primary-color hidden sm:inline">Riwayat Konseling Kelompok</span>
@@ -688,12 +979,11 @@ $koneksi->close();
                             <th
                                 class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[200px]">
                                 Guru BK Pelaksana</th>
-                            <!-- <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[300px]">Topik / Masalah</th> -->
                             <th
                                 class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[350px] hide-on-mobile">
                                 Hasil yang Dicapai</th>
 
-                            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-[120px]">Aksi
+                            <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-[140px]">Aksi
                                 / Detail</th>
                         </tr>
                     </thead>
@@ -730,9 +1020,6 @@ $koneksi->close();
                                 class="px-3 py-3 text-sm text-gray-700 whitespace-normal font-semibold border-r border-gray-200 w-[200px]">
                                 <?= htmlspecialchars($data['nama_guru']) ?>
                             </td>
-                            <!-- <td class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[300px]">
-                                        <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs font-medium primary-color"><?= htmlspecialchars($data['topik']) ?></div>
-                                    </td> -->
                             <td
                                 class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[350px] hide-on-mobile">
                                 <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs">
@@ -740,7 +1027,7 @@ $koneksi->close();
                                 </div>
                             </td>
 
-                            <td class="px-3 py-3 text-center text-sm font-medium w-[120px]">
+                            <td class="px-3 py-3 text-center text-sm font-medium w-[140px]">
                                 <div class="flex flex-col space-y-2">
 
                                     <button
@@ -754,6 +1041,12 @@ $koneksi->close();
                                         onclick="openPdfViewerModal('../<?= htmlspecialchars($data['file_pdf'], ENT_QUOTES) ?>', 'Laporan Kelompok Sesi Ke-<?= htmlspecialchars($data['pertemuan_ke'], ENT_QUOTES) ?>')"
                                         class="w-full bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700 transition duration-200 text-xs font-semibold shadow-md">
                                         <i class="fas fa-file-pdf mr-1"></i> Lihat PDF
+                                    </button>
+
+                                    <button
+                                        onclick="openEditModal(<?= (int)$data['id_kelompok'] ?>)"
+                                        class="w-full bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition duration-200 text-xs font-semibold shadow-md">
+                                        <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
 
                                     <a href="?hapus=<?= $data['id_kelompok'] ?>"
@@ -836,6 +1129,7 @@ $koneksi->close();
         &copy; 2025 Bimbingan dan Konseling SMKN 2 Banjarmasin. All rights reserved.
     </footer>
 
+    <!-- Modal Report Detail -->
     <div id="reportDetailModal"
         class="modal fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4">
         <div
@@ -890,7 +1184,7 @@ $koneksi->close();
         <div
             class="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col transform modal-content border border-gray-300">
             <div class="px-6 py-4 border-b flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">
-                <h3 id="pdfIframeTitle" class="text-xl font-bold text-red-700 flex items-center"><i
+                <h3 id="pdfIframeTitle" class="text-xl font-bold primary-color flex items-center"><i
                         class="fas fa-file-pdf mr-2"></i> Laporan Konseling Kelompok</h3>
                 <button onclick="closePdfViewerModal()"
                     class="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-200">
@@ -908,6 +1202,152 @@ $koneksi->close();
         </div>
     </div>
 
-</body>
+    <!-- ===== MODAL EDIT LAPORAN KELOMPOK (layout identik dengan form Buat Laporan) ===== -->
+    <div id="editKelompokModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+        <div
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto transform scale-100 transition-all">
+            <div
+                class="sticky top-0 bg-[#0F3A3A] px-6 py-5 flex justify-between items-center z-10 rounded-t-2xl">
+                <h3 id="editModalTitle" class="text-2xl font-bold text-white flex items-center">
+                    <i class="fas fa-edit mr-3"></i> Edit Laporan Konseling Kelompok
+                </h3>
+                <button onclick="closeEditModal()" class="text-white hover:text-gray-200 transition">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
 
+            <div class="p-8">
+                <form id="editKelompokForm" onsubmit="return false;" enctype="multipart/form-data">
+                    <input type="hidden" name="id_kelompok" id="edit_id_kelompok">
+                    <input type="hidden" name="selected_student_ids" id="edit_selected_student_ids">
+                    <input type="hidden" name="deleted_docs" id="edit_deleted_docs" value="[]">
+                    <input type="hidden" name="status_konseling" value="Terlaksana">
+                    <input type="hidden" name="tempat" id="edit_tempat" value="Ruang BK">
+
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8 p-6 border-2 border-indigo-200 rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-50">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 mb-2 flex items-center">
+                                <i class="fas fa-users mr-2 text-blue-600"></i> Daftar Siswa Terpilih
+                            </p>
+                            <div id="editSelectedStudentsInModal"
+                                class="flex flex-wrap gap-2 p-3 bg-white border border-blue-200 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b-2 border-gray-200 pb-3">
+                        <i class="fas fa-edit primary-color mr-2"></i> Detail Pelaksanaan Konseling Kelompok
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label for="edit_tanggal_pelaksanaan" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-calendar mr-1"></i> Tanggal Pelaksanaan
+                            </label>
+                            <input type="date" name="tanggal_pelaksanaan" id="edit_tanggal_pelaksanaan" required
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        </div>
+
+                        <div>
+                            <label for="edit_waktu_durasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-clock mr-1"></i> Waktu/Durasi
+                            </label>
+                            <select name="waktu_durasi" id="edit_waktu_durasi" required
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                                <option value="">Pilih Durasi</option>
+                                <?php foreach($waktu_durasi_options as $durasi): ?>
+                                <option value="<?= $durasi ?> Menit"><?= $durasi ?> Menit</option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="edit_pertemuan_ke" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-list-ol mr-1"></i> Pertemuan Ke-
+                            </label>
+                            <input type="number" name="pertemuan_ke" id="edit_pertemuan_ke" placeholder="Masukkan nomor pertemuan..." min="1" required
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="edit_catatan_khusus" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-search mr-1"></i> Teknik Pendekatan
+                            </label>
+                            <input type="text" name="pendekatan" id="edit_catatan_khusus" required
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        </div>
+                        <div>
+                            <label for="edit_teknik_konseling" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-tools mr-1"></i> Teknik Konseling
+                            </label>
+                            <input type="text" name="teknik" id="edit_teknik_konseling" required
+                                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="edit_hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-check-circle mr-1"></i> Gejala dan Hasil yang Dicapai
+                        </label>
+                        <textarea name="hasil_yang_dicapai" id="edit_hasil_layanan" rows="3" required
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                    </div>
+
+                    <!-- Dokumentasi Lama -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-images mr-1"></i> Dokumentasi Saat Ini
+                        </label>
+                        <div id="editExistingDocs" class="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 min-h-[60px]">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Klik tombol × pada foto untuk menandai dihapus. Foto yang ditandai akan dihapus saat disimpan.</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="edit_dokumentasi" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-camera mr-1"></i> Tambah Dokumentasi Baru <span class="text-xs text-gray-500">(Opsional, Maks 12 foto, Max 2MB/foto)</span>
+                        </label>
+                        <input type="file" name="dokumentasi[]" id="edit_dokumentasi" multiple accept=".jpg,.jpeg,.png,.webp"
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-white text-sm">
+                        <p class="text-xs text-gray-500 mt-1">Format diperbolehkan: JPG, JPEG, PNG, WEBP. Foto lama yang tidak dihapus tetap dipertahankan.</p>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="edit_guru_pembimbing" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-user-tie mr-1"></i> Nama Guru BK
+                        </label>
+                        <select name="guru_pembimbing" id="edit_guru_pembimbing" required
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option value="Pahrurazi, S.Pd">Pahrurazi, S.Pd</option>
+                            <option value="Dian Riyani, S.Pd">Dian Riyani, S.Pd</option>
+                            <option value="Putri Hidayatie, S.Pd">Putri Hidayatie, S.Pd</option>
+                            <option value="Rini Rodhiati, S.Pd">Rini Rodhiati, S.Pd</option>
+                            <option value="Gusti Muhammad Fajri Ramadhan, S.Pd">Gusti Muhammad Fajri Ramadhan, S.Pd</option>
+                            <option value="Desy Arianti, S.Pd">Desy Arianti, S.Pd</option>
+                            <option value="Khalisatun Ni'mah, S.Pd">Khalisatun Ni'mah, S.Pd</option>
+                            <option value="Tiara Wulansari, S.Pd">Tiara Wulansari, S.Pd</option>
+                            <option value="Dhea Nur Aziza, S.Pd">Dhea Nur Aziza, S.Pd</option>
+                            <option value="Abdul Basith, S.Pd">Abdul Basith, S.Pd</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t-2 border-gray-200 flex flex-col md:flex-row justify-end gap-3">
+                        <button type="button" onclick="closeEditModal()"
+                            class="px-6 py-3 bg-gray-400 hover:bg-gray-500 text-white rounded-lg transition font-semibold shadow-md">
+                            <i class="fas fa-times mr-2"></i> Batal
+                        </button>
+                        <button type="submit" id="editSubmitBtn"
+                            class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg transition font-semibold shadow-md>
+                            <i class="fas fa-save mr-2"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</body>
 </html>

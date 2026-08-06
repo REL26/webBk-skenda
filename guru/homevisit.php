@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
     if ($action === 'cari_siswa') {
         $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
-        $q = mysqli_query($koneksi, "SELECT nama, kelas, alamat_lengkap, nama_ayah, nama_ibu, no_hp_ayah, no_hp_ibu FROM siswa WHERE nis = '$nis' LIMIT 1");
+        $q = mysqli_query($koneksi, "SELECT nama, kelas, jurusan, alamat_lengkap, nama_ayah, nama_ibu, no_hp_ayah, no_hp_ibu FROM siswa WHERE nis = '$nis' LIMIT 1");
         $row = $q ? mysqli_fetch_assoc($q) : null;
         echo json_encode(['success' => (bool) $row, 'data' => $row]);
         exit;
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword'] ?? '');
         $where = "WHERE id_guru = $id_guru_login";
         if ($keyword !== '') {
-            $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR nama_ortu_wali LIKE '%$keyword%' OR alamat LIKE '%$keyword%')";
+            $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR nama_ortu_wali LIKE '%$keyword%' OR alamat LIKE '%$keyword%')";
         }
         $q = mysqli_query($koneksi, "SELECT * FROM home_visit $where ORDER BY hari_tanggal DESC, id_visit DESC");
         $data = [];
@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
         $nama_siswa = mysqli_real_escape_string($koneksi, $_POST['nama_siswa'] ?? '');
         $kelas = mysqli_real_escape_string($koneksi, $_POST['kelas'] ?? '');
+        $jurusan = mysqli_real_escape_string($koneksi, $_POST['jurusan'] ?? '');
         $alamat = mysqli_real_escape_string($koneksi, $_POST['alamat'] ?? '');
         $hari_tanggal = mysqli_real_escape_string($koneksi, $_POST['hari_tanggal'] ?? '');
         $nama_ortu_wali = mysqli_real_escape_string($koneksi, $_POST['nama_ortu_wali'] ?? '');
@@ -101,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             }
             $tgl_dinas_sql = $tgl_dinas !== '' ? "'$tgl_dinas'" : 'NULL';
             $query = "UPDATE home_visit SET
-                        nis='$nis', nama_siswa='$nama_siswa', kelas='$kelas', alamat='$alamat', hari_tanggal='$hari_tanggal',
+                        nis='$nis', nama_siswa='$nama_siswa', kelas='$kelas', jurusan='$jurusan', alamat='$alamat', hari_tanggal='$hari_tanggal',
                         nama_ortu_wali='$nama_ortu_wali', masalah='$masalah', hasil_dicapai='$hasil_dicapai', keterangan='$keterangan',
                         tindak_lanjut='$tindak_lanjut', dokumentasi='$dokumentasi',
                         no_surat_tugas='$no_surat', tanggal_dinas=$tgl_dinas_sql, nama_petugas='$nama_petugas', nip_petugas='$nip_petugas', hasil_dinas='$hasil_dinas'
@@ -109,9 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         } else {
             $tgl_dinas_sql = $tgl_dinas !== '' ? "'$tgl_dinas'" : 'NULL';
             $query = "INSERT INTO home_visit
-                        (nis, nama_siswa, kelas, alamat, hari_tanggal, nama_ortu_wali, masalah, hasil_dicapai, keterangan, tindak_lanjut, dokumentasi, no_surat_tugas, tanggal_dinas, nama_petugas, nip_petugas, hasil_dinas, id_guru)
+                        (nis, nama_siswa, kelas, jurusan, alamat, hari_tanggal, nama_ortu_wali, masalah, hasil_dicapai, keterangan, tindak_lanjut, dokumentasi, no_surat_tugas, tanggal_dinas, nama_petugas, nip_petugas, hasil_dinas, id_guru)
                       VALUES
-                        ('$nis','$nama_siswa','$kelas','$alamat','$hari_tanggal','$nama_ortu_wali','$masalah','$hasil_dicapai','$keterangan','$tindak_lanjut','$dokumentasi','$no_surat',$tgl_dinas_sql,'$nama_petugas','$nip_petugas','$hasil_dinas',$id_guru_login)";
+                        ('$nis','$nama_siswa','$kelas','$jurusan','$alamat','$hari_tanggal','$nama_ortu_wali','$masalah','$hasil_dicapai','$keterangan','$tindak_lanjut','$dokumentasi','$no_surat',$tgl_dinas_sql,'$nama_petugas','$nip_petugas','$hasil_dinas',$id_guru_login)";
         }
 
         if (mysqli_query($koneksi, $query)) {
@@ -286,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           <tr class="bg-gray-100 text-left text-gray-700">
             <th class="px-3 py-2 border-b">No</th>
             <th class="px-3 py-2 border-b">Nama Siswa</th>
-            <th class="px-3 py-2 border-b">Kelas</th>
+            <th class="px-3 py-2 border-b">Kelas/Jurusan</th>
             <th class="px-3 py-2 border-b">Hari/Tanggal</th>
             <th class="px-3 py-2 border-b">Orang Tua/Wali</th>
             <th class="px-3 py-2 border-b">Alamat</th>
@@ -327,6 +328,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
             <input type="text" id="fKelas" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+            <input type="text" id="fJurusan" class="w-full px-3 py-2 border rounded text-sm">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Hari/Tanggal Kunjungan</label>
@@ -441,7 +446,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
       <table class="form-info" style="width:100%; margin-bottom:8px;">
         <tr><td style="width:110px;">Nama</td><td style="width:15px;">:</td><td id="pvNama"></td></tr>
-        <tr><td>Kelas</td><td>:</td><td id="pvKelas"></td></tr>
+        <tr><td>Kelas/Jurusan</td><td>:</td><td id="pvKelas"></td></tr>
         <tr><td>Hari/Tanggal</td><td>:</td><td id="pvTanggal"></td></tr>
         <tr><td>Alamat</td><td>:</td><td id="pvAlamat"></td></tr>
       </table>
@@ -565,7 +570,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       <tr class="border-b hover:bg-gray-50">
         <td class="px-3 py-2">${i + 1}</td>
         <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
-        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}</td>
+        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}${d.jurusan ? ' / ' + escapeHtml(d.jurusan) : ''}</td>
         <td class="px-3 py-2">${formatTgl(d.hari_tanggal)}</td>
         <td class="px-3 py-2">${escapeHtml(d.nama_ortu_wali || '-')}</td>
         <td class="px-3 py-2 max-w-xs truncate" title="${escapeHtml(d.alamat || '')}">${escapeHtml(d.alamat || '-')}</td>
@@ -595,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
   function kosongkanForm() {
     document.getElementById('fId').value = '';
-    ['fNis','fNamaSiswa','fKelas','fHariTanggal','fNamaOrtuWali','fAlamat','fMasalah','fHasilDicapai','fKeterangan','fTindakLanjut','fNamaPetugas','fNipPetugas','fNoSurat','fTglDinas','fHasilDinas'].forEach(id => {
+    ['fNis','fNamaSiswa','fKelas','fJurusan','fHariTanggal','fNamaOrtuWali','fAlamat','fMasalah','fHasilDicapai','fKeterangan','fTindakLanjut','fNamaPetugas','fNipPetugas','fNoSurat','fTglDinas','fHasilDinas'].forEach(id => {
       document.getElementById(id).value = '';
     });
     document.getElementById('fHasilDinas').value =
@@ -620,6 +625,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     document.getElementById('fNis').value = d.nis || '';
     document.getElementById('fNamaSiswa').value = d.nama_siswa || '';
     document.getElementById('fKelas').value = d.kelas || '';
+    document.getElementById('fJurusan').value = d.jurusan || '';
     document.getElementById('fHariTanggal').value = d.hari_tanggal || '';
     document.getElementById('fNamaOrtuWali').value = d.nama_ortu_wali || '';
     document.getElementById('fAlamat').value = d.alamat || '';
@@ -655,6 +661,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         if (data.success && data.data) {
           document.getElementById('fNamaSiswa').value = data.data.nama || '';
           document.getElementById('fKelas').value = data.data.kelas || '';
+          document.getElementById('fJurusan').value = data.data.jurusan || '';
           if (!document.getElementById('fAlamat').value) document.getElementById('fAlamat').value = data.data.alamat_lengkap || '';
           if (!document.getElementById('fNamaOrtuWali').value) document.getElementById('fNamaOrtuWali').value = data.data.nama_ayah || data.data.nama_ibu || '';
         } else {
@@ -677,6 +684,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     fd.append('nis', document.getElementById('fNis').value);
     fd.append('nama_siswa', namaSiswa);
     fd.append('kelas', document.getElementById('fKelas').value);
+    fd.append('jurusan', document.getElementById('fJurusan').value);
     fd.append('hari_tanggal', document.getElementById('fHariTanggal').value);
     fd.append('nama_ortu_wali', document.getElementById('fNamaOrtuWali').value);
     fd.append('alamat', document.getElementById('fAlamat').value);
@@ -735,6 +743,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
         ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
         ${item('Kelas', escapeHtml(d.kelas || '-'))}
+        ${item('Jurusan', escapeHtml(d.jurusan || '-'))}
         ${item('Hari/Tanggal', formatTgl(d.hari_tanggal))}
         ${item('Orang Tua/Wali', escapeHtml(d.nama_ortu_wali || '-'))}
       </div>
@@ -805,7 +814,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if (!d) return;
 
     document.getElementById('pvNama').textContent = d.nama_siswa || '-';
-    document.getElementById('pvKelas').textContent = d.kelas || '-';
+    document.getElementById('pvKelas').textContent = (d.kelas || '-') + (d.jurusan ? ' / ' + d.jurusan : '');
     document.getElementById('pvTanggal').textContent = formatTgl(d.hari_tanggal);
     document.getElementById('pvAlamat').textContent = d.alamat || '-';
     document.getElementById('pvOrtu').textContent = d.nama_ortu_wali || '-';

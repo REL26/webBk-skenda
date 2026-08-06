@@ -103,7 +103,7 @@ if (!isset($current_page)) {
 }
 
 $profiling_pages = ['hasil_tes.php', 'rekap_kelas.php'];
-$programbk_pages = ['bimbinganklasikal.php', 'konselingindividu.php', 'konselingkelompok.php', 'bimbingankelompok.php', 'laporanbk.php', 'konsultasiortu.php', 'homevisit.php'];
+$programbk_pages = ['administrasibk.php', 'bimbinganklasikal.php', 'konselingindividu.php', 'konselingkelompok.php', 'bimbingankelompok.php', 'laporanbk.php', 'konsultasiortu.php', 'homevisit.php'];
 
 if (!isset($is_profiling_active)) {
     $is_profiling_active = in_array($current_page, $profiling_pages, true);
@@ -183,6 +183,9 @@ if (!isset($is_programbk_active)) {
                 <i id="programBkMobileIcon" class="fas fa-chevron-down text-[10px] text-gray-400 transition-transform duration-300 <?php echo $is_programbk_active ? 'rotate-180' : ''; ?>"></i>
             </button>
             <div id="programBkMobile" class="submenu-container pl-3 ml-2 border-l border-gray-200 space-y-0.5 mt-0.5 <?php echo $is_programbk_active ? 'open' : ''; ?>">
+                <a href="administrasibk.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'administrasibk.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
+                    <i class="fas fa-folder-open w-3.5 text-center mr-2"></i> Administrasi BK
+                </a>
                 <a href="bimbinganklasikal.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'bimbinganklasikal.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
                     <i class="fas fa-chalkboard-teacher w-3.5 text-center mr-2"></i> Bimbingan Klasikal
                 </a>
@@ -267,6 +270,10 @@ if (!isset($is_programbk_active)) {
                 <i id="programBkDesktopIcon" class="fas fa-chevron-down text-xs text-white/60 transition-transform duration-300 <?php echo $is_programbk_active ? 'rotate-180' : ''; ?>"></i>
             </button>
             <div id="programBkDesktop" class="submenu-container pl-9 space-y-1 mt-1 <?php echo $is_programbk_active ? 'open' : ''; ?>">
+                <a href="administrasibk.php"
+                    class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'administrasibk.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
+                    <i class="fas fa-folder-open mr-2.5 w-4 text-center"></i> Administrasi BK
+                </a>
                 <a href="bimbinganklasikal.php"
                     class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'bimbinganklasikal.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
                     <i class="fas fa-chalkboard-teacher mr-2.5 w-4 text-center"></i> Bimbingan Klasikal
