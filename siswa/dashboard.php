@@ -35,12 +35,6 @@ $id_hasil_kepribadian_js = json_encode($id_hasil_kepribadian);
 
 $nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
 
-// ============================================================
-// Mapping label field (nama kolom database -> label ramah pengguna)
-// dan pengelompokan per kategori. Ini satu-satunya sumber kebenaran
-// untuk validasi kelengkapan Data Profiling -- kalau ada kolom baru
-// yang wajib diisi, cukup tambahkan di $field_categories di bawah.
-// ============================================================
 $field_labels = [
     'nama_panggilan'            => 'Nama Panggilan',
     'tempat_lahir'               => 'Tempat Lahir',
@@ -138,8 +132,6 @@ $field_categories = [
     ],
 ];
 
-// $required_fields diturunkan dari $field_categories (satu sumber data,
-// tidak ada daftar field yang didefinisikan dua kali secara terpisah).
 $required_fields = [];
 foreach ($field_categories as $kategori) {
     $required_fields = array_merge($required_fields, $kategori['fields']);
@@ -156,6 +148,26 @@ foreach ($field_categories as $nama_kategori => $kategori) {
         }
     }
 }
+
+$total_required_fields = count($required_fields);
+$total_missing_fields   = 0;
+foreach ($missing_by_category as $daftar_field) {
+    $total_missing_fields += count($daftar_field);
+}
+$total_filled_fields = max(0, $total_required_fields - $total_missing_fields);
+$persen_lengkap = $total_required_fields > 0
+    ? (int) round(($total_filled_fields / $total_required_fields) * 100)
+    : 100;
+
+$category_colors = [
+    'Data Pribadi'         => ['icon_bg' => 'bg-[#2F6C6E]/10', 'icon_text' => 'text-[#2F6C6E]'],
+    'Data Pendidikan'      => ['icon_bg' => 'bg-[#38A169]/10', 'icon_text' => 'text-[#38A169]'],
+    'Data Ayah'            => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
+    'Data Ibu'             => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
+    'Data Tempat Tinggal'  => ['icon_bg' => 'bg-[#2F6C6E]/10', 'icon_text' => 'text-[#2F6C6E]'],
+    'Data Pendukung'       => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
+];
+$default_category_color = ['icon_bg' => 'bg-gray-100', 'icon_text' => 'text-gray-600'];
 
 $is_tes_kemampuan_done = !empty($id_hasil_kemampuan); 
 $is_tes_gayabelajar_done = $siswa['skor_visual'] !== null;
@@ -181,7 +193,6 @@ if ($asesmen_tersedia) {
     $is_tes_asesmen_done = ($q_asesmen && mysqli_num_rows($q_asesmen) > 0);
 }
 
-// Flash pesan sukses setelah redirect dari asesmen_x/xi/xii.php?asesmen_selesai=1
 if (isset($_GET['asesmen_selesai'])) {
     $_SESSION['pesan_sukses'] = 'Asesmen BK berhasil dikirim. Terima kasih telah mengisi dengan lengkap!';
 }
@@ -201,7 +212,9 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     <link rel="icon" type="image/png" href="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
+        [x-cloak] { display: none !important; }
         :root {
             --primary-color: #2F6C6E; 
             --secondary-color: #38A169; 
@@ -318,6 +331,23 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             border-radius: 0.75rem;
             pointer-events: none;
         }
+
+        .toast-success {
+            animation: toast-slide-in 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+        @keyframes toast-slide-in {
+            from { opacity: 0; transform: translateY(-20px) translateX(20px); }
+            to   { opacity: 1; transform: translateY(0) translateX(0); }
+        }
+        #alert-progress {
+            width: 100%;
+            transform-origin: left;
+            animation: toast-progress 3s linear forwards;
+        }
+        @keyframes toast-progress {
+            from { transform: scaleX(1); }
+            to   { transform: scaleX(0); }
+        }
     </style>
 
     <script>
@@ -357,9 +387,6 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 let finalUrl = card.getAttribute('href'); 
 
                 if (isTestDone) {
-                    // Asesmen BK tidak punya halaman hasil untuk siswa -- hanya
-                    // Guru BK yang bisa melihat jawabannya. Jangan tawarkan
-                    // navigasi "Lihat Hasil" seperti tes lain.
                     if (testName === 'Asesmen BK') {
                         card.addEventListener('click', e => {
                             e.preventDefault();
@@ -466,15 +493,23 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         </div>
     </section>
     <?php if (isset($_SESSION['pesan_sukses'])): ?>
-    <div id="alert-message" class="max-w-7xl mx-auto mt-4 px-4">
-        <div class="bg-green-100 border-green-500 text-green-700 p-4 rounded shadow-md flex justify-between items-center">
-            <div class="flex items-center">
-                <i class="fas fa-check-circle mr-3"></i>
-                <span><?php echo $_SESSION['pesan_sukses']; ?></span>
+    <div id="alert-message" class="toast-success fixed top-5 right-5 z-[9999] w-[calc(100%-2.5rem)] max-w-sm">
+        <div class="bg-white border-l-4 border-[#38A169] text-gray-800 rounded-lg shadow-2xl overflow-hidden">
+            <div class="flex items-start gap-3 p-4">
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-[#38A169]/10 flex items-center justify-center">
+                    <i class="fas fa-check text-[#38A169]"></i>
+                </div>
+                <div class="flex-1 pt-0.5">
+                    <p class="font-bold text-sm text-gray-800">Berhasil!</p>
+                    <p class="text-sm text-gray-600 mt-0.5"><?php echo $_SESSION['pesan_sukses']; ?></p>
+                </div>
+                <button onclick="document.getElementById('alert-message').remove()" class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button onclick="document.getElementById('alert-message').remove()" class="text-green-700 hover:text-green-900">
-                <i class="fas fa-times ms-2 "></i>
-            </button>
+            <div class="h-1 bg-gray-100">
+                <div id="alert-progress" class="h-full bg-[#38A169]"></div>
+            </div>
         </div>
     </div>
 
@@ -488,31 +523,92 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         </h2>
         
         <?php if (!$is_biodata_complete): ?>
-        <div class="max-w-4xl mx-auto bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-5 mb-10 rounded-lg shadow-xl" role="alert">
-            <div class="flex items-start gap-3">
-                <div class="pt-1"><i class="fas fa-lock text-3xl"></i></div>
-                <div class="flex-1 min-w-0">
-                    <p class="font-bold text-lg mb-1">AKSES TES TERKUNCI!</p>
-                    <p class="text-sm mb-4">
-                        Profil Anda belum lengkap. Silakan lengkapi data berikut di menu
-                        <a href="data_profiling.php" class="font-extrabold underline text-red-700 hover:text-red-800 transition">Data Profiling</a>:
-                    </p>
+        <div class="max-w-5xl mx-auto mb-10" role="alert" x-data="{ detailOpen: false }">
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <?php foreach ($missing_by_category as $nama_kategori => $daftar_field): ?>
-                        <div class="bg-white/60 rounded-lg p-3 border border-yellow-300">
-                            <p class="font-bold text-sm mb-2 flex items-center gap-2 text-yellow-900">
-                                <i class="fas <?php echo $field_categories[$nama_kategori]['icon']; ?>"></i>
-                                <?php echo htmlspecialchars($nama_kategori); ?>
-                            </p>
-                            <ul class="text-sm space-y-1 list-disc list-inside text-yellow-800">
-                                <?php foreach ($daftar_field as $label): ?>
-                                <li><?php echo htmlspecialchars($label); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                        <?php endforeach; ?>
+            <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 md:p-6 mb-4">
+                <div class="flex items-start gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-lock text-gray-500 text-base"></i>
                     </div>
+                    <div class="min-w-0 pt-1">
+                        <p class="font-bold text-lg text-gray-800">Akses Tes Terkunci</p>
+                        <p class="text-sm text-gray-600">
+                            Lengkapi profil Anda di menu <span class="font-semibold primary-color">Data Profiling</span> untuk membuka semua tes.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-bold text-gray-700">Profil Anda</p>
+                        <p class="text-sm font-bold text-gray-700"><?php echo $persen_lengkap; ?>% Lengkap</p>
+                    </div>
+                    <div class="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full bg-[#38A169] transition-all duration-500 ease-out"
+                             style="width: <?php echo $persen_lengkap; ?>%"></div>
+                    </div>
+                    <p class="text-xs md:text-sm text-gray-500 mt-2">
+                        <?php echo $total_missing_fields; ?> data masih perlu dilengkapi
+                    </p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <a href="data_profiling.php"
+                       class="inline-flex items-center justify-center gap-2 bg-[#2F6C6E] hover:bg-[#285d5f] text-white font-bold text-sm md:text-base px-6 py-3 rounded-lg shadow-sm transition-colors">
+                        <i class="fas fa-pen-to-square"></i>
+                        Lengkapi Profil Sekarang
+                    </a>
+
+                    <button type="button"
+                            @click="detailOpen = !detailOpen"
+                            class="inline-flex items-center justify-center gap-2 text-sm font-semibold primary-color hover:opacity-75 transition">
+                        <span x-show="!detailOpen">Lihat data yang belum lengkap</span>
+                        <span x-show="detailOpen" x-cloak>Sembunyikan Detail</span>
+                        <i class="fas fa-chevron-down text-xs transition-transform duration-300"
+                           :class="detailOpen ? 'rotate-180' : ''"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="detailOpen"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 -translate-y-2">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    <?php foreach ($missing_by_category as $nama_kategori => $daftar_field):
+                        $warna     = $category_colors[$nama_kategori] ?? $default_category_color;
+                        $jumlah    = count($daftar_field);
+                    ?>
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 md:p-5">
+
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-9 h-9 rounded-lg <?php echo $warna['icon_bg']; ?> flex items-center justify-center flex-shrink-0">
+                                    <i class="fas <?php echo $field_categories[$nama_kategori]['icon']; ?> <?php echo $warna['icon_text']; ?> text-sm"></i>
+                                </div>
+                                <p class="font-bold text-sm md:text-base text-gray-800 truncate">
+                                    <?php echo htmlspecialchars($nama_kategori); ?>
+                                </p>
+                            </div>
+                            <span class="flex-shrink-0 text-xs font-bold bg-[#2F6C6E]/10 text-[#2F6C6E] px-2.5 py-1 rounded-full">
+                                <?php echo $jumlah; ?> Data
+                            </span>
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5">
+                            <?php foreach ($daftar_field as $label): ?>
+                            <span class="text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 bg-gray-100 text-gray-700">
+                                <?php echo htmlspecialchars($label); ?>
+                            </span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -691,9 +787,10 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     setTimeout(function() {
         const alert = document.getElementById('alert-message');
         if (alert) {
-            alert.style.transition = "opacity 0.5s ease";
+            alert.style.transition = "opacity 0.4s ease, transform 0.4s ease";
             alert.style.opacity = "0";
-            setTimeout(() => alert.remove(), 500);
+            alert.style.transform = "translateY(-20px) translateX(20px)";
+            setTimeout(() => alert.remove(), 400);
         }
     }, 3000);
 </script>

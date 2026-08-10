@@ -163,6 +163,39 @@
                 transition: none !important;
             }
         }
+        @keyframes iconWave {
+            0%, 100% { transform: rotate(0deg); }
+            20% { transform: rotate(-18deg); }
+            40% { transform: rotate(14deg); }
+            60% { transform: rotate(-10deg); }
+            80% { transform: rotate(6deg); }
+        }
+
+        .wave-btn:hover .wave-icon {
+            animation: iconWave 0.6s ease-in-out;
+            display: inline-block;
+        }
+
+        .confetti-piece {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 200;
+            animation: confettiPop 0.9s ease-out forwards;
+        }
+
+        @keyframes confettiPop {
+            0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) rotate(var(--tr)); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .wave-btn:hover .wave-icon {
+                animation: none;
+            }
+        }
     </style>
 </head>
 <body class="font-sans bg-gray-50 text-[#1F2937]">
@@ -179,9 +212,6 @@
                     <p class="text-xs md:text-base text-white/70">SMKN 2 Banjarmasin</p>
                 </div>
             </div>
-            <a href="login.php" class="ml-auto magnetic border-2 border-white px-7 py-2.5 rounded-full font-bold text-base hover:bg-white hover:text-[var(--nav-green-dark)] transition-all">
-                Login
-            </a>
         </div>
     </div>
 </header>
@@ -192,16 +222,22 @@
 
     <div class="relative z-10 max-w-7xl mx-auto px-6 w-full">
         <div class="max-w-2xl text-white">
+            <span data-aos="fade-right" class="inline-block bg-white/10 border border-white/20 text-white/90 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-5 backdrop-blur-sm">
+                Platform Bimbingan dan Konseling Digital
+            </span>
             <h2 data-aos="fade-right" data-aos-delay="200" class="hero-glow text-3xl md:text-5xl font-black leading-tight mb-5 float-unified">
-                Selamat Datang di Layanan <br>
-                <span class="text-[var(--accent-color)]">Bimbingan dan Konseling</span>
+                Layanan <span class="text-[var(--accent-color)]">Bimbingan dan Konseling</span><br>
+                SMKN 2 Banjarmasin
             </h2>
             <p data-aos="fade-right" data-aos-delay="400" class="text-gray-200 text-base md:text-lg mb-8 leading-relaxed float-unified">
-                Mendampingi siswa dalam layanan bimbingan akademik, pribadi, sosial, dan karier secara digital dan terarah.
+                Mendampingi siswa dalam layanan bimbingan akademik, pribadi, sosial, dan karier, sekaligus membantu Guru BK mengelola data, layanan, dan pelaporan bimbingan konseling secara digital dan terarah.
             </p>
-            <div data-aos="fade-up" data-aos-delay="600" class="float-unified">
-                <a href="#tes-minat-bakat" class="magnetic inline-block bg-[var(--accent-color)] text-white px-8 py-3 rounded-full font-bold text-base shadow-xl hover:scale-105 transition-transform">
-                    Mulai Eksplorasi
+            <div data-aos="fade-up" data-aos-delay="600" class="float-unified flex flex-wrap gap-4">
+                <a href="login.php" class="magnetic wave-btn inline-block bg-[var(--accent-color)] text-white px-8 py-3 rounded-full font-bold text-base shadow-xl hover:scale-105 transition-transform">
+                    <i class="fas fa-sign-in-alt mr-2 wave-icon"></i>Login
+                </a>
+                <a href="#tes-minat-bakat" class="magnetic inline-block border-2 border-white/70 text-white px-8 py-3 rounded-full font-bold text-base hover:bg-white hover:text-[var(--nav-green-dark)] transition-all">
+                    Lihat Tes & Asesmen
                 </a>
             </div>
         </div>
@@ -215,8 +251,79 @@
     </div>
 </section>
 
+<section class="py-16 md:py-24 px-4 bg-white">
+    <div class="max-w-4xl mx-auto text-center">
+        <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold mb-6 text-[#123E44]">Tentang Sistem</h2>
+        <p data-aos="fade-up" data-aos-delay="100" class="text-base md:text-lg text-gray-600 leading-relaxed">
+            Sistem Bimbingan dan Konseling SMKN 2 Banjarmasin adalah platform digital resmi yang menghubungkan siswa dan Guru BK dalam satu layanan terpadu. Melalui sistem ini, siswa dapat mengikuti tes dan asesmen, melihat hasil serta rekomendasi, dan mengakses layanan konseling, sementara Guru BK dapat mengelola data siswa, layanan bimbingan, administrasi, hingga laporan secara lebih tertib dan efisien.
+        </p>
+    </div>
+</section>
+
+<section class="py-16 md:py-24 px-4 bg-[#F9FAFB]">
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-12">
+            <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold mb-3 text-[#123E44]">Untuk Siswa</h2>
+            <p data-aos="fade-up" data-aos-delay="100" class="text-gray-600 max-w-2xl mx-auto">Manfaatkan layanan berikut untuk mendukung perkembangan akademik, pribadi, sosial, dan karier Anda.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+            <div data-aos="fade-up" data-aos-delay="100" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
+                <i class="fas fa-pen-to-square text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Tes & Asesmen</h4>
+                <p class="text-sm text-gray-600">Mengikuti berbagai tes minat, bakat, dan asesmen kebutuhan konseling secara daring.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="200" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
+                <i class="fas fa-id-card text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Profiling Siswa</h4>
+                <p class="text-sm text-gray-600">Data diri dan hasil pemetaan yang membantu Guru BK memahami kebutuhan Anda.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="300" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
+                <i class="fas fa-chart-bar text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Hasil Tes & Rekomendasi</h4>
+                <p class="text-sm text-gray-600">Melihat hasil tes secara personal beserta rekomendasi yang sesuai.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="400" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
+                <i class="fas fa-hands-helping text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Layanan Konseling</h4>
+                <p class="text-sm text-gray-600">Mengakses layanan konseling individu maupun kelompok bersama Guru BK.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-16 md:py-24 px-4 bg-white">
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-12">
+            <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold mb-3 text-[#123E44]">Untuk Guru BK</h2>
+            <p data-aos="fade-up" data-aos-delay="100" class="text-gray-600 max-w-2xl mx-auto">Kelola seluruh kebutuhan bimbingan dan konseling siswa dalam satu sistem terpadu.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+            <div data-aos="fade-up" data-aos-delay="100" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <i class="fas fa-user-graduate text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Pengelolaan Data Siswa</h4>
+                <p class="text-sm text-gray-600">Mengakses data hasil tes per siswa maupun rekap per kelas secara terpusat.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="200" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <i class="fas fa-chalkboard-teacher text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Pengelolaan Layanan BK</h4>
+                <p class="text-sm text-gray-600">Mengelola bimbingan klasikal, bimbingan kelompok, konseling individu dan kelompok, konsultasi orang tua, hingga home visit.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="300" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <i class="fas fa-folder-open text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Administrasi BK</h4>
+                <p class="text-sm text-gray-600">Mengelola kelengkapan administrasi program bimbingan dan konseling.</p>
+            </div>
+            <div data-aos="fade-up" data-aos-delay="400" class="card-base flex flex-col items-center text-center p-6 md:p-8 h-full rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB]">
+                <i class="fas fa-file-invoice text-[#123E44] text-4xl md:text-5xl mb-5 transition-transform duration-300"></i>
+                <h4 class="text-lg font-bold mb-2">Laporan & Rekapitulasi</h4>
+                <p class="text-sm text-gray-600">Menyusun laporan BK serta rekapitulasi layanan secara rapi dan terdokumentasi.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="tes-minat-bakat" class="py-16 md:py-28 px-4 bg-[#F9FAFB]">
-    <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12 text-[#123E44]">Pilihan Tes Minat Bakat</h2>
+    <h2 data-aos="fade-up" class="text-3xl md:text-4xl font-bold text-center mb-12 text-[#123E44]">Tes & Asesmen</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 max-w-7xl mx-auto">
         <a data-aos="fade-up" data-aos-delay="100" href="login.php" class="test-card-lockedx card-base flex flex-col items-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB] hover:border-[var(--accent-color)]">
             <i class="fas fa-brain text-[#123E44] text-5xl md:text-7xl mb-6 transition-transform duration-300"></i>
@@ -234,21 +341,21 @@
             <div class="locked-tooltip">Akan tersedia setelah login</div>
         </a>
 
-        <div data-aos="fade-up" data-aos-delay="300" class="test-card-locked card-base flex flex-col items-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
-            <i class="fas fa-user-shield text-gray-500 text-5xl md:text-7xl mb-6"></i>
+        <a data-aos="fade-up" data-aos-delay="300" href="login.php" class="test-card-lockedx card-base flex flex-col items-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB] hover:border-[var(--accent-color)]">
+            <i class="fas fa-user-shield text-[#123E44] text-5xl md:text-7xl mb-6 transition-transform duration-300"></i>
             <h4 class="text-xl font-bold mb-2 text-center">Tes Kepribadian</h4>
             <p class="text-sm text-gray-600 text-center mb-4 flex-grow">Tes ini akan membantu Anda memahami tipe kepribadian.</p>
-            <div class="mt-auto text-sm md:text-base font-extrabold text-red-600"><i class="fas fa-lock mr-2"></i> Segera Hadir</div>
-            <div class="locked-tooltip">Tes ini sedang dalam perkembangan</div>
-        </div>
+            <span class="mt-auto text-sm md:text-base font-bold text-[#123E44] border-b-2 border-b-[var(--accent-color)]">Lihat Lebih Lanjut</span>
+            <div class="locked-tooltip">Akan tersedia setelah login</div>
+        </a>
 
-        <div data-aos="fade-up" data-aos-delay="400" class="test-card-locked card-base flex flex-col items-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB]">
-            <i class="fas fa-clipboard-list text-gray-500 text-5xl md:text-7xl mb-6"></i>
+        <a data-aos="fade-up" data-aos-delay="400" href="login.php" class="test-card-lockedx card-base flex flex-col items-center p-6 md:p-8 h-full rounded-2xl bg-white border border-[#E5E7EB] hover:border-[var(--accent-color)]">
+            <i class="fas fa-clipboard-list text-[#123E44] text-5xl md:text-7xl mb-6 transition-transform duration-300"></i>
             <h4 class="text-xl font-bold mb-2 text-center">Tes Asesmen Awal</h4>
             <p class="text-sm text-gray-600 text-center mb-4 flex-grow">Asesmen awal untuk kebutuhan konseling siswa.</p>
-            <div class="mt-auto text-sm md:text-base font-extrabold text-red-600"><i class="fas fa-lock mr-2"></i> Segera Hadir</div>
-            <div class="locked-tooltip">Tes ini sedang dalam perkembangan</div>
-        </div>
+            <span class="mt-auto text-sm md:text-base font-bold text-[#123E44] border-b-2 border-b-[var(--accent-color)]">Lihat Lebih Lanjut</span>
+            <div class="locked-tooltip">Akan tersedia setelah login</div>
+        </a>
     </div>
 </section>
 
@@ -284,14 +391,46 @@
     </div>
 </section>
 
-<footer class="text-center py-6 bg-[#123E44] text-white text-sm">
-    <p class="text-sm text-white/70">
-    &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
-</p>
-<p class="text-xs text-gray-400 mt-1">
-    Developed by <span class="font-medium">SahDu Team</span>
-</p>
+<section class="py-16 md:py-20 px-4 text-center" style="background:linear-gradient(135deg, var(--header-bg-start), var(--header-bg-end));">
+    <div class="max-w-2xl mx-auto text-white">
+        <h2 data-aos="fade-up" class="text-2xl md:text-4xl font-bold mb-4">Siap Menggunakan Layanan BK?</h2>
+        <p data-aos="fade-up" data-aos-delay="100" class="text-white/80 mb-8 text-base md:text-lg">Masuk ke sistem untuk mengakses tes, hasil, dan layanan bimbingan konseling.</p>
+        <a id="ctaLoginBtn" data-aos="fade-up" data-aos-delay="200" href="login.php" class="magnetic wave-btn inline-block bg-[var(--accent-color)] text-white px-10 py-3.5 rounded-full font-bold text-base shadow-xl hover:scale-105 transition-transform relative overflow-visible">
+            <i class="fas fa-sign-in-alt mr-2 wave-icon"></i>Login Sekarang
+        </a>
+    </div>
+</section>
 
+<footer class="py-10 px-4 bg-[#123E44] text-white text-sm">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+        <div>
+            <h5 class="font-bold text-base mb-2">Bimbingan dan Konseling</h5>
+            <p class="text-white/60 text-xs leading-relaxed">Platform digital layanan bimbingan dan konseling SMKN 2 Banjarmasin untuk siswa dan Guru BK.</p>
+        </div>
+        <div>
+            <h5 class="font-bold text-base mb-2">Layanan</h5>
+            <ul class="text-white/60 text-xs space-y-1.5">
+                <li>Tes & Asesmen</li>
+                <li>Profiling Siswa</li>
+                <li>Layanan Konseling</li>
+                <li>Administrasi & Laporan BK</li>
+            </ul>
+        </div>
+        <div>
+            <h5 class="font-bold text-base mb-2">Akses</h5>
+            <a href="login.php" class="inline-block text-white/80 hover:text-white text-xs border border-white/20 px-4 py-2 rounded-full transition-all hover:border-white/50">
+                <i class="fas fa-sign-in-alt mr-1.5"></i>Login ke Sistem
+            </a>
+        </div>
+    </div>
+    <div class="max-w-7xl mx-auto border-t border-white/10 mt-8 pt-6 text-center">
+        <p class="text-sm text-white/70">
+            &copy; <?php echo date("Y"); ?> <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
+        </p>
+        <p class="text-xs text-gray-400 mt-1">
+            Developed by <span class="font-medium">SahDu Team</span>
+        </p>
+    </div>
 </footer>
 
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
@@ -338,6 +477,32 @@ document.querySelectorAll('.test-card-lockedx').forEach(card => {
         }
     });
 });
+
+const ctaLoginBtn = document.getElementById('ctaLoginBtn');
+if (ctaLoginBtn) {
+    ctaLoginBtn.addEventListener('click', e => {
+        e.preventDefault();
+        const rect = ctaLoginBtn.getBoundingClientRect();
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height / 2;
+        const colors = ['#5FA8A1', '#F9D65C', '#F97316', '#ffffff', '#73B9B2'];
+        for (let i = 0; i < 18; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            piece.style.left = originX + 'px';
+            piece.style.top = originY + 'px';
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 60 + Math.random() * 60;
+            piece.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+            piece.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+            piece.style.setProperty('--tr', (Math.random() * 360) + 'deg');
+            document.body.appendChild(piece);
+            setTimeout(() => piece.remove(), 900);
+        }
+        setTimeout(() => { window.location.href = 'login.php'; }, 350);
+    });
+}
 </script>
 
 
