@@ -296,7 +296,7 @@ if (!isset($is_programbk_active)) {
                 </a>
                 <a href="konsultasiortu.php"
                     class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'konsultasiortu.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
-                    <i class="fas fa-handshake mr-2.5 w-4 text-center"></i> Konsultasi Ortu
+                    <i class="fas fa-handshake mr-2.5 w-4 text-center"></i> Konsultasi
                 </a>
                 <a href="homevisit.php"
                     class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'homevisit.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">

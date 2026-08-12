@@ -160,11 +160,11 @@ $persen_lengkap = $total_required_fields > 0
     : 100;
 
 $category_colors = [
-    'Data Pribadi'         => ['icon_bg' => 'bg-[#2F6C6E]/10', 'icon_text' => 'text-[#2F6C6E]'],
-    'Data Pendidikan'      => ['icon_bg' => 'bg-[#38A169]/10', 'icon_text' => 'text-[#38A169]'],
+    'Data Pribadi'         => ['icon_bg' => 'bg-[#2A6163]/10', 'icon_text' => 'text-[#2A6163]'],
+    'Data Pendidikan'      => ['icon_bg' => 'bg-[#2F9160]/10', 'icon_text' => 'text-[#2F9160]'],
     'Data Ayah'            => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
     'Data Ibu'             => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
-    'Data Tempat Tinggal'  => ['icon_bg' => 'bg-[#2F6C6E]/10', 'icon_text' => 'text-[#2F6C6E]'],
+    'Data Tempat Tinggal'  => ['icon_bg' => 'bg-[#2A6163]/10', 'icon_text' => 'text-[#2A6163]'],
     'Data Pendukung'       => ['icon_bg' => 'bg-gray-100',      'icon_text' => 'text-gray-600'],
 ];
 $default_category_color = ['icon_bg' => 'bg-gray-100', 'icon_text' => 'text-gray-600'];
@@ -216,14 +216,21 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     <style>
         [x-cloak] { display: none !important; }
         :root {
-            --primary-color: #2F6C6E; 
-            --secondary-color: #38A169; 
-            --overlay-color: rgba(47, 108, 110, 0.85); 
+            --primary-color: #2A6163;
+            --primary-color-dark: #1F4A4B;
+            --secondary-color: #2F9160;
+            --navbar-bg: #163B3C;
+            --navbar-bg-light: #1E4E4F;
+            --overlay-color: rgba(22, 59, 60, 0.88);
+            --surface-muted: #F4F7F6;
         }
+
+        body { background-color: var(--surface-muted); }
 
         .primary-color { color: var(--primary-color); }
         .primary-bg { background-color: var(--primary-color); }
         .primary-border { border-color: var(--primary-color); }
+        .navbar-bg { background-color: var(--navbar-bg); }
 
         #hero-section {
             background-image: url('https://assets-a1.kompasiana.com/items/album/2016/05/25/1459049shutterstock-140079079780x390-57452e9ef37a6148061f8f95.jpg'); 
@@ -269,32 +276,51 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 
         .test-card {
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: 1px solid #E5E7EB; 
+            border: 1px solid #E5E7EB;
+            border-radius: 1rem;
             position: relative;
+            box-shadow: 0 2px 8px rgba(22, 59, 60, 0.06);
+        }
+
+        .card-icon-wrap {
+            width: 4.5rem;
+            height: 4.5rem;
+            border-radius: 9999px;
+            background-color: rgba(42, 97, 99, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
         }
 
         .card-active:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            transform: translateY(-6px);
+            box-shadow: 0 16px 32px rgba(22, 59, 60, 0.14);
             border-color: var(--primary-color);
         }
         .card-active:hover .card-icon {
             transform: scale(1.05);
             color: var(--primary-color);
         }
+        .card-active:hover .card-icon-wrap {
+            background-color: rgba(42, 97, 99, 0.14);
+        }
 
         .test-card-done {
-            background-color: #F0FFF4; 
+            background-color: #F0FBF5; 
             border: 2px solid var(--secondary-color); 
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 10px rgba(47, 145, 96, 0.08);
         }
         .test-card-done .card-icon {
             color: var(--secondary-color) !important; 
         }
+        .test-card-done .card-icon-wrap {
+            background-color: rgba(47, 145, 96, 0.12);
+        }
         .test-card-done:hover {
-            transform: scale(1.01);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(47, 145, 96, 0.14);
         }
         .test-card-done .status-label {
             background-color: var(--secondary-color);
@@ -310,25 +336,25 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         }
         
         .test-card-locked, .test-card-biodata-locked {
-            filter: grayscale(80%);
-            opacity: 0.7;
+            filter: grayscale(65%);
+            opacity: 0.72;
             cursor: not-allowed;
             background-color: #F9FAFB;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
         .test-card-locked:hover, .test-card-biodata-locked:hover {
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important;
             transform: none !important;
         }
         .lock-overlay {
             position: absolute;
             inset: 0;
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.82);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
-            border-radius: 0.75rem;
+            border-radius: 0.9rem;
             pointer-events: none;
         }
 
@@ -446,24 +472,24 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
-    <header class="flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
-        <a href="dashboard.php" class="flex items-center space-x-2">
-            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
+    <header class="navbar-bg flex justify-between items-center px-4 md:px-8 py-3 shadow-lg relative z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2.5">
+            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-9 w-9 bg-white rounded-md p-0.5">
             <div>
-                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
-                <small class="hidden md:block text-xs text-gray-600">Bimbingan dan Konseling</small>
+                <strong class="text-base md:text-xl text-white font-extrabold tracking-tight">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-teal-100/70">Bimbingan dan Konseling</small>
             </div>
         </a>
         <nav class="hidden md:flex items-center space-x-6">
-            <a href="dashboard.php" class="primary-color font-bold border-b-2 border-transparent border-primary-color pb-1 transition underline">Beranda</a>
-            <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
-            <a href="riwayatkonselingsiswa.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Riwayat</a>
-            <a href="ganti_password.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Ganti Password</a>
+            <a href="dashboard.php" class="text-white font-bold border-b-2 border-white pb-1 transition">Beranda</a>
+            <a href="data_profiling.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Riwayat</a>
+            <a href="ganti_password.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
                 <i class="fas fa-sign-out-alt mr-1"></i> Logout
             </button>
         </nav>
-        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+        <button onclick="toggleMenu()" class="md:hidden text-white text-2xl p-2 z-40 focus:outline-none">
             <i class="fas fa-bars"></i>
         </button>
     </header>
@@ -482,22 +508,23 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     <section id="hero-section" class="text-center py-16 md:py-28 text-white shadow-2xl">
         
         <div id="hero-content" class="max-w-4xl mx-auto px-4">
+            <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-teal-50 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-4 md:mb-5">
+                <i class="fas fa-hand-sparkles"></i> Selamat Datang
+            </span>
             <h1 class="text-3xl md:text-5xl font-extrabold mb-3 md:mb-4">
-                <i class="fas fa-hand-wave mr-2"></i> Selamat Datang, <?php echo htmlspecialchars($nama_siswa); ?>!
+                Halo, <?php echo htmlspecialchars($nama_siswa); ?>!
             </h1>
-            <p class="text-lg md:text-xl font-light mb-8 md:mb-10">
-                Halo <?php echo htmlspecialchars($nama_siswa); ?>, temukan potensi terbaik dan arah masa depan Anda di sini!
+            <p class="text-base md:text-xl font-light text-teal-50/90 max-w-2xl mx-auto">
+                Temukan potensi terbaik dan arah masa depan Anda di sini!
             </p>
-
-
         </div>
     </section>
     <?php if (isset($_SESSION['pesan_sukses'])): ?>
     <div id="alert-message" class="toast-success fixed top-5 right-5 z-[9999] w-[calc(100%-2.5rem)] max-w-sm">
-        <div class="bg-white border-l-4 border-[#38A169] text-gray-800 rounded-lg shadow-2xl overflow-hidden">
+        <div class="bg-white border-l-4 border-[#2F9160] text-gray-800 rounded-lg shadow-2xl overflow-hidden">
             <div class="flex items-start gap-3 p-4">
-                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-[#38A169]/10 flex items-center justify-center">
-                    <i class="fas fa-check text-[#38A169]"></i>
+                <div class="flex-shrink-0 w-9 h-9 rounded-full bg-[#2F9160]/10 flex items-center justify-center">
+                    <i class="fas fa-check text-[#2F9160]"></i>
                 </div>
                 <div class="flex-1 pt-0.5">
                     <p class="font-bold text-sm text-gray-800">Berhasil!</p>
@@ -508,7 +535,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 </button>
             </div>
             <div class="h-1 bg-gray-100">
-                <div id="alert-progress" class="h-full bg-[#38A169]"></div>
+                <div id="alert-progress" class="h-full bg-[#2F9160]"></div>
             </div>
         </div>
     </div>
@@ -518,14 +545,19 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     ?>
 <?php endif; ?>
     <section id="test-section" class="py-12 md:py-16 px-4 flex-grow container mx-auto">
-        <h2 class="text-2xl md:text-3xl font-bold text-center mb-10 primary-color border-b-2 border-gray-200 pb-3">
-            Pilih Tes Minat Bakat Anda
-        </h2>
+        <div class="text-center mb-10 max-w-2xl mx-auto">
+            <h2 class="text-2xl md:text-3xl font-extrabold primary-color mb-2">
+                Pilih Tes Minat Bakat Anda
+            </h2>
+            <p class="text-sm md:text-base text-gray-500">
+                Kerjakan setiap tes untuk mengenal diri Anda lebih dalam dan mendapatkan rekomendasi terbaik.
+            </p>
+        </div>
         
         <?php if (!$is_biodata_complete): ?>
         <div class="max-w-5xl mx-auto mb-10" role="alert" x-data="{ detailOpen: false }">
 
-            <div class="bg-white border border-gray-200 rounded-xl shadow-md p-5 md:p-6 mb-4">
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-md p-5 md:p-6 mb-4">
                 <div class="flex items-start gap-3 mb-4">
                     <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-lock text-gray-500 text-base"></i>
@@ -544,7 +576,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                         <p class="text-sm font-bold text-gray-700"><?php echo $persen_lengkap; ?>% Lengkap</p>
                     </div>
                     <div class="w-full h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full rounded-full bg-[#38A169] transition-all duration-500 ease-out"
+                        <div class="h-full rounded-full bg-[#2F9160] transition-all duration-500 ease-out"
                              style="width: <?php echo $persen_lengkap; ?>%"></div>
                     </div>
                     <p class="text-xs md:text-sm text-gray-500 mt-2">
@@ -554,7 +586,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
 
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <a href="data_profiling.php"
-                       class="inline-flex items-center justify-center gap-2 bg-[#2F6C6E] hover:bg-[#285d5f] text-white font-bold text-sm md:text-base px-6 py-3 rounded-lg shadow-sm transition-colors">
+                       class="inline-flex items-center justify-center gap-2 bg-[#2A6163] hover:bg-[#1F4A4B] text-white font-bold text-sm md:text-base px-6 py-3 rounded-lg shadow-sm transition-colors">
                         <i class="fas fa-pen-to-square"></i>
                         Lengkapi Profil Sekarang
                     </a>
@@ -584,7 +616,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                         $warna     = $category_colors[$nama_kategori] ?? $default_category_color;
                         $jumlah    = count($daftar_field);
                     ?>
-                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4 md:p-5">
+                    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 md:p-5">
 
                         <div class="flex items-center justify-between gap-2 mb-3">
                             <div class="flex items-center gap-2.5 min-w-0">
@@ -595,7 +627,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                                     <?php echo htmlspecialchars($nama_kategori); ?>
                                 </p>
                             </div>
-                            <span class="flex-shrink-0 text-xs font-bold bg-[#2F6C6E]/10 text-[#2F6C6E] px-2.5 py-1 rounded-full">
+                            <span class="flex-shrink-0 text-xs font-bold bg-[#2A6163]/10 text-[#2A6163] px-2.5 py-1 rounded-full">
                                 <?php echo $jumlah; ?> Data
                             </span>
                         </div>
@@ -626,8 +658,8 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 data-test-name="Tes Kemampuan" 
                 data-test-status="<?php echo $status_kemampuan_js; ?>" 
                 class="card-link h-full block">
-                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_kemampuan; ?>">
-                    <i class="fas fa-brain primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                <div class="test-card flex flex-col items-center p-7 md:p-8 h-full rounded-2xl border primary-border bg-white transform <?php echo $card_class_kemampuan; ?>">
+                    <div class="card-icon-wrap mb-4 md:mb-6"><i class="fas fa-brain primary-color text-3xl md:text-4xl card-icon transition-transform"></i></div>
                     <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Kemampuan</h4>
                     <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
                         Mengukur potensi kognitif dan akademik. Membantu Anda memahami kemampuan dasar dan memilih bidang studi/jurusan yang sesuai.
@@ -661,8 +693,8 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 data-test-name="Tes Gaya Belajar" 
                 data-test-status="<?php echo $status_gayabelajar_js; ?>"
                 class="card-link h-full block">
-                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_gayabelajar; ?>">
-                    <i class="fas fa-palette primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                <div class="test-card flex flex-col items-center p-7 md:p-8 h-full rounded-2xl border primary-border bg-white transform <?php echo $card_class_gayabelajar; ?>">
+                    <div class="card-icon-wrap mb-4 md:mb-6"><i class="fas fa-palette primary-color text-3xl md:text-4xl card-icon transition-transform"></i></div>
                     <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Gaya Belajar</h4>
                     <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
                         Mengidentifikasi cara belajar paling efektif Anda (Visual, Auditorik, Kinestetik) untuk memaksimalkan proses belajar.
@@ -696,8 +728,8 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 data-test-name="Tes Kepribadian"
                 data-test-status="<?php echo $status_kepribadian_js; ?>"
                 class="card-link h-full block">
-                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_kepribadian; ?>">
-                    <i class="fas fa-user-shield primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                <div class="test-card flex flex-col items-center p-7 md:p-8 h-full rounded-2xl border primary-border bg-white transform <?php echo $card_class_kepribadian; ?>">
+                    <div class="card-icon-wrap mb-4 md:mb-6"><i class="fas fa-user-shield primary-color text-3xl md:text-4xl card-icon transition-transform"></i></div>
                     <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Tes Kepribadian</h4>
                     <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
                         Membantu Anda mengenal lebih dalam tipe kepribadian, kekuatan, dan potensi tantangan Anda di masa depan.
@@ -737,8 +769,8 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
                 data-test-name="Asesmen BK"
                 data-test-status="<?php echo $status_asesmen_js; ?>"
                 class="card-link h-full block">
-                <div class="test-card flex flex-col items-center p-6 md:p-8 h-full rounded-xl border primary-border shadow-lg bg-white transform <?php echo $card_class_asesmen; ?>">
-                    <i class="fas fa-clipboard-list primary-color text-6xl md:text-7xl mb-4 md:mb-6 card-icon transition-transform"></i>
+                <div class="test-card flex flex-col items-center p-7 md:p-8 h-full rounded-2xl border primary-border bg-white transform <?php echo $card_class_asesmen; ?>">
+                    <div class="card-icon-wrap mb-4 md:mb-6"><i class="fas fa-clipboard-list primary-color text-3xl md:text-4xl card-icon transition-transform"></i></div>
                     <h4 class="text-lg md:text-xl font-bold mb-2 text-gray-800 text-center">Asesmen BK</h4>
                     <p class="text-xs md:text-sm text-gray-600 text-center mb-3 flex-grow">
                         Asesmen kebutuhan Bimbingan dan Konseling sesuai tingkat kelas Anda saat ini.
@@ -774,7 +806,7 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         </div>
     </section>
 
-    <footer class="text-center py-4 primary-bg text-white text-xs md:text-sm mt-auto shadow-inner">
+    <footer class="text-center py-5 navbar-bg text-white text-xs md:text-sm mt-auto shadow-inner">
         <p class="text-sm text-gray-200 font-light">
     &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
 </p>

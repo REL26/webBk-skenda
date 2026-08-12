@@ -292,10 +292,15 @@ $stmt_kelompok->close();
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        .primary-bg { background-color: #2F6C6E; }
-        .primary-color { color: #2F6C6E; }
-        .accent-color { color: #5FA8A1; }
-        body { background-color: #F9FAFB; }
+        :root {
+            --navbar-bg: #163B3C;
+            --surface-muted: #F4F7F6;
+        }
+        .primary-bg { background-color: #2A6163; }
+        .primary-color { color: #2A6163; }
+        .accent-color { color: #4FA79E; }
+        .navbar-bg { background-color: var(--navbar-bg); }
+        body { background-color: var(--surface-muted); }
 
         .fade-slide { transition: all 0.3s ease-in-out; transform-origin: top; }
         .hidden-transition { opacity: 0; transform: scaleY(0.95); max-height: 0; overflow: hidden; pointer-events: none; }
@@ -312,9 +317,9 @@ $stmt_kelompok->close();
         }
 
         .rating-input:checked + .rating-option {
-            background-color: #4C8E89; 
+            background-color: #3F8480; 
             color: white;
-            border-color: #0F3A3A; 
+            border-color: #163B3C; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
         
@@ -451,13 +456,13 @@ $stmt_kelompok->close();
         function switchTab(type) {
             const tabs = ['individu', 'kelompok'];
             tabs.forEach(tab => {
-                $('#tab-' + tab).removeClass('border-[#123E44] text-[#123E44] font-semibold')
+                $('#tab-' + tab).removeClass('border-[#1F4A4B] text-[#1F4A4B] font-semibold')
                                  .addClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300');
                 $('#content-' + tab).addClass('hidden');
             });
 
             $('#tab-' + type).removeClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
-                             .addClass('border-[#123E44] text-[#123E44] font-semibold');
+                             .addClass('border-[#1F4A4B] text-[#1F4A4B] font-semibold');
             $('#content-' + type).removeClass('hidden');
         }
 
@@ -486,7 +491,7 @@ $stmt_kelompok->close();
                         if (res.status === 'success') {
                             const $btn_state = $(`.btn-kepuasan[data-id="${currentSesiId}"][data-type="${currentSesiType}"]`);
                             if ($btn_state.length) {
-                                $btn_state.removeClass('bg-[#0F3A3A] hover:bg-[#123E44]').addClass('bg-green-600 hover:bg-green-700').html('<i class="fas fa-check-circle mr-1"></i> Lihat Penilaian');
+                                $btn_state.removeClass('bg-[#163B3C] hover:bg-[#1F4A4B]').addClass('bg-green-600 hover:bg-green-700').html('<i class="fas fa-check-circle mr-1"></i> Lihat Penilaian');
                             }
                             
                             closeKepuasanModal();
@@ -518,9 +523,9 @@ $stmt_kelompok->close();
                 const is_disabled = $(this).prop('disabled');
                 
                 if (!is_disabled) {
-                    $('input[name="' + name + '"]').next('.rating-option').removeClass('bg-[#4C8E89] text-white border-[#0F3A3A] shadow');
+                    $('input[name="' + name + '"]').next('.rating-option').removeClass('bg-[#3F8480] text-white border-[#163B3C] shadow');
                     if (this.checked) {
-                         $(this).next('.rating-option').addClass('bg-[#4C8E89] text-white border-[#0F3A3A] shadow');
+                         $(this).next('.rating-option').addClass('bg-[#3F8480] text-white border-[#163B3C] shadow');
                     }
                 }
             });
@@ -529,24 +534,24 @@ $stmt_kelompok->close();
 </head>
 <body class="bg-[#F9FAFB] text-gray-800 min-h-screen flex flex-col">
 
- <header class="no-print flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
-        <a href="dashboard.php" class="flex items-center space-x-2">
-            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
+ <header class="no-print navbar-bg flex justify-between items-center px-4 md:px-8 py-3 shadow-lg relative z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2.5">
+            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-9 w-9 bg-white rounded-md p-0.5">
             <div>
-                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
-                <small class="hidden md:block text-xs text-gray-600">Bimbingan dan Konseling</small>
+                <strong class="text-base md:text-xl text-white font-extrabold tracking-tight">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-teal-100/70">Bimbingan dan Konseling</small>
             </div>
         </a>
         <nav class="hidden md:flex items-center space-x-6 font-sans">
-            <a href="dashboard.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Beranda</a>
-            <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
-            <a href="riwayatkonselingsiswa.php" class="primary-color font-bold border-b-2 border-primary-color pb-1 transition underline">Riwayat</a>
-            <a href="ganti_password.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Ganti Password</a>
+            <a href="dashboard.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Beranda</a>
+            <a href="data_profiling.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="text-white font-bold border-b-2 border-white pb-1 transition">Riwayat</a>
+            <a href="ganti_password.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
                 <i class="fas fa-sign-out-alt mr-1"></i> Logout
             </button>
         </nav>
-        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+        <button onclick="toggleMenu()" class="md:hidden text-white text-2xl p-2 z-40 focus:outline-none">
             <i class="fas fa-bars"></i>
         </button>
     </header>
@@ -562,17 +567,20 @@ $stmt_kelompok->close();
         </button>
     </div>
 
-<section class="text-center py-8 md:py-12 primary-bg text-white shadow-xl">
-    <h1 class="text-2xl md:text-4xl font-extrabold mb-1">
-        <i class="fas fa-history mr-2"></i> Riwayat Konseling Siswa
+<section class="text-center py-10 md:py-14 primary-bg text-white shadow-xl">
+    <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-teal-50 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-3">
+        <i class="fas fa-history"></i> Riwayat Layanan
+    </span>
+    <h1 class="text-2xl md:text-4xl font-extrabold mb-2">
+        Riwayat Konseling Siswa
     </h1>
-    <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
+    <p class="text-teal-50/85 max-w-2xl mx-auto text-sm md:text-lg px-4">
         Daftar riwayat Bimbingan dan Konseling yang telah Anda ikuti.
     </p>
 </section>
 
 <?php if (!empty($daftar_notif_kelompok)): ?>
-    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 shadow-md rounded" role="alert">
+    <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-4 shadow-sm rounded-lg" role="alert">
         <p class="font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> Perhatian!</p>
         <p>Anda memiliki <?php echo count($daftar_notif_kelompok); ?> laporan Konseling Kelompok yang belum dinilai. Mohon segera mengisi penilaian.</p>
     </div>
@@ -580,9 +588,9 @@ $stmt_kelompok->close();
 
 
     <main class="flex-1 p-4 md:p-8 w-full">
-        <div class="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <div class="bg-white p-4 md:p-6 rounded-2xl shadow-md border border-gray-100">
             <div class="mb-6 border-b pb-4">
-                <h2 class="text-3xl font-bold text-gray-800">Riwayat Layanan BK</h2>
+                <h2 class="text-2xl md:text-3xl font-extrabold text-gray-800">Riwayat Layanan BK</h2>
                 <p class="text-gray-600">Selamat datang, <span class="font-semibold accent-color"><?= htmlspecialchars($siswa_data['nama']) ?></span>!</p>
             </div>
 
@@ -592,7 +600,7 @@ $stmt_kelompok->close();
                         <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" 
                            class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
                                   <?php if (!isset($_GET['tab']) || $_GET['tab'] !== 'kelompok'): ?> 
-                                      text-[#123E44] border-[#123E44] font-semibold 
+                                      text-[#1F4A4B] border-[#1F4A4B] font-semibold 
                                   <?php else: ?> 
                                       text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300
                                   <?php endif; ?>"> 
@@ -603,7 +611,7 @@ $stmt_kelompok->close();
                         <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" 
                            class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
                                   <?php if (isset($_GET['tab']) && $_GET['tab'] === 'kelompok'): ?> 
-                                      text-[#123E44] border-[#123E44] font-semibold 
+                                      text-[#1F4A4B] border-[#1F4A4B] font-semibold 
                                   <?php else: ?> 
                                       text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 
                                   <?php endif; ?>">
@@ -616,12 +624,12 @@ $stmt_kelompok->close();
             <div id="content-individu" class="space-y-4">
                 <?php if ($riwayat_individu_count > 0): ?> 
                     <?php mysqli_data_seek($result_individu, 0); while ($data = mysqli_fetch_assoc($result_individu)): ?>
-                        <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white hover:shadow-lg transition duration-200">
+                        <div class="p-4 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:border-[#2A6163]/30 transition duration-200">
                             <div class="flex justify-between items-start mb-3 border-b pb-2">
                                 <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
                                     <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_pelaksanaan']) ?>
                                 </span>
-                                <span class="text-xs font-bold bg-gray-100 text-[#0F3A3A] px-3 py-1 rounded-full">
+                                <span class="text-xs font-bold bg-gray-100 text-[#163B3C] px-3 py-1 rounded-full">
                                     Pertemuan Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
                                 </span>
                             </div>
@@ -633,7 +641,7 @@ $stmt_kelompok->close();
 
                             <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
-                                    $btn_class = empty($data['id_kepuasan']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
+                                    $btn_class = empty($data['id_kepuasan']) ? 'bg-[#163B3C] hover:bg-[#1F4A4B]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text = empty($data['id_kepuasan']) ? 'Beri Penilaian' : 'Lihat Penilaian';
                                     $btn_icon = empty($data['id_kepuasan']) ? 'fa-star' : 'fa-check-circle';
                                 ?>
@@ -651,7 +659,7 @@ $stmt_kelompok->close();
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-[#F9FAFB]">
+                    <div class="p-8 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
                         <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
                         <p class="text-base text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Individu.
@@ -663,7 +671,7 @@ $stmt_kelompok->close();
             <div id="content-kelompok" class="space-y-4 hidden">
                 <?php if ($riwayat_kelompok_count > 0): ?>
                     <?php mysqli_data_seek($result_kelompok, 0); while ($data = mysqli_fetch_assoc($result_kelompok)): ?>
-                        <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white hover:shadow-lg transition duration-200">
+                        <div class="p-4 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:border-[#2A6163]/30 transition duration-200">
                             <div class="flex justify-between items-start mb-3 border-b pb-2">
                                 <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
                                     <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_pelaksanaan']) ?>
@@ -680,7 +688,7 @@ $stmt_kelompok->close();
 
                             <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
-                                    $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-[#0F3A3A] hover:bg-[#123E44]' : 'bg-green-600 hover:bg-green-700';
+                                    $btn_class_k = empty($data['id_kepuasan_kelompok']) ? 'bg-[#163B3C] hover:bg-[#1F4A4B]' : 'bg-green-600 hover:bg-green-700';
                                     $btn_text_k = empty($data['id_kepuasan_kelompok']) ? 'Beri Penilaian' : 'Lihat Penilaian';
                                     $btn_icon_k = empty($data['id_kepuasan_kelompok']) ? 'fa-star' : 'fa-check-circle';
                                 ?>
@@ -698,7 +706,7 @@ $stmt_kelompok->close();
                         </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="p-6 text-center border border-gray-300 rounded-lg bg-[#F9FAFB]">
+                    <div class="p-8 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
                         <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
                         <p class="text-base text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Kelompok.
@@ -725,7 +733,7 @@ $stmt_kelompok->close();
                 <input type="hidden" name="sesi_type" id="sesi_type" value="">
                 
                 <div class="p-6 space-y-6 overflow-y-auto">
-                    <div class="mb-4 p-3 rounded-lg border border-[#4C8E89] bg-[#E5F5F4] text-[#0F3A3A] text-sm font-medium">
+                    <div class="mb-4 p-3 rounded-lg border border-[#3F8480] bg-[#E3F0EE] text-[#163B3C] text-sm font-medium">
                         <p class="font-semibold text-base mb-1">Penilaian Konseling <span id="jenisSesiText" class="font-extrabold"></span></p>
                         <p>Berikan penilaian Anda hanya sekali. Penilaian yang sudah diisi tidak dapat diubah lagi. <span class="text-red-600">*Wajib Diisi</span></p>
                     </div>
@@ -823,7 +831,7 @@ $stmt_kelompok->close();
                     <button type="button" onclick="closeKepuasanModal()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 font-medium transition duration-200 text-sm">
                         <i class="fas fa-times mr-1"></i> Tutup
                     </button>
-                    <button type="submit" id="submitKepuasanBtn" class="px-4 py-2 bg-[#4C8E89] text-white rounded-md hover:bg-[#0F3A3A] font-medium transition duration-200 shadow-md text-sm">
+                    <button type="submit" id="submitKepuasanBtn" class="px-4 py-2 bg-[#3F8480] text-white rounded-md hover:bg-[#163B3C] font-medium transition duration-200 shadow-md text-sm">
                         <i class="fas fa-save mr-1"></i> Simpan Penilaian
                     </button>
                 </div>
@@ -852,7 +860,7 @@ $stmt_kelompok->close();
             </div>
         </div>
     </div>
-    <footer class="text-center py-4 primary-bg text-white text-xs md:text-sm mt-auto">
+    <footer class="text-center py-4 navbar-bg text-white text-xs md:text-sm mt-auto">
     <p class="text-sm text-gray-200 font-light">
     &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
 </p>

@@ -289,27 +289,32 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
 
     <style>
         :root {
-            --primary-color: #2F6C6E;
-            --secondary-color: #38A169;
+            --primary-color: #2A6163;
+            --primary-color-dark: #1F4A4B;
+            --secondary-color: #2F9160;
+            --navbar-bg: #163B3C;
+            --surface-muted: #F4F7F6;
         }
+        body { background-color: var(--surface-muted); }
         .primary-color { color: var(--primary-color); }
         .primary-bg { background-color: var(--primary-color); }
         .primary-border { border-color: var(--primary-color); }
-        .hover-bg-primary:hover { background-color: #1F4C4E; }
+        .navbar-bg { background-color: var(--navbar-bg); }
+        .hover-bg-primary:hover { background-color: var(--primary-color-dark); }
         
-        .form-label { font-weight: 600; color: #374151; margin-bottom: 4px; display: block; font-size: 0.95rem; }
+        .form-label { font-weight: 600; color: #374151; margin-bottom: 4px; display: block; font-size: 0.9rem; }
         .form-input, .form-textarea, .form-select { 
             width: 100%; 
             padding: 10px 12px; 
-            border: 1px solid #D1D5DB; 
-            border-radius: 8px; 
+            border: 1px solid #D8DEDD; 
+            border-radius: 10px; 
             transition: border-color 0.2s, box-shadow 0.2s; 
             background-color: #FFFFFF;
         }
         .form-input:focus, .form-textarea:focus, .form-select:focus {
              border-color: var(--primary-color); 
              outline: none; 
-             box-shadow: 0 0 0 2px rgba(47, 108, 110, 0.5);
+             box-shadow: 0 0 0 3px rgba(42, 97, 99, 0.15);
         }
         .form-input[readonly] {
             background-color: #F3F4F6;
@@ -334,14 +339,14 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
         
         .accordion-header {
             cursor: pointer;
-            padding: 1rem;
-            border-radius: 0.5rem;
+            padding: 1.1rem 1.25rem;
+            border-radius: 0.75rem;
             transition: background-color 0.3s, box-shadow 0.3s;
-            background-color: #f7f7f7;
-            border: 1px solid #e5e5e5;
+            background-color: #F7FAF9;
+            border: 1px solid #E5EAE9;
         }
         .accordion-header:hover {
-            background-color: #f0f0f0;
+            background-color: rgba(42, 97, 99, 0.06);
         }
         .accordion-content {
             overflow: hidden;
@@ -531,24 +536,24 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
-    <header class="no-print flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg relative z-30">
-        <a href="dashboard.php" class="flex items-center space-x-2">
-            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
+    <header class="no-print navbar-bg flex justify-between items-center px-4 md:px-8 py-3 shadow-lg relative z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2.5">
+            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-9 w-9 bg-white rounded-md p-0.5">
             <div>
-                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
-                <small class="hidden md:block text-xs text-gray-600">Bimbingan dan Konseling</small>
+                <strong class="text-base md:text-xl text-white font-extrabold tracking-tight">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-teal-100/70">Bimbingan dan Konseling</small>
             </div>
         </a>
         <nav class="hidden md:flex items-center space-x-6">
-            <a href="dashboard.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Beranda</a>
-            <a href="data_profiling.php" class="primary-color font-bold border-b-2 border-transparent border-primary-color pb-1 transition underline">Data Profiling</a>
-            <a href="riwayatkonselingsiswa.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Riwayat</a>
-            <a href="ganti_password.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Ganti Password</a>
+            <a href="dashboard.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Beranda</a>
+            <a href="data_profiling.php" class="text-white font-bold border-b-2 border-white pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Riwayat</a>
+            <a href="ganti_password.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
                 <i class="fas fa-sign-out-alt mr-1"></i> Logout
             </button>
         </nav>
-        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+        <button onclick="toggleMenu()" class="md:hidden text-white text-2xl p-2 z-40 focus:outline-none">
             <i class="fas fa-bars"></i>
         </button>
     </header>
@@ -564,17 +569,20 @@ $riwayat_smk_val = htmlspecialchars($siswa['riwayat_sma_smk_ma'] ?? '');
         </button>
     </div>
     
-    <section class="no-print text-center py-8 md:py-12 primary-bg text-white shadow-xl">
-        <h1 class="text-2xl md:text-4xl font-extrabold mb-1">
-            <i class="fas fa-id-card-alt mr-2"></i> Edit Data Profiling Siswa
+    <section class="no-print text-center py-10 md:py-14 primary-bg text-white shadow-xl">
+        <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-teal-50 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-3">
+            <i class="fas fa-id-card-alt"></i> Data Profiling
+        </span>
+        <h1 class="text-2xl md:text-4xl font-extrabold mb-2">
+            Edit Data Profiling Siswa
         </h1>
-        <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
+        <p class="text-teal-50/85 max-w-2xl mx-auto text-sm md:text-lg px-4">
             Lengkapi dan perbarui biodata Anda. Kelengkapan data ini wajib untuk membuka akses ke semua tes.
         </p>
     </section>
 
     <section class="py-8 md:py-10 px-4 flex-grow">
-        <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl border border-gray-200 print-area">
+        <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-gray-200 print-area">
 
             <?php if ($pesan_sukses): ?>
                 <div class="no-print bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg shadow-md" role="alert">
@@ -677,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 <div class="space-y-4">
                 
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
                             <h3 class="text-lg font-semibold primary-color">
                                 <i class="fas fa-user-circle mr-2"></i> 1. Data Diri Personal
@@ -759,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                     
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
                             <h3 class="text-lg font-semibold primary-color">
                                 <i class="fas fa-phone-alt mr-2"></i> 2. Data Kontak dan Alamat
@@ -793,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
 
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
                             <h3 class="text-lg font-semibold primary-color">
                                 <i class="fas fa-graduation-cap mr-2"></i> 3. Riwayat Pendidikan & Prestasi
@@ -840,7 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                     
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
     <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
         <h3 class="text-lg font-semibold primary-color">
             <i class="fas fa-user-friends mr-2"></i> 4. Data Orang Tua
@@ -957,7 +965,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
                             <h3 class="text-lg font-semibold primary-color">
                                 <i class="fas fa-laptop-house mr-2"></i> 5. Data Fasilitas dan Lingkungan Belajar
@@ -1023,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
 
-                    <div class="accordion-group border rounded-xl shadow-lg">
+                    <div class="accordion-group border rounded-2xl shadow-md overflow-hidden">
                         <div class="accordion-header flex justify-between items-center bg-gray-50 p-4 primary-border border-b-2">
                             <h3 class="text-lg font-semibold primary-color">
                                 <i class="fas fa-brain mr-2"></i> 6. Data Akademik dan Kepribadian
@@ -1065,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 
                 <div class="no-print mt-8 flex justify-end">
-                    <button type="submit" class="primary-bg text-white px-8 py-3 rounded-xl hover-bg-primary font-bold text-lg transition shadow-xl">
+                    <button type="submit" class="primary-bg text-white px-8 py-3.5 rounded-xl hover-bg-primary font-bold text-lg transition shadow-lg hover:shadow-xl">
                         <i class="fas fa-save mr-2"></i> Simpan Perubahan Data Profiling
                     </button>
                 </div>
@@ -1185,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
-    <footer class="no-print primary-bg text-white text-center py-4 mt-auto">
+    <footer class="no-print navbar-bg text-white text-center py-5 mt-auto">
         <p class="text-sm text-gray-200 font-light">
     &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
 </p>

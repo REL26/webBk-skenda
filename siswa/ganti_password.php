@@ -78,23 +78,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .primary-color { color: #2F6C6E; }
-        .primary-bg { background-color: #2F6C6E; }
-        .primary-border { border-color: #2F6C6E; }
-        .hover-bg-primary:hover { background-color: #1F4C4E; }
+        :root {
+            --primary-color: #2A6163;
+            --primary-color-dark: #1F4A4B;
+            --secondary-color: #2F9160;
+            --navbar-bg: #163B3C;
+            --surface-muted: #F4F7F6;
+        }
+        body { background-color: var(--surface-muted); }
+        .primary-color { color: var(--primary-color); }
+        .primary-bg { background-color: var(--primary-color); }
+        .primary-border { border-color: var(--primary-color); }
+        .navbar-bg { background-color: var(--navbar-bg); }
+        .hover-bg-primary:hover { background-color: var(--primary-color-dark); }
 
         .form-input { 
             width: 100%; 
             padding: 10px 12px; 
-            border: 1px solid #D1D5DB; 
-            border-radius: 8px; 
+            border: 1px solid #D8DEDD; 
+            border-radius: 10px; 
             transition: border-color 0.2s, box-shadow 0.2s; 
             background-color: #FFFFFF;
         }
         .form-input:focus {
-             border-color: #2F6C6E; 
+             border-color: var(--primary-color); 
              outline: none; 
-             box-shadow: 0 0 0 2px rgba(47, 108, 110, 0.5); 
+             box-shadow: 0 0 0 3px rgba(42, 97, 99, 0.15); 
         }
 
         .fade-slide { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: top; }
@@ -102,8 +111,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .visible-transition { opacity: 1; transform: scaleY(1); pointer-events: auto; }
 
         .tata-cara-bg {
-            background-color: #242A38; 
-            color: #E5E7EB;/
+            background-color: #17383A; 
+            color: #E5E7EB;
         }
         .list-tata-cara li {
             position: relative;
@@ -114,7 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             content: '•';
             position: absolute;
             left: 0;
-            color: #2F6C6E;
+            color: #6FBAB0;
             font-size: 1.25rem;
             line-height: 1;
         }
@@ -174,24 +183,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 flex flex-col min-h-screen">
 
-    <header class="no-print flex justify-between items-center px-4 md:px-8 py-3 bg-white shadow-lg sticky top-0 z-30">
-        <a href="dashboard.php" class="flex items-center space-x-2">
-            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-8 w-8">
+    <header class="no-print navbar-bg flex justify-between items-center px-4 md:px-8 py-3 shadow-lg sticky top-0 z-30">
+        <a href="dashboard.php" class="flex items-center space-x-2.5">
+            <img src="https://epkl.smkn2-bjm.sch.id/vendor/adminlte/dist/img/smkn2.png" alt="Logo" class="h-9 w-9 bg-white rounded-md p-0.5">
             <div>
-                <strong class="text-base md:text-xl primary-color font-extrabold">BK - SMKN 2 BJM</strong>
-                <small class="hidden md:block text-xs text-gray-600">Bimbingan dan Konseling</small>
+                <strong class="text-base md:text-xl text-white font-extrabold tracking-tight">BK - SMKN 2 BJM</strong>
+                <small class="hidden md:block text-xs text-teal-100/70">Bimbingan dan Konseling</small>
             </div>
         </a>
         <nav class="hidden md:flex items-center space-x-6">
-            <a href="dashboard.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Beranda</a>
-            <a href="data_profiling.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Data Profiling</a>
-            <a href="riwayatkonselingsiswa.php" class="text-gray-600 hover:primary-color hover:border-b-2 hover:border-primary-color pb-1 transition">Riwayat</a>
-            <a href="ganti_password.php" class="primary-color font-bold border-b-2 border-primary-color pb-1 transition">Ganti Password</a>
+            <a href="dashboard.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Beranda</a>
+            <a href="data_profiling.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Data Profiling</a>
+            <a href="riwayatkonselingsiswa.php" class="text-teal-100/80 hover:text-white border-b-2 border-transparent hover:border-white pb-1 transition">Riwayat</a>
+            <a href="ganti_password.php" class="text-white font-bold border-b-2 border-white pb-1 transition">Ganti Password</a>
             <button onclick="window.location.href='logout.php'" class="bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition text-sm font-semibold shadow-md">
                 <i class="fas fa-sign-out-alt mr-1"></i> Logout
             </button>
         </nav>
-        <button onclick="toggleMenu()" class="md:hidden text-gray-800 text-2xl p-2 z-40 focus:outline-none">
+        <button onclick="toggleMenu()" class="md:hidden text-white text-2xl p-2 z-40 focus:outline-none">
             <i class="fas fa-bars"></i>
         </button>
     </header>
@@ -207,17 +216,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </button>
     </div>
 
-    <section class="no-print text-center py-8 md:py-12 primary-bg text-white shadow-xl">
-        <h1 class="text-2xl md:text-4xl font-extrabold mb-1">
-            <i class="fas fa-key mr-2"></i> Perbarui Kata Sandi Anda
+    <section class="no-print text-center py-10 md:py-14 primary-bg text-white shadow-xl">
+        <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-teal-50 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-3">
+            <i class="fas fa-shield-halved"></i> Keamanan Akun
+        </span>
+        <h1 class="text-2xl md:text-4xl font-extrabold mb-2">
+            Perbarui Kata Sandi Anda
         </h1>
-        <p class="text-gray-200 max-w-4xl mx-auto text-sm md:text-lg px-4">
+        <p class="text-teal-50/85 max-w-2xl mx-auto text-sm md:text-lg px-4">
             Perbarui kata sandi Anda untuk menjaga keamanan akun Anda.
         </p>
     </section>
     
     <section class="py-10 px-4 flex-grow flex items-start justify-center">
-        <div class="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
+        <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
 
             <div class="w-full md:w-1/2 p-6 sm:p-8">
                 <h2 class="text-2xl font-extrabold primary-color mb-6 border-b-2 border-gray-200 pb-2 flex items-center">
@@ -280,8 +292,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </form>
             </div>
 
-            <div class="w-full md:w-1/2 tata-cara-bg p-6 sm:p-8 rounded-b-xl md:rounded-l-none md:rounded-r-xl shadow-inner">
-                <h2 class="text-2xl font-extrabold text-white mb-6 border-b-2 border-gray-700 pb-2">
+            <div class="w-full md:w-1/2 tata-cara-bg p-6 sm:p-8 rounded-b-2xl md:rounded-l-none md:rounded-r-2xl shadow-inner">
+                <h2 class="text-2xl font-extrabold text-white mb-6 border-b-2 border-white/10 pb-2">
                     <i class="fas fa-info-circle mr-2"></i> Tata Cara Ganti Password
                 </h2>
                 <ul class="space-y-4 list-tata-cara text-gray-300 text-sm">
@@ -301,7 +313,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </section>
 
-    <footer class="text-center py-3 primary-bg text-white text-xs md:text-sm mt-auto shadow-inner">
+    <footer class="text-center py-4 navbar-bg text-white text-xs md:text-sm mt-auto shadow-inner">
         <p class="text-sm text-gray-200 font-light">
     &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
 </p>
