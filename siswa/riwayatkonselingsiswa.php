@@ -218,7 +218,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'submit_kepuasan_kelompok') {
     exit;
 }
 
-$stmt_siswa = $koneksi->prepare("SELECT nama, kelas, jurusan FROM siswa WHERE id_siswa = ?");
+$stmt_siswa = $koneksi->prepare("SELECT nama, kelas, jurusan, nis FROM siswa WHERE id_siswa = ?");
 $stmt_siswa->bind_param("i", $id_siswa);
 $stmt_siswa->execute();
 $result_siswa = $stmt_siswa->get_result();
@@ -229,6 +229,8 @@ if (!$siswa_data) {
     echo "<script>alert('Data Siswa tidak ditemukan!'); window.location.href='../login.php';</script>";
     exit;
 }
+
+$nis_siswa = $siswa_data['nis'];
 
 $query_individu = "
     SELECT 
@@ -278,6 +280,41 @@ $stmt_kelompok->execute();
 $result_kelompok = $stmt_kelompok->get_result();
 $riwayat_kelompok_count = $result_kelompok->num_rows;
 $stmt_kelompok->close();
+
+/* ========== RIWAYAT TINDAKAN (minimum data exposure) ========== */
+$query_tindakan = "
+    SELECT 
+        'Konsultasi / Panggilan Orang Tua' AS jenis_tindakan,
+        tanggal_pemanggilan AS tanggal_tindakan
+    FROM konsultasi_ortu
+    WHERE nis = ? AND tanggal_pemanggilan IS NOT NULL
+
+    UNION ALL
+
+    SELECT 
+        'Surat Peringatan' AS jenis_tindakan,
+        tanggal_ttd AS tanggal_tindakan
+    FROM surat_peringatan
+    WHERE nis = ? AND tanggal_ttd IS NOT NULL
+
+    ORDER BY tanggal_tindakan DESC
+";
+$stmt_tindakan = $koneksi->prepare($query_tindakan);
+$stmt_tindakan->bind_param("ss", $nis_siswa, $nis_siswa);
+$stmt_tindakan->execute();
+$result_tindakan = $stmt_tindakan->get_result();
+$daftar_tindakan = [];
+while ($row_t = $result_tindakan->fetch_assoc()) {
+    $daftar_tindakan[] = $row_t;
+}
+$riwayat_tindakan_count = count($daftar_tindakan);
+$stmt_tindakan->close();
+
+/* ========== TAB STATE (server-side, anti-flicker) ========== */
+$allowed_tabs = ['individu', 'kelompok', 'tindakan'];
+$current_tab = (isset($_GET['tab']) && in_array($_GET['tab'], $allowed_tabs, true))
+    ? $_GET['tab']
+    : 'individu';
 ?>
 
 <!DOCTYPE html>
@@ -454,7 +491,7 @@ $stmt_kelompok->close();
         }
 
         function switchTab(type) {
-            const tabs = ['individu', 'kelompok'];
+            const tabs = ['individu', 'kelompok', 'tindakan'];
             tabs.forEach(tab => {
                 $('#tab-' + tab).removeClass('border-[#1F4A4B] text-[#1F4A4B] font-semibold')
                                  .addClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300');
@@ -464,12 +501,18 @@ $stmt_kelompok->close();
             $('#tab-' + type).removeClass('border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
                              .addClass('border-[#1F4A4B] text-[#1F4A4B] font-semibold');
             $('#content-' + type).removeClass('hidden');
+
+            // Pertahankan tab setelah refresh (F5 / Ctrl+R)
+            const newUrl = pageUrl + (type === 'individu' ? '' : '?tab=' + type);
+            if (window.location.pathname.split('/').pop() + (window.location.search || '') !== newUrl) {
+                history.replaceState(null, '', newUrl);
+            }
         }
 
 
         $(document).ready(function() {
-            const initialTab = '<?= isset($_GET['tab']) && $_GET['tab'] === 'kelompok' ? 'kelompok' : 'individu' ?>';
-            switchTab(initialTab);
+            // Tab sudah di-render server-side sesuai ?tab= → tidak perlu switchTab lagi di sini
+            // (mencegah flicker). switchTab hanya dipanggil saat user klik tab.
 
             $("#kepuasanForm").submit(function(e) {
                 e.preventDefault();
@@ -599,29 +642,28 @@ $stmt_kelompok->close();
                     <li class="mr-2 flex-grow sm:flex-grow-0">
                         <a href="javascript:void(0)" onclick="switchTab('individu')" id="tab-individu" 
                            class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
-                                  <?php if (!isset($_GET['tab']) || $_GET['tab'] !== 'kelompok'): ?> 
-                                      text-[#1F4A4B] border-[#1F4A4B] font-semibold 
-                                  <?php else: ?> 
-                                      text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300
-                                  <?php endif; ?>"> 
+                                  <?= $current_tab === 'individu' ? 'text-[#1F4A4B] border-[#1F4A4B] font-semibold' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300' ?>"> 
                             Konseling Individu (<?= $riwayat_individu_count ?>)
                         </a>
                     </li>
                     <li class="mr-2 flex-grow sm:flex-grow-0">
                         <a href="javascript:void(0)" onclick="switchTab('kelompok')" id="tab-kelompok" 
                            class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
-                                  <?php if (isset($_GET['tab']) && $_GET['tab'] === 'kelompok'): ?> 
-                                      text-[#1F4A4B] border-[#1F4A4B] font-semibold 
-                                  <?php else: ?> 
-                                      text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 
-                                  <?php endif; ?>">
+                                  <?= $current_tab === 'kelompok' ? 'text-[#1F4A4B] border-[#1F4A4B] font-semibold' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300' ?>">
                             Konseling Kelompok (<?= $riwayat_kelompok_count ?>)
+                        </a>
+                    </li>
+                    <li class="mr-2 flex-grow sm:flex-grow-0">
+                        <a href="javascript:void(0)" onclick="switchTab('tindakan')" id="tab-tindakan" 
+                           class="inline-block w-full text-center p-4 border-b-2 font-medium text-sm rounded-t-lg transition duration-200 
+                                  <?= $current_tab === 'tindakan' ? 'text-[#1F4A4B] border-[#1F4A4B] font-semibold' : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300' ?>">
+                            Riwayat Tindakan (<?= $riwayat_tindakan_count ?>)
                         </a>
                     </li>
                 </ul>
             </div>
 
-            <div id="content-individu" class="space-y-4">
+            <div id="content-individu" class="space-y-4 <?= $current_tab !== 'individu' ? 'hidden' : '' ?>">
                 <?php if ($riwayat_individu_count > 0): ?> 
                     <?php mysqli_data_seek($result_individu, 0); while ($data = mysqli_fetch_assoc($result_individu)): ?>
                         <div class="p-4 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:border-[#2A6163]/30 transition duration-200">
@@ -633,11 +675,6 @@ $stmt_kelompok->close();
                                     Pertemuan Ke-<?= htmlspecialchars($data['pertemuan_ke']) ?>
                                 </span>
                             </div>
-
-                            <!-- <div class="text-sm mb-3">
-                                <p class="font-medium text-gray-700">Gejala Awal:</p>
-                                <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['gejala_nampak']) ?></p>
-                            </div> -->
 
                             <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
@@ -653,8 +690,6 @@ $stmt_kelompok->close();
                                     data-type="individu">
                                     <i class="fas <?= $btn_icon ?> mr-1"></i> <?= $btn_text ?>
                                 </button>
-                                
-                                
                             </div>
                         </div>
                     <?php endwhile; ?>
@@ -668,7 +703,7 @@ $stmt_kelompok->close();
                 <?php endif; ?>
             </div>
             
-            <div id="content-kelompok" class="space-y-4 hidden">
+            <div id="content-kelompok" class="space-y-4 <?= $current_tab !== 'kelompok' ? 'hidden' : '' ?>">
                 <?php if ($riwayat_kelompok_count > 0): ?>
                     <?php mysqli_data_seek($result_kelompok, 0); while ($data = mysqli_fetch_assoc($result_kelompok)): ?>
                         <div class="p-4 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:border-[#2A6163]/30 transition duration-200">
@@ -680,11 +715,6 @@ $stmt_kelompok->close();
                                     <i class="fas fa-users mr-1"></i> Total Peserta: <?= $data['total_siswa_kelompok'] ?>
                                 </span>
                             </div>
-
-                            <!-- <div class="text-sm mb-3">
-                                <p class="font-medium text-gray-700">Topik Kelompok:</p>
-                                <p class="font-semibold text-gray-900 line-clamp-2"><?= htmlspecialchars($data['topik_masalah']) ?></p>
-                            </div> -->
 
                             <div class="pt-3 flex justify-end space-x-3">
                                 <?php 
@@ -700,8 +730,6 @@ $stmt_kelompok->close();
                                     data-type="kelompok">
                                     <i class="fas <?= $btn_icon_k ?> mr-1"></i> <?= $btn_text_k ?>
                                 </button>
-                                
-    
                             </div>
                         </div>
                     <?php endwhile; ?>
@@ -710,6 +738,48 @@ $stmt_kelompok->close();
                         <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
                         <p class="text-base text-gray-700 font-medium">
                             Anda belum memiliki riwayat Konseling Kelompok.
+                        </p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- ========== RIWAYAT TINDAKAN ========== -->
+            <div id="content-tindakan" class="space-y-4 <?= $current_tab !== 'tindakan' ? 'hidden' : '' ?>">
+                <?php if ($riwayat_tindakan_count > 0): ?>
+                    <?php foreach ($daftar_tindakan as $data): ?>
+                        <div class="p-4 border border-gray-200 rounded-xl shadow-sm bg-white hover:shadow-md hover:border-[#2A6163]/30 transition duration-200">
+                            <div class="flex justify-between items-start mb-3 border-b pb-2">
+                                <span class="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1 rounded-full border border-gray-200">
+                                    <i class="fas fa-calendar-alt mr-1"></i> <?= tgl_indo($data['tanggal_tindakan']) ?>
+                                </span>
+                                <?php if ($data['jenis_tindakan'] === 'Surat Peringatan'): ?>
+                                    <span class="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> Surat
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-xs font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                        <i class="fas fa-phone-alt mr-1"></i> Konsultasi
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="pt-1">
+                                <p class="font-semibold text-gray-900 text-base">
+                                    <?php if ($data['jenis_tindakan'] === 'Surat Peringatan'): ?>
+                                        <i class="fas fa-file-alt text-[#2A6163] mr-2"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-user-friends text-[#2A6163] mr-2"></i>
+                                    <?php endif; ?>
+                                    <?= htmlspecialchars($data['jenis_tindakan']) ?>
+                                </p>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="p-8 text-center border border-dashed border-gray-300 rounded-xl bg-gray-50">
+                        <i class="fas fa-info-circle text-2xl text-gray-500 mb-2"></i>
+                        <p class="text-base text-gray-700 font-medium">
+                            Anda belum memiliki riwayat tindakan.
                         </p>
                     </div>
                 <?php endif; ?>
