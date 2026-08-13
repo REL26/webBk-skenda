@@ -662,8 +662,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           document.getElementById('fNamaSiswa').value = data.data.nama || '';
           document.getElementById('fKelas').value = data.data.kelas || '';
           document.getElementById('fJurusan').value = data.data.jurusan || '';
-          if (!document.getElementById('fAlamat').value) document.getElementById('fAlamat').value = data.data.alamat_lengkap || '';
-          if (!document.getElementById('fNamaOrtuWali').value) document.getElementById('fNamaOrtuWali').value = data.data.nama_ayah || data.data.nama_ibu || '';
+
+          // Alamat: otomatis terisi kalau data siswa punya alamat lengkap
+          if (data.data.alamat_lengkap) {
+            document.getElementById('fAlamat').value = data.data.alamat_lengkap;
+          }
+
+          // Nama Orang Tua/Wali: ambil salah satu saja (utamakan nama ayah)
+          const namaOrtuWali = (data.data.nama_ayah || '').trim() || (data.data.nama_ibu || '').trim();
+          if (namaOrtuWali) {
+            document.getElementById('fNamaOrtuWali').value = namaOrtuWali;
+          }
         } else {
           alert('NIS tidak ditemukan. Silakan isi data secara manual.');
         }

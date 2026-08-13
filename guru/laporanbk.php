@@ -39,24 +39,31 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir) {
         ],
         [
             'label' => 'Home Visit',
-            'sql' => "SELECT hari_tanggal AS tgl, 'Home Visit' AS jenis,
-                        COALESCE(NULLIF(kelas,''),'-') AS kelas, COALESCE(NULLIF(jurusan,''),'-') AS jurusan, 1 AS jml
-                      FROM home_visit
-                      WHERE hari_tanggal BETWEEN '$awal' AND '$akhir'",
+            'sql' => "SELECT hv.hari_tanggal AS tgl, 'Home Visit' AS jenis,
+                        COALESCE(NULLIF(s.kelas,''), NULLIF(hv.kelas,''), '-') AS kelas,
+                        COALESCE(NULLIF(s.jurusan,''), NULLIF(hv.jurusan,''), '-') AS jurusan, 1 AS jml
+                      FROM home_visit hv
+                      LEFT JOIN siswa s ON s.nis = hv.nis
+                      WHERE hv.hari_tanggal BETWEEN '$awal' AND '$akhir'",
         ],
         [
-            'label' => 'Konsultasi Orang Tua',
-            'sql' => "SELECT tanggal_pemanggilan AS tgl, 'Konsultasi Orang Tua' AS jenis,
-                        COALESCE(NULLIF(kelas,''),'-') AS kelas, COALESCE(NULLIF(jurusan,''),'-') AS jurusan, 1 AS jml
-                      FROM konsultasi_ortu
-                      WHERE tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'",
+            'label' => 'Panggilan Ortu',
+            'sql' => "SELECT ko.tanggal_pemanggilan AS tgl, 'Panggilan Ortu' AS jenis,
+                        COALESCE(NULLIF(s.kelas,''), NULLIF(ko.kelas,''), '-') AS kelas,
+                        COALESCE(NULLIF(s.jurusan,''), NULLIF(ko.jurusan,''), '-') AS jurusan, 1 AS jml
+                      FROM konsultasi_ortu ko
+                      LEFT JOIN siswa s ON s.nis = ko.nis
+                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'",
         ],
     ];
 
     $grup = [];
     foreach ($modul as $m) {
         $res = mysqli_query($koneksi, $m['sql']);
-        if (!$res) continue;
+        if (!$res) {
+            error_log('Rekap otomatis BK gagal untuk modul "' . $m['label'] . '": ' . mysqli_error($koneksi));
+            continue;
+        }
         while ($r = mysqli_fetch_assoc($res)) {
             $key = $r['tgl'] . '|' . $r['jenis'];
             if (!isset($grup[$key])) {
@@ -1767,6 +1774,16 @@ if ($laporan_id > 0) {
             tindak: <?php echo $laporan['tindak_lanjut'] ? $laporan['tindak_lanjut'] : '[]'; ?>,
             dokumentasi: <?php echo $laporan['dokumentasi_foto'] ? $laporan['dokumentasi_foto'] : '[]'; ?>
           };
+          <?php
+            // Bulan & tahun awal (kalender) dari laporan yang sedang dibuka,
+            // dipakai untuk menarik ulang rekap kegiatan (Section III) secara live
+            // dari tabel sumber setiap kali laporan ini dibuka.
+            $b = (int) $laporan['bulan'];
+            $tpArr = explode('/', $laporan['tahun_pelajaran']);
+            $tahunAwalRekap = ($b >= 7) ? (int) ($tpArr[0] ?? date('Y')) : (int) ($tpArr[1] ?? date('Y'));
+          ?>
+          window.LAPORAN_BULAN_AKTIF = <?php echo $b; ?>;
+          window.LAPORAN_TAHUN_AKTIF = <?php echo $tahunAwalRekap; ?>;
           <?php endif; ?>
 
           const dataSasaran = [
@@ -2168,31 +2185,20 @@ if ($laporan_id > 0) {
             inputBulan.addEventListener('change', () => prosesPerubahanBulan(false));
           }
 
-          async function prosesPerubahanBulan(saatMuatAwal) {
-            const info = terapkanInfoBulan(document.getElementById('bulanLaporan').value);
-            if (!info) return;
-
+          // Ambil rekap kegiatan (Section III) secara LIVE dari tabel sumber
+          // (konseling individu, kelompok, home visit, panggilan ortu) untuk
+          // bulan/tahun tertentu, lalu isi ke tabel rekapKegiatan.
+          // Dipakai baik saat memulai laporan bulan baru maupun saat membuka
+          // laporan yang sudah ada (draft/final) agar selalu ikut perubahan
+          // (edit/hapus) terbaru dari modul-modul sumber.
+          async function muatRekapKegiatan(bulan, tahun) {
             const tbodyRekap = document.querySelector('#rekapKegiatan tbody');
             tbodyRekap.innerHTML = '';
 
             try {
-              const cekRes = await fetch('laporanbk.php', {
-                method: 'POST',
-                body: new URLSearchParams({ action: 'cek_laporan_bulan', bulan: info.bulan, tahun: info.tahun }),
-              });
-              const cek = await cekRes.json();
-              if (cek.success && cek.ada) {
-                window.location.href = 'laporanbk.php?id=' + cek.id_laporan;
-                return;
-              }
-            } catch (e) {
-              console.error(e);
-            }
-
-            try {
               const rekapRes = await fetch('laporanbk.php', {
                 method: 'POST',
-                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan: info.bulan, tahun: info.tahun }),
+                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan, tahun }),
               });
               const hasil = await rekapRes.json();
               if (hasil.success && hasil.rekap && hasil.rekap.length > 0) {
@@ -2209,6 +2215,27 @@ if ($laporan_id > 0) {
             }
           }
 
+          async function prosesPerubahanBulan(saatMuatAwal) {
+            const info = terapkanInfoBulan(document.getElementById('bulanLaporan').value);
+            if (!info) return;
+
+            try {
+              const cekRes = await fetch('laporanbk.php', {
+                method: 'POST',
+                body: new URLSearchParams({ action: 'cek_laporan_bulan', bulan: info.bulan, tahun: info.tahun }),
+              });
+              const cek = await cekRes.json();
+              if (cek.success && cek.ada) {
+                window.location.href = 'laporanbk.php?id=' + cek.id_laporan;
+                return;
+              }
+            } catch (e) {
+              console.error(e);
+            }
+
+            await muatRekapKegiatan(info.bulan, info.tahun);
+          }
+
           document.addEventListener("DOMContentLoaded", () => {
             document
               .querySelectorAll(".animate-slide-in")
@@ -2220,6 +2247,12 @@ if ($laporan_id > 0) {
 
             if (window.DATA_LAPORAN_EXISTING) {
               restoreSemuaTabel(window.DATA_LAPORAN_EXISTING);
+              // Selalu tarik ulang rekap kegiatan secara live, termasuk untuk
+              // laporan yang sudah final, supaya sasaran/jumlah/dll ikut
+              // ter-update kalau ada perubahan di modul sumber.
+              if (window.LAPORAN_BULAN_AKTIF && window.LAPORAN_TAHUN_AKTIF) {
+                muatRekapKegiatan(window.LAPORAN_BULAN_AKTIF, window.LAPORAN_TAHUN_AKTIF);
+              }
             } else {
               tambahMasalah();
               tambahTindak();
@@ -2249,18 +2282,13 @@ if ($laporan_id > 0) {
           }
 
           function restoreSemuaTabel(data) {
-            const rekap = data.rekap || [];
+            // Catatan: Section III (Rekap Kegiatan) SENGAJA tidak direstore dari
+            // snapshot (data.rekap) di sini. Section ini selalu diisi ulang
+            // secara live lewat muatRekapKegiatan() supaya otomatis mengikuti
+            // perubahan (edit/hapus) terbaru di modul konseling individu,
+            // kelompok, home visit, dan panggilan ortu.
             const masalah = data.masalah || [];
             const tindak = data.tindak || [];
-
-            if (rekap.length === 0) {
-              tambahRekap();
-            } else {
-              rekap.forEach((baris) => {
-                tambahRekap();
-                isiBarisTerakhir(document.querySelector('#rekapKegiatan tbody'), KOLOM_REKAP, baris);
-              });
-            }
 
             if (masalah.length === 0) {
               tambahMasalah();

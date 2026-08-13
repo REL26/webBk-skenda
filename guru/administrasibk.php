@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         if ($keyword !== '') {
             $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR permasalahan LIKE '%$keyword%')";
         }
-        $q = mysqli_query($koneksi, "SELECT * FROM lembar_rujukan $where ORDER BY tanggal_ttd DESC, id_rujukan DESC");
+        $q = mysqli_query($koneksi, "SELECT * FROM lembar_rujukan $where ORDER BY id_rujukan ASC");
         $data = [];
         while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
         echo json_encode(['success' => true, 'data' => $data]);
@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         if ($keyword !== '') {
             $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR jenis_sp LIKE '%$keyword%')";
         }
-        $q = mysqli_query($koneksi, "SELECT * FROM surat_peringatan $where ORDER BY tanggal_ttd DESC, id_sp DESC");
+        $q = mysqli_query($koneksi, "SELECT * FROM surat_peringatan $where ORDER BY id_sp ASC");
         $data = [];
         while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
         echo json_encode(['success' => true, 'data' => $data]);
@@ -244,14 +244,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         .sp-tabel-nama td, .sp-tabel-nama th { border: 1px solid #000; padding: 6px 10px; font-size: 11pt; word-wrap: break-word; overflow-wrap: break-word; }
         .sp-tabel-nama th { background: #eee !important; -webkit-print-color-adjust: exact; }
         .sp-judul-tingkat { text-align: center; font-weight: bold; font-size: 13pt; margin: 18px 0; }
-        .sp-halaman-2 { page-break-before: always; break-before: page; padding-top: 4mm; }
-        .sp-penutup { text-align: justify; margin-bottom: 30px; text-indent: 36px; }
+        .sp-halaman-2 { page-break-before: auto; break-before: auto; padding-top: 0; }
+        .sp-penutup { text-align: justify; margin-bottom: 20px; text-indent: 36px; }
         table.sp-ttd-tabel { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
         table.sp-ttd-tabel td { border: none; font-size: 11pt; padding: 2px 6px; vertical-align: top; text-align: center; }
-        table.sp-ttd-tabel .ttd-spasi { height: 50px; }
+        table.sp-ttd-tabel .ttd-spasi { height: 48px; }
         table.sp-ttd-tabel .garis-ttd { border-bottom: 1px solid #000; width: 75%; margin: 0 auto; }
-        .sp-mengetahui { text-align: center; margin-top: 30px; }
-        .sp-tembusan { margin-top: 34px; font-size: 11pt; }
+        .sp-mengetahui { text-align: center; margin-top: 24px; }
+        .sp-mengetahui > div:first-of-type { height: 72px; }
+        .sp-tembusan { margin-top: 14px; font-size: 11pt; }
         .sp-tembusan ol { margin-left: 20px; margin-top: 4px; list-style: decimal; }
         .sp-tembusan ol li { display: list-item; }
         ol#spPvPelanggaran { list-style: decimal; }
@@ -271,11 +272,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   </div>
 
   <div class="no-print flex gap-2 mb-4 p-1.5 bg-gray-100 rounded-xl w-fit">
-    <button id="tabBtnRujukan" class="tab-btn active" onclick="gantiTab('rujukan')"><i class="fas fa-file-signature mr-1"></i> Lembar Rujukan</button>
+    <button id="tabBtnRujukan" class="tab-btn" onclick="gantiTab('rujukan')"><i class="fas fa-file-signature mr-1"></i> Lembar Rujukan</button>
     <button id="tabBtnSP" class="tab-btn" onclick="gantiTab('sp')"><i class="fas fa-triangle-exclamation mr-1"></i> Surat Peringatan</button>
   </div>
 
-  <div id="panelRujukan" class="no-print bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow">
+  <div id="panelRujukan" class="no-print bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow" style="display:none;">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div class="relative w-full md:w-80">
         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
@@ -331,6 +332,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     </div>
   </div>
 </main>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('admBk_tab') || 'rujukan';
+    var pr = document.getElementById('panelRujukan');
+    var ps = document.getElementById('panelSP');
+    var br = document.getElementById('tabBtnRujukan');
+    var bs = document.getElementById('tabBtnSP');
+    if (pr && ps && br && bs) {
+      if (t === 'sp') {
+        pr.style.display = 'none';
+        ps.style.display = 'block';
+        br.classList.remove('active');
+        bs.classList.add('active');
+      } else {
+        pr.style.display = 'block';
+        ps.style.display = 'none';
+        br.classList.add('active');
+        bs.classList.remove('active');
+      }
+    }
+    var kr = localStorage.getItem('admBk_cariRujukan');
+    var ks = localStorage.getItem('admBk_cariSP');
+    if (kr !== null) {
+      var ir = document.getElementById('cariRujukan');
+      if (ir) ir.value = kr;
+    }
+    if (ks !== null) {
+      var is = document.getElementById('cariSP');
+      if (is) is.value = ks;
+    }
+  } catch (e) {}
+})();
+</script>
 
   <div id="modalRujukan" class="modal no-print fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -522,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         </table>
         <div class="sp-mengetahui">
           Mengetahui,<br>Waka Kesiswaan
-          <div style="height:45px;"></div>
+          <div style="height:72px;"></div>
           <div style="font-weight:bold; text-decoration:underline;"><?php echo $nama_waka; ?></div>
           <div>NIP. <?php echo $nip_waka; ?></div>
         </div>
@@ -545,12 +580,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   let dataSP = [];
   let idDetailRujukan = null;
   let idDetailSP = null;
+  let tabAktif = 'rujukan';
+
+  const STORAGE_KEY_TAB = 'admBk_tab';
+  const STORAGE_KEY_CARI_RJ = 'admBk_cariRujukan';
+  const STORAGE_KEY_CARI_SP = 'admBk_cariSP';
+
+  function simpanStateUI() {
+    try {
+      localStorage.setItem(STORAGE_KEY_TAB, tabAktif);
+      localStorage.setItem(STORAGE_KEY_CARI_RJ, document.getElementById('cariRujukan').value || '');
+      localStorage.setItem(STORAGE_KEY_CARI_SP, document.getElementById('cariSP').value || '');
+    } catch (e) {}
+  }
+
+  function muatStateUI() {
+    try {
+      const t = localStorage.getItem(STORAGE_KEY_TAB);
+      if (t === 'rujukan' || t === 'sp') tabAktif = t;
+      const kr = localStorage.getItem(STORAGE_KEY_CARI_RJ);
+      const ks = localStorage.getItem(STORAGE_KEY_CARI_SP);
+      if (kr !== null) document.getElementById('cariRujukan').value = kr;
+      if (ks !== null) document.getElementById('cariSP').value = ks;
+    } catch (e) {}
+  }
 
   function gantiTab(tab) {
+    tabAktif = tab;
     document.getElementById('panelRujukan').style.display = tab === 'rujukan' ? 'block' : 'none';
     document.getElementById('panelSP').style.display = tab === 'sp' ? 'block' : 'none';
     document.getElementById('tabBtnRujukan').classList.toggle('active', tab === 'rujukan');
     document.getElementById('tabBtnSP').classList.toggle('active', tab === 'sp');
+    simpanStateUI();
   }
 
   function escapeHtml(str) {
@@ -603,7 +664,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     `).join('');
   }
 
-  document.getElementById('cariRujukan').addEventListener('input', function () { muatRujukan(this.value); });
+  document.getElementById('cariRujukan').addEventListener('input', function () {
+    simpanStateUI();
+    muatRujukan(this.value);
+  });
 
   function kosongkanFormRujukan() {
     document.getElementById('rjId').value = '';
@@ -673,7 +737,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .then(res => res.json())
       .then(data => {
         alert(data.message);
-        if (data.success) { tutupModalRujukan(); muatRujukan(document.getElementById('cariRujukan').value); }
+        if (data.success) {
+          tutupModalRujukan();
+          gantiTab('rujukan');
+          muatRujukan(document.getElementById('cariRujukan').value);
+        }
       })
       .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
       .finally(() => {
@@ -689,7 +757,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     fd.append('id_rujukan', id);
     fetch(window.location.pathname, { method: 'POST', body: fd })
       .then(res => res.json())
-      .then(data => { alert(data.message); if (data.success) muatRujukan(document.getElementById('cariRujukan').value); });
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          gantiTab('rujukan');
+          muatRujukan(document.getElementById('cariRujukan').value);
+        }
+      });
   }
 
   function lihatDetailRujukan(id) {
@@ -726,13 +800,97 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   function cetakRujukan() {
     const d = dataRujukan.find(x => x.id_rujukan == idDetailRujukan);
     if (!d) return;
+    document.getElementById('modalDetailRujukan').classList.remove('open');
     document.getElementById('rjPvNama').textContent = d.nama_siswa || '-';
     document.getElementById('rjPvKelas').textContent = (d.kelas || '-') + (d.jurusan ? ' / ' + d.jurusan : '');
     isiTeksTitik('rjPvPermasalahan', d.permasalahan);
     isiTeksTitik('rjPvAlternatif', d.alternatif);
     document.getElementById('rjPvKotaTgl').textContent = 'Banjarmasin, ' + formatTgl(d.tanggal_ttd || new Date().toISOString().slice(0,10));
-    document.body.classList.add('mode-cetak', 'cetak-rujukan');
-    window.print();
+    cetakElemenViaIframe('printAreaRujukan', '@page { size: A4; margin: 20mm 18mm; }', PRINT_CSS_RUJUKAN);
+  }
+
+  // ---------- CETAK VIA IFRAME TERSEMBUNYI (halaman utama TIDAK pernah berubah tampilan) ----------
+  // CSS cetak Lembar Rujukan — ukuran teks asli (12pt)
+  const PRINT_CSS_RUJUKAN = `
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.4; color: #000; }
+    .kertas { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.4; color: #000; }
+    .judul-polos { text-align: center; font-weight: bold; margin-bottom: 22px; font-size: 13pt; letter-spacing: 1px; }
+    table.form-rj { table-layout: fixed; width: 100%; }
+    table.form-rj td { padding: 2px 4px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+    p.isi-titik { min-height: 18px; margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
+    .rj-ttd { text-align: right; margin-top: 34px; }
+    .rj-ttd p { margin-bottom: 6px; }
+    .rj-ttd .garis-ttd-inline { display: inline-block; border-bottom: 1px solid #000; min-width: 220px; height: 55px; margin-top: 4px; }
+  `;
+
+  // CSS cetak Surat Peringatan — dipadatkan agar muat 1 halaman A4
+  const PRINT_CSS_SP = `
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.35; color: #000; }
+    .kertas { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.35; color: #000; }
+    .kop-surat { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 2.5px solid #000; padding-bottom: 4px; margin-bottom: 2px; }
+    .kop-surat img { height: 58px; width: auto; flex-shrink: 0; }
+    .kop-surat .kop-tengah { flex-grow: 1; text-align: center; line-height: 1.2; }
+    .kop-surat .kop-tengah p.baris1 { font-size: 10.5pt; font-weight: normal; margin: 0; }
+    .kop-surat .kop-tengah h3.nama-sekolah { font-size: 13.5pt; font-weight: bold; margin: 1px 0; }
+    .kop-surat .kop-tengah p.alamat { font-size: 8pt; margin: 0; }
+    .judul-dok-kop { text-align: center; font-weight: bold; text-decoration: underline; margin: 10px 0 8px; font-size: 12pt; letter-spacing: 1.5px; }
+    .sp-tabel-nama { border-collapse: collapse; margin: 6px 0 8px; table-layout: fixed; width: 100%; }
+    .sp-tabel-nama td, .sp-tabel-nama th { border: 1px solid #000; padding: 4px 8px; font-size: 10.5pt; word-wrap: break-word; overflow-wrap: break-word; }
+    .sp-tabel-nama th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .sp-judul-tingkat { text-align: center; font-weight: bold; font-size: 12pt; margin: 10px 0 6px; }
+    .sp-halaman-2 { page-break-before: auto; break-before: auto; padding-top: 0; margin-top: 8px; }
+    .sp-penutup { text-align: justify; margin-bottom: 12px; text-indent: 28px; font-size: 10.5pt; line-height: 1.35; }
+    table.sp-ttd-tabel { width: 100%; border-collapse: collapse; margin-top: 6px; table-layout: fixed; }
+    table.sp-ttd-tabel td { border: none; font-size: 10.5pt; padding: 1px 4px; vertical-align: top; text-align: center; }
+    table.sp-ttd-tabel .ttd-spasi { height: 42px; }
+    table.sp-ttd-tabel .garis-ttd { border-bottom: 1px solid #000; width: 70%; margin: 0 auto; }
+    .sp-mengetahui { text-align: center; margin-top: 22px; font-size: 10.5pt; }
+    .sp-mengetahui > div:first-of-type { height: 72px !important; }
+    .sp-tembusan { margin-top: 10px; font-size: 10pt; }
+    .sp-tembusan ol { margin-left: 18px; margin-top: 2px; list-style: decimal; }
+    .sp-tembusan ol li { display: list-item; margin-bottom: 0; }
+    #spPvPelanggaran { list-style: decimal; margin-left: 20px; margin-top: 2px; margin-bottom: 4px; padding-left: 4px; }
+    #spPvPelanggaran li { display: list-item; margin-bottom: 1px; font-size: 10.5pt; }
+  `;
+
+  let hiddenPrintFrame = null;
+  function ambilFramePrintTersembunyi() {
+    if (hiddenPrintFrame && document.body.contains(hiddenPrintFrame)) return hiddenPrintFrame;
+    hiddenPrintFrame = document.createElement('iframe');
+    hiddenPrintFrame.setAttribute('aria-hidden', 'true');
+    hiddenPrintFrame.style.position = 'fixed';
+    hiddenPrintFrame.style.top = '-9999px';
+    hiddenPrintFrame.style.left = '-9999px';
+    hiddenPrintFrame.style.width = '0';
+    hiddenPrintFrame.style.height = '0';
+    hiddenPrintFrame.style.border = '0';
+    document.body.appendChild(hiddenPrintFrame);
+    return hiddenPrintFrame;
+  }
+
+  function cetakElemenViaIframe(idElemenSumber, aturanPage, cssCetak) {
+    const sumber = document.getElementById(idElemenSumber);
+    if (!sumber) return;
+    const frame = ambilFramePrintTersembunyi();
+    const idoc = frame.contentWindow.document;
+    idoc.open();
+    idoc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title></title><style>' + (aturanPage || '') + (cssCetak || '') + '</style></head><body>' + sumber.innerHTML + '</body></html>');
+    idoc.close();
+
+    const gambar = Array.from(idoc.images || []);
+    const tungguSemuaGambar = Promise.all(gambar.map(img => (img.complete
+      ? Promise.resolve()
+      : new Promise(resolve => { img.addEventListener('load', resolve, { once: true }); img.addEventListener('error', resolve, { once: true }); })
+    )));
+
+    Promise.race([ tungguSemuaGambar, new Promise(resolve => setTimeout(resolve, 1200)) ]).then(() => {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    });
   }
 
   function muatSP(keyword = '') {
@@ -777,7 +935,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     `).join('');
   }
 
-  document.getElementById('cariSP').addEventListener('input', function () { muatSP(this.value); });
+  document.getElementById('cariSP').addEventListener('input', function () {
+    simpanStateUI();
+    muatSP(this.value);
+  });
 
   function kosongkanFormSP() {
     document.getElementById('spId').value = '';
@@ -850,7 +1011,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .then(res => res.json())
       .then(data => {
         alert(data.message);
-        if (data.success) { tutupModalSP(); muatSP(document.getElementById('cariSP').value); }
+        if (data.success) {
+          tutupModalSP();
+          gantiTab('sp');
+          muatSP(document.getElementById('cariSP').value);
+        }
       })
       .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
       .finally(() => {
@@ -866,7 +1031,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     fd.append('id_sp', id);
     fetch(window.location.pathname, { method: 'POST', body: fd })
       .then(res => res.json())
-      .then(data => { alert(data.message); if (data.success) muatSP(document.getElementById('cariSP').value); });
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          gantiTab('sp');
+          muatSP(document.getElementById('cariSP').value);
+        }
+      });
   }
 
   function lihatDetailSP(id) {
@@ -914,6 +1085,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   function cetakSP() {
     const d = dataSP.find(x => x.id_sp == idDetailSP);
     if (!d) return;
+    document.getElementById('modalDetailSP').classList.remove('open');
     document.getElementById('spPvNama').textContent = d.nama_siswa || '-';
     const kelasJurusan = (d.kelas || '') + (d.jurusan ? ' / ' + d.jurusan : '');
     document.getElementById('spPvKelasJurusan').innerHTML = kelasJurusan.trim() ? escapeHtml(kelasJurusan) : '&nbsp;';
@@ -925,17 +1097,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     document.getElementById('spPvKonsekuensi').textContent = konsekuensiSP(d.jenis_sp);
     document.getElementById('spPvPenutup').textContent = 'Demikian surat peringatan ke ' + romawiSP(d.jenis_sp) + ' ini diberikan agar diperhatikan dan semoga Allah SWT. Selalu membimbing kejalan yang benar dan memberikan taufik dan hidayahNya kepada kita semua.';
     document.getElementById('spPvKotaTgl').textContent = 'Banjarmasin, ' + formatTgl(d.tanggal_ttd || new Date().toISOString().slice(0,10));
-    document.body.classList.add('mode-cetak', 'cetak-sp');
-    window.print();
+    cetakElemenViaIframe('printAreaSP', '@page { size: A4; margin: 12mm 14mm; }', PRINT_CSS_SP);
   }
 
-  window.addEventListener('afterprint', () => {
-    document.body.classList.remove('mode-cetak', 'cetak-rujukan', 'cetak-sp');
-  });
-
   document.addEventListener('DOMContentLoaded', () => {
-    muatRujukan();
-    muatSP();
+    muatStateUI();
+    gantiTab(tabAktif);
+    muatRujukan(document.getElementById('cariRujukan').value);
+    muatSP(document.getElementById('cariSP').value);
   });
 </script>
     </div>
