@@ -189,8 +189,18 @@ $tempat = $_POST['tempat'] ?? 'Ruang BK';
 $pendekatan = $_POST['pendekatan'] ?? '-';
 $waktu_durasi = $_POST['waktu_durasi'] ?? '-';
 $teknik_konseling = $_POST['teknik'] ?? '-';
-$hasil_layanan = $_POST['hasil_yang_dicapai'] ?? '-';
+$gejala = trim($_POST['gejala'] ?? '');
+$hasil_dicapai = trim($_POST['hasil_dicapai'] ?? '');
+$hasil_layanan = $hasil_dicapai !== '' ? $hasil_dicapai : ($_POST['hasil_yang_dicapai'] ?? '-'); // kompatibilitas kolom lama
 $nama_guru = $_POST['guru_pembimbing'] ?? '-';
+$bidang_layanan = mysqli_real_escape_string($koneksi, $_POST['bidang_layanan'] ?? '');
+
+// --- VALIDASI GEJALA & HASIL DICAPAI ---
+if ($gejala === '' || $hasil_dicapai === '') {
+    http_response_code(400);
+    echo json_encode(["status" => "error", "message" => "Gejala yang Nampak dan Hasil yang Dicapai wajib diisi.", "pdf_url" => null]);
+    exit;
+}
 
 $deleted_docs_json = $_POST['deleted_docs'] ?? '[]';
 $deleted_docs = json_decode($deleted_docs_json, true);
@@ -238,13 +248,16 @@ try {
                 waktu_durasi = ?, 
                 nama_guru = ?, 
                 hasil_layanan = ?, 
-                teknik_konseling = ?
+                teknik_konseling = ?,
+                bidang_layanan = ?,
+                gejala = ?,
+                hasil_dicapai = ?
             WHERE id_kelompok = ?"
         );
         if (!$stmt) {
             throw new Exception("Gagal menyiapkan query update kelompok: " . $koneksi->error);
         }
-        $stmt->bind_param("ssssssssi",
+        $stmt->bind_param("sssssssssssi",
             $tgl_input,
             $pertemuan_ke,
             $pendekatan,
@@ -253,6 +266,9 @@ try {
             $nama_guru,
             $hasil_layanan,
             $teknik_konseling,
+            $bidang_layanan,
+            $gejala,
+            $hasil_dicapai,
             $id_kelompok
         );
 
@@ -328,12 +344,12 @@ try {
         // MODE CREATE (tetap sama)
         // =====================================================
         $stmt = $koneksi->prepare(
-            "INSERT INTO kelompok (id_guru, tanggal_pelaksanaan, pertemuan_ke, catatan_khusus, tempat, waktu_durasi, nama_guru, hasil_layanan, teknik_konseling, atas_dasar, topik_masalah, proses_layanan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO kelompok (id_guru, tanggal_pelaksanaan, pertemuan_ke, catatan_khusus, tempat, waktu_durasi, nama_guru, hasil_layanan, teknik_konseling, atas_dasar, topik_masalah, proses_layanan, bidang_layanan, gejala, hasil_dicapai) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         if (!$stmt) {
             throw new Exception("Gagal menyiapkan query kelompok: " . $koneksi->error);
         }
-        $stmt->bind_param("isssssssssss",
+        $stmt->bind_param("issssssssssssss",
             $id_guru,
             $tgl_input,
             $pertemuan_ke,
@@ -345,7 +361,10 @@ try {
             $teknik_konseling,
             $atas_dasar,
             $topik_masalah,
-            $proses_layanan
+            $proses_layanan,
+            $bidang_layanan,
+            $gejala,
+            $hasil_dicapai
         );
 
         if (!$stmt->execute()) {
@@ -464,13 +483,19 @@ try {
     <tr><td class="label">Pertemuan Ke</td><td>: ' . htmlspecialchars($pertemuan_ke) . '</td></tr>
     <tr><td class="label">Waktu / Durasi</td><td>: ' . htmlspecialchars($waktu_durasi) . '</td></tr>
     <tr><td class="label">Tempat</td><td>: ' . htmlspecialchars($tempat) . '</td></tr>
+    <tr><td class="label">Bidang Layanan</td><td>: ' . htmlspecialchars(str_replace(',', ', ', $bidang_layanan)) . '</td></tr>
     <tr><td class="label">Pendekatan Konseling</td><td>: ' . nl2br(htmlspecialchars($pendekatan)) . '</td></tr>
     <tr><td class="label">Teknik Konseling</td><td>: ' . nl2br(htmlspecialchars($teknik_konseling)) . '</td></tr>
     </table>
 
-    <div class="section-title">Gejala dan Hasil yang Dicapai:</div>
+    <div class="section-title">Gejala yang Nampak:</div>
     <div class="content-box">
-    ' . nl2br(htmlspecialchars($hasil_layanan)) . '
+    ' . nl2br(htmlspecialchars($gejala)) . '
+    </div>
+
+    <div class="section-title">Hasil yang Dicapai:</div>
+    <div class="content-box">
+    ' . nl2br(htmlspecialchars($hasil_dicapai)) . '
     </div>
 
     <table class="signature-table">

@@ -147,6 +147,42 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
 </head>
 
 <body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <div id="notifLaptop" class="fixed inset-0 bg-black/50 z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <div class="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-laptop text-teal-700 text-2xl"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-lg mb-2">Gunakan Laptop untuk Pengalaman Terbaik</h3>
+            <p class="text-sm text-slate-500 mb-5">
+                Beberapa halaman di sistem ini dirancang untuk layar besar. Tampilan di HP mungkin kurang rapi.
+                Untuk hasil terbaik, kami sarankan mengakses lewat laptop/komputer.
+            </p>
+            <button onclick="tutupNotifLaptop()"
+                class="w-full bg-teal-700 hover:bg-teal-800 text-white font-semibold text-sm py-2.5 rounded-xl transition">
+                Mengerti, Lanjutkan
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function tutupNotifLaptop() {
+            document.getElementById('notifLaptop').classList.add('hidden');
+            document.getElementById('notifLaptop').classList.remove('flex');
+            sessionStorage.setItem('notifLaptopShown', '1');
+        }
+
+        (function () {
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
+            const sudahTampil = sessionStorage.getItem('notifLaptopShown');
+            if (isMobile && !sudahTampil) {
+                const modal = document.getElementById('notifLaptop');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        })();
+    </script>
+
 <?php include __DIR__ . '/partials/sidebar.php'; ?>
         <main class="main-content flex-grow min-h-screen">
             <section class="relative overflow-hidden bg-white border-b border-slate-200">
@@ -357,9 +393,9 @@ $is_profiling_active = in_array($current_page, ['hasil_tes.php', 'rekap_kelas.ph
         </main>
     </div>
 
-    <footer class="bg-white border-t border-gray-200 py-6 ms-48 mt-auto">
+    <footer class="bg-white border-t border-gray-200 py-6 px-4 mt-auto md:ml-[260px]">
         <div class="text-center">
-            <p class="text-sm text-black/70">
+            <p class="text-xs sm:text-sm text-black/70">
                 &copy; 2025 <span class="font-semibold">Bimbingan dan Konseling SMKN 2 Banjarmasin</span>
             </p>
             <p class="text-xs text-gray-400 mt-1">

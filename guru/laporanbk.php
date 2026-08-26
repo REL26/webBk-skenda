@@ -9,6 +9,12 @@ if (!isset($_SESSION['id_guru'])) {
 
 $id_guru_login = (int) $_SESSION['id_guru'];
 
+$DAFTAR_GURU_BK = [
+    'Pahrurazi, S.Pd', 'Dian Riyani, S.Pd', 'Putri Hidayatie, S.Pd', 'Rini Rodhiati, S.Pd',
+    'Gusti Muhammad Fajri Ramadhan, S.Pd', 'Desy Arianti, S.Pd', "Khalisatun Ni'mah, S.Pd",
+    'Tiara Wulansari, S.Pd', 'Dhea Nur Aziza, S.Pd', 'Abdul Basith, S.Pd',
+];
+
 function hitungSemesterTahunAjaran($bulan, $tahun) {
     if ($bulan >= 7 && $bulan <= 12) {
         return ['semester' => 'Ganjil', 'tahun_pelajaran' => $tahun . '/' . ($tahun + 1)];
@@ -16,50 +22,67 @@ function hitungSemesterTahunAjaran($bulan, $tahun) {
     return ['semester' => 'Genap', 'tahun_pelajaran' => ($tahun - 1) . '/' . $tahun];
 }
 
-function getRekapOtomatisBK($koneksi, $awal, $akhir) {
+function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
+    $namaGuruFilter = trim((string) $namaGuruFilter);
+    $filterEsc = $namaGuruFilter !== '' ? mysqli_real_escape_string($koneksi, $namaGuruFilter) : '';
+
     $modul = [
         [
             'label' => 'Konseling Individu',
+            'guru_kolom' => 'ki.nama_guru',
             'sql' => "SELECT ki.tanggal_pelaksanaan AS tgl, 'Konseling Individu' AS jenis,
                         COALESCE(NULLIF(s.kelas,''),'-') AS kelas, COALESCE(NULLIF(s.jurusan,''),'-') AS jurusan, 1 AS jml
                       FROM konseling_individu ki
                       LEFT JOIN siswa s ON s.id_siswa = ki.id_siswa
                       WHERE ki.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'",
+            'groupby' => '',
         ],
         [
             'label' => 'Konseling & Bimbingan Kelompok',
+            'guru_kolom' => 'k.nama_guru',
             'sql' => "SELECT k.tanggal_pelaksanaan AS tgl, k.jenis_layanan AS jenis,
                         COALESCE(NULLIF(s.kelas,''),'-') AS kelas, COALESCE(NULLIF(s.jurusan,''),'-') AS jurusan, COUNT(*) AS jml
                       FROM kelompok k
                       JOIN detail_kelompok dk ON dk.id_kelompok = k.id_kelompok
                       JOIN siswa s ON s.id_siswa = dk.id_siswa
                       WHERE k.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
-                        AND k.jenis_layanan IN ('Konseling Kelompok','Bimbingan Kelompok')
-                      GROUP BY k.id_kelompok, k.tanggal_pelaksanaan, k.jenis_layanan, s.kelas, s.jurusan",
+                        AND k.jenis_layanan IN ('Konseling Kelompok','Bimbingan Kelompok')",
+            'groupby' => 'GROUP BY k.id_kelompok, k.tanggal_pelaksanaan, k.jenis_layanan, s.kelas, s.jurusan',
         ],
         [
             'label' => 'Home Visit',
+            'guru_kolom' => 'hv.nama_petugas',
             'sql' => "SELECT hv.hari_tanggal AS tgl, 'Home Visit' AS jenis,
                         COALESCE(NULLIF(s.kelas,''), NULLIF(hv.kelas,''), '-') AS kelas,
                         COALESCE(NULLIF(s.jurusan,''), NULLIF(hv.jurusan,''), '-') AS jurusan, 1 AS jml
                       FROM home_visit hv
                       LEFT JOIN siswa s ON s.nis = hv.nis
                       WHERE hv.hari_tanggal BETWEEN '$awal' AND '$akhir'",
+            'groupby' => '',
         ],
         [
             'label' => 'Panggilan Ortu',
+            'guru_kolom' => 'ko.nama_guru_bk',
             'sql' => "SELECT ko.tanggal_pemanggilan AS tgl, 'Panggilan Ortu' AS jenis,
                         COALESCE(NULLIF(s.kelas,''), NULLIF(ko.kelas,''), '-') AS kelas,
                         COALESCE(NULLIF(s.jurusan,''), NULLIF(ko.jurusan,''), '-') AS jurusan, 1 AS jml
                       FROM konsultasi_ortu ko
                       LEFT JOIN siswa s ON s.nis = ko.nis
                       WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'",
+            'groupby' => '',
         ],
     ];
 
     $grup = [];
     foreach ($modul as $m) {
-        $res = mysqli_query($koneksi, $m['sql']);
+        $sql = $m['sql'];
+        if ($filterEsc !== '') {
+            $sql .= " AND {$m['guru_kolom']} = '$filterEsc'";
+        }
+        if (!empty($m['groupby'])) {
+            $sql .= ' ' . $m['groupby'];
+        }
+        $res = mysqli_query($koneksi, $sql);
         if (!$res) {
             error_log('Rekap otomatis BK gagal untuk modul "' . $m['label'] . '": ' . mysqli_error($koneksi));
             continue;
@@ -127,10 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             echo json_encode(['success' => false, 'message' => 'Bulan/tahun tidak valid.']);
             exit;
         }
+        $guruFilter = trim($_POST['guru'] ?? '');
         $awal  = sprintf('%04d-%02d-01', $tahun, $bulan);
         $akhir = date('Y-m-t', strtotime($awal));
-        $rekap = getRekapOtomatisBK($koneksi, $awal, $akhir);
-        echo json_encode(['success' => true, 'rekap' => $rekap]);
+        $rekap = getRekapOtomatisBK($koneksi, $awal, $akhir, $guruFilter);
+        echo json_encode(['success' => true, 'rekap' => $rekap, 'guru_filter' => $guruFilter]);
         exit;
     }
 
@@ -1464,6 +1488,17 @@ if ($laporan_id > 0) {
               <i class="fas fa-chevron-down chevron no-print"></i>
             </summary>
             <div class="report-section-body">
+              <div class="no-print flex flex-wrap items-end gap-2 mb-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div class="flex-1 min-w-[220px]">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Filter Guru BK (Bagian III)</label>
+                  <select id="filterGuruRekapBK" class="input w-full px-3 py-2 border rounded text-sm">
+                    <option value="">Semua Guru BK</option>
+                    <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
+                    <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+              </div>
               <div class="table-scroll-wrapper">
                 <table
                   id="rekapKegiatan"
@@ -1662,12 +1697,7 @@ if ($laporan_id > 0) {
     >
       <option value="">Pilih Nama Guru</option>
     <?php
-      $daftar_guru_bk = [
-          'Pahrurazi, S.Pd', 'Dian Riyani, S.Pd', 'Putri Hidayatie, S.Pd', 'Rini Rodhiati, S.Pd',
-          'Gusti Muhammad Fajri Ramadhan, S.Pd', 'Desy Arianti, S.Pd', "Khalisatun Ni'mah, S.Pd",
-          'Tiara Wulansari, S.Pd', 'Dhea Nur Aziza, S.Pd', 'Abdul Basith, S.Pd',
-      ];
-      foreach ($daftar_guru_bk as $nama_guru_opt):
+      foreach ($DAFTAR_GURU_BK as $nama_guru_opt):
           $selected = ($laporan && $laporan['nama_guru_bk'] === $nama_guru_opt) ? 'selected' : '';
     ?>
     <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>" <?php echo $selected; ?>><?php echo htmlspecialchars($nama_guru_opt); ?></option>
@@ -1757,6 +1787,7 @@ if ($laporan_id > 0) {
               <i class="fas fa-file-pdf mr-2"></i> Cetak / Simpan sebagai PDF
             </button>
             <button
+              id="btnResetForm"
               onclick="resetForm()"
               class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition font-semibold"
               title="Mengosongkan semua isian di form ini"
@@ -2191,14 +2222,18 @@ if ($laporan_id > 0) {
           // Dipakai baik saat memulai laporan bulan baru maupun saat membuka
           // laporan yang sudah ada (draft/final) agar selalu ikut perubahan
           // (edit/hapus) terbaru dari modul-modul sumber.
-          async function muatRekapKegiatan(bulan, tahun) {
+          async function muatRekapKegiatan(bulan, tahun, guruFilter) {
             const tbodyRekap = document.querySelector('#rekapKegiatan tbody');
             tbodyRekap.innerHTML = '';
+            if (guruFilter === undefined) {
+              const selFilter = document.getElementById('filterGuruRekapBK');
+              guruFilter = selFilter ? selFilter.value : '';
+            }
 
             try {
               const rekapRes = await fetch('laporanbk.php', {
                 method: 'POST',
-                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan, tahun }),
+                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan, tahun, guru: guruFilter || '' }),
               });
               const hasil = await rekapRes.json();
               if (hasil.success && hasil.rekap && hasil.rekap.length > 0) {
@@ -2235,6 +2270,18 @@ if ($laporan_id > 0) {
 
             await muatRekapKegiatan(info.bulan, info.tahun);
           }
+
+          function ambilBulanTahunAktif() {
+            if (window.LAPORAN_BULAN_AKTIF && window.LAPORAN_TAHUN_AKTIF) {
+              return { bulan: window.LAPORAN_BULAN_AKTIF, tahun: window.LAPORAN_TAHUN_AKTIF };
+            }
+            return terapkanInfoBulan(document.getElementById('bulanLaporan').value);
+          }
+
+          document.getElementById('filterGuruRekapBK').addEventListener('change', function () {
+            const info = ambilBulanTahunAktif();
+            if (info) muatRekapKegiatan(info.bulan, info.tahun, this.value);
+          });
 
           document.addEventListener("DOMContentLoaded", () => {
             document
@@ -2427,6 +2474,7 @@ if ($laporan_id > 0) {
             document.getElementById('btnSimpan').classList.toggle('hidden', isFinal);
             document.getElementById('btnFinalisasi').classList.toggle('hidden', isFinal);
             document.getElementById('btnBukaDraft').classList.toggle('hidden', !isFinal);
+            document.getElementById('btnResetForm').classList.toggle('hidden', isFinal);
             document.getElementById('btnCetak').disabled = !isFinal;
 
             document.querySelectorAll('#main-content input, #main-content select, #main-content textarea').forEach(el => {

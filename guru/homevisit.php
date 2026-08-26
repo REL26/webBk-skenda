@@ -8,6 +8,24 @@ if (!isset($_SESSION['id_guru'])) {
 }
 
 $id_guru_login = (int) $_SESSION['id_guru'];
+
+$DAFTAR_GURU_BK = [
+    'Pahrurazi, S.Pd', 'Dian Riyani, S.Pd', 'Putri Hidayatie, S.Pd', 'Rini Rodhiati, S.Pd',
+    'Gusti Muhammad Fajri Ramadhan, S.Pd', 'Desy Arianti, S.Pd', "Khalisatun Ni'mah, S.Pd",
+    'Tiara Wulansari, S.Pd', 'Dhea Nur Aziza, S.Pd', 'Abdul Basith, S.Pd',
+];
+$NIP_GURU_BK = [
+    'Pahrurazi, S.Pd' => '',
+    'Dian Riyani, S.Pd' => '',
+    'Putri Hidayatie, S.Pd' => '',
+    'Rini Rodhiati, S.Pd' => '',
+    'Gusti Muhammad Fajri Ramadhan, S.Pd' => '',
+    'Desy Arianti, S.Pd' => '',
+    "Khalisatun Ni'mah, S.Pd" => '',
+    'Tiara Wulansari, S.Pd' => '',
+    'Dhea Nur Aziza, S.Pd' => '',
+    'Abdul Basith, S.Pd' => '',
+];
 $nama_kepsek = "Novie Bambang Rumadi, S.T., M.Pd";
 $nip_kepsek  = "19781102006041005";
 $bulan_indo  = ['January'=>'Januari','February'=>'Februari','March'=>'Maret','April'=>'April','May'=>'Mei','June'=>'Juni','July'=>'Juli','August'=>'Agustus','September'=>'September','October'=>'Oktober','November'=>'November','December'=>'Desember'];
@@ -32,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         if ($keyword !== '') {
             $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR nama_ortu_wali LIKE '%$keyword%' OR alamat LIKE '%$keyword%')";
         }
-        $q = mysqli_query($koneksi, "SELECT * FROM home_visit $where ORDER BY hari_tanggal DESC, id_visit DESC");
+        $q = mysqli_query($koneksi, "SELECT * FROM home_visit $where ORDER BY hari_tanggal ASC, id_visit ASC");
         $data = [];
         while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
         echo json_encode(['success' => true, 'data' => $data]);
@@ -57,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $nama_petugas = mysqli_real_escape_string($koneksi, $_POST['nama_petugas'] ?? '');
         $nip_petugas = mysqli_real_escape_string($koneksi, $_POST['nip_petugas'] ?? '');
         $hasil_dinas = mysqli_real_escape_string($koneksi, $_POST['hasil_dinas'] ?? '');
+        $bidang_layanan = mysqli_real_escape_string($koneksi, $_POST['bidang_layanan'] ?? '');
 
         if ($nama_siswa === '') {
             echo json_encode(['success' => false, 'message' => 'Nama siswa wajib diisi.']);
@@ -105,14 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                         nis='$nis', nama_siswa='$nama_siswa', kelas='$kelas', jurusan='$jurusan', alamat='$alamat', hari_tanggal='$hari_tanggal',
                         nama_ortu_wali='$nama_ortu_wali', masalah='$masalah', hasil_dicapai='$hasil_dicapai', keterangan='$keterangan',
                         tindak_lanjut='$tindak_lanjut', dokumentasi='$dokumentasi',
-                        no_surat_tugas='$no_surat', tanggal_dinas=$tgl_dinas_sql, nama_petugas='$nama_petugas', nip_petugas='$nip_petugas', hasil_dinas='$hasil_dinas'
+                        no_surat_tugas='$no_surat', tanggal_dinas=$tgl_dinas_sql, nama_petugas='$nama_petugas', nip_petugas='$nip_petugas', hasil_dinas='$hasil_dinas',
+                        bidang_layanan='$bidang_layanan'
                       WHERE id_visit = $id";
         } else {
             $tgl_dinas_sql = $tgl_dinas !== '' ? "'$tgl_dinas'" : 'NULL';
             $query = "INSERT INTO home_visit
-                        (nis, nama_siswa, kelas, jurusan, alamat, hari_tanggal, nama_ortu_wali, masalah, hasil_dicapai, keterangan, tindak_lanjut, dokumentasi, no_surat_tugas, tanggal_dinas, nama_petugas, nip_petugas, hasil_dinas, id_guru)
+                        (nis, nama_siswa, kelas, jurusan, alamat, hari_tanggal, nama_ortu_wali, masalah, hasil_dicapai, keterangan, tindak_lanjut, dokumentasi, no_surat_tugas, tanggal_dinas, nama_petugas, nip_petugas, hasil_dinas, bidang_layanan, id_guru)
                       VALUES
-                        ('$nis','$nama_siswa','$kelas','$jurusan','$alamat','$hari_tanggal','$nama_ortu_wali','$masalah','$hasil_dicapai','$keterangan','$tindak_lanjut','$dokumentasi','$no_surat',$tgl_dinas_sql,'$nama_petugas','$nip_petugas','$hasil_dinas',$id_guru_login)";
+                        ('$nis','$nama_siswa','$kelas','$jurusan','$alamat','$hari_tanggal','$nama_ortu_wali','$masalah','$hasil_dicapai','$keterangan','$tindak_lanjut','$dokumentasi','$no_surat',$tgl_dinas_sql,'$nama_petugas','$nip_petugas','$hasil_dinas','$bidang_layanan',$id_guru_login)";
         }
 
         if (mysqli_query($koneksi, $query)) {
@@ -202,10 +222,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .empty-state p.empty-title { font-weight: 600; color: #64748b; margin-bottom: 0.25rem; }
       .empty-state p.empty-desc { font-size: 0.8rem; }
 
-      #printAreaVisit, #printAreaDinas { display: none; }
-      body.mode-cetak > *:not(#printAreaVisit):not(#printAreaDinas) { display: none !important; }
+      #printAreaVisit, #printAreaDinas, #printAreaRekapVisit { display: none; }
+      body.mode-cetak > *:not(#printAreaVisit):not(#printAreaDinas):not(#printAreaRekapVisit) { display: none !important; }
       body.mode-cetak.cetak-visit #printAreaVisit { display: block !important; }
       body.mode-cetak.cetak-dinas #printAreaDinas { display: block !important; }
+      body.mode-cetak.cetak-rekap #printAreaRekapVisit { display: block !important; }
+
+      @media print {
+        #printAreaRekapVisit table { width: 100%; border-collapse: collapse; font-size: 8.5pt; font-family: 'Times New Roman', serif; table-layout: fixed; }
+        #printAreaRekapVisit thead { display: table-header-group; }
+        #printAreaRekapVisit tr { page-break-inside: avoid; }
+        #printAreaRekapVisit th, #printAreaRekapVisit td { border: 0.75pt solid #000; padding: 4px 5px; text-align: left; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; line-height: 1.3; }
+        #printAreaRekapVisit th { background: #eaeaea !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; text-align: center; font-size: 8.5pt; font-weight: bold; }
+        #printAreaRekapVisit td:first-child, #printAreaRekapVisit th:first-child { text-align: center; white-space: nowrap; min-width: 22px; }
+        #printAreaRekapVisit td.td-foto-rekap { text-align: center; vertical-align: middle; padding: 4px; }
+        #printAreaRekapVisit td.td-foto-rekap img, #printAreaRekapVisit img.foto-rekap-img { max-height: 70px; max-width: 90px; object-fit: contain; display: block; margin: 0 auto; border: 0.5pt solid #999; }
+      }
 
       @media print {
         @page { size: A4; margin: 15mm; }
@@ -230,6 +262,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         table.ttd-tabel td { border: none; text-align: center; font-size: 11pt; padding: 2px 6px; vertical-align: top; word-wrap: break-word; }
         table.ttd-tabel .ttd-spasi { height: 55px; }
         table.ttd-tabel .garis-ttd { border-bottom: 1px solid #000; width: 80%; margin: 0 auto; }
+        table.ttd-tabel .ttd-nama { font-weight: bold; text-decoration: underline; padding-top: 4px; }
+        table.ttd-tabel .ttd-nip { font-size: 10pt; padding-top: 1px; }
         .judul-dok { text-align: center; font-weight: bold; text-decoration: underline; margin: 14px 0; font-size: 12pt; }
         table.form-info { width: 100%; table-layout: fixed; border-collapse: collapse; }
         table.form-info td { padding: 2px 4px; vertical-align: top; font-size: 11pt; line-height: 1.35; word-wrap: break-word; overflow-wrap: break-word; }
@@ -255,6 +289,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         .mengetahui-box { text-align: center; margin-top: 30px; }
         .garis-ttd-inline { display: inline-block; border-bottom: 1px solid #000; min-width: 260px; height: 10px; line-height: 1; vertical-align: bottom; }
         .pd-ttd-tanggal { text-align: right; margin-top: 40px; margin-right: 5px; padding-right: 5px; }
+
+        /* === Laporan Hasil Perjalanan Dinas === */
+        #printAreaDinas .kertas { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; color: #000; }
+        #printAreaDinas .judul-dok { text-align: center; font-weight: bold; text-transform: uppercase; font-size: 13pt; letter-spacing: 0.5px; margin: 18px 0 38px; }
+        #printAreaDinas .tabel-identitas-dinas { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0 0 32px; }
+        #printAreaDinas .tabel-identitas-dinas td { padding: 3px 4px; font-size: 12pt; line-height: 1.55; vertical-align: middle; }
+        #printAreaDinas .row-judul-dinas { font-weight: bold; padding-bottom: 6px; }
+        #printAreaDinas .intro-dinas { margin: 0 0 22px; }
+        #printAreaDinas .section-dinas { margin: 22px 0 4px; }
+        #printAreaDinas #pdDasar, #printAreaDinas #pdHasil { margin: 2px 0 0; }
+        #printAreaDinas .pd-ttd-tanggal {
+          width: 280px;
+          margin: 64px 10px 0 auto;
+          text-align: left;
+        }
+        #printAreaDinas .pd-ttd-tanggal table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+        }
+        #printAreaDinas .pd-ttd-tanggal table td {
+          border: none;
+          padding: 0;
+          margin: 0;
+          text-align: left;
+          font-size: 12pt;
+          line-height: 1.4;
+          vertical-align: top;
+        }
+        #printAreaDinas .pd-ttd-tanggal .ttd-space-row td {
+          height: 72px;
+        }
       }
     </style>
   </head>
@@ -281,6 +347,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       </button>
     </div>
 
+    <div class="flex flex-wrap items-end gap-2 mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+      <div class="flex-1 min-w-[220px]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Filter Guru BK</label>
+        <select id="filterGuruBK" class="w-full px-3 py-2 border rounded-lg text-sm" onchange="terapkanFilterGuruBK()">
+          <option value="">Semua Guru BK</option>
+          <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
+          <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <button type="button" onclick="eksporData('semua')" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm">
+        <i class="fas fa-file-export mr-1"></i> Ekspor Seluruh Data
+      </button>
+      <button type="button" id="btnEksporTerpilih" onclick="eksporData('terpilih')" disabled
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+        <i class="fas fa-file-export mr-1"></i> Ekspor Data Terpilih
+      </button>
+    </div>
+
     <div class="overflow-x-auto">
       <table class="w-full border-collapse text-sm">
         <thead>
@@ -291,11 +376,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             <th class="px-3 py-2 border-b">Hari/Tanggal</th>
             <th class="px-3 py-2 border-b">Orang Tua/Wali</th>
             <th class="px-3 py-2 border-b">Alamat</th>
+            <th class="px-3 py-2 border-b">Guru BK</th>
             <th class="px-3 py-2 border-b text-center">Aksi</th>
           </tr>
         </thead>
         <tbody id="isiTabelVisit">
-          <tr><td colspan="7" class="text-center py-6 text-gray-400">Memuat data...</td></tr>
+          <tr><td colspan="8" class="text-center py-6 text-gray-400">Memuat data...</td></tr>
         </tbody>
       </table>
     </div>
@@ -347,6 +433,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           </div>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Bidang Layanan</label>
+          <div id="fBidangLayananGroup" class="flex flex-wrap gap-4 p-3 border rounded-lg">
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Pribadi"> Pribadi
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Sosial"> Sosial
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Belajar"> Belajar
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Karir"> Karir
+            </label>
+          </div>
+          <p id="fBidangLayananError" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Masalah</label>
           <textarea id="fMasalah" rows="2" class="w-full px-3 py-2 border rounded text-sm"></textarea>
         </div>
@@ -369,12 +473,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Petugas</label>
-            <input type="text" id="fNamaPetugas" class="w-full px-3 py-2 border rounded text-sm" placeholder="Nama guru yang bertugas">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Petugas (Guru BK)</label>
+            <select id="fNamaPetugas" class="w-full px-3 py-2 border rounded text-sm" onchange="isiNipDariGuruBK(this.value)">
+              <option value="">Pilih Nama Guru BK</option>
+              <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
+              <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+              <?php endforeach; ?>
+            </select>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">NIP Petugas</label>
-            <input type="text" id="fNipPetugas" class="w-full px-3 py-2 border rounded text-sm">
+            <input type="text" id="fNipPetugas" class="w-full px-3 py-2 border rounded text-sm" placeholder="Terisi otomatis, boleh disunting">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Surat Tugas</label>
@@ -449,6 +558,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         <tr><td>Kelas/Jurusan</td><td>:</td><td id="pvKelas"></td></tr>
         <tr><td>Hari/Tanggal</td><td>:</td><td id="pvTanggal"></td></tr>
         <tr><td>Alamat</td><td>:</td><td id="pvAlamat"></td></tr>
+        <tr><td>Bidang Layanan</td><td>:</td><td id="pvBidangLayanan"></td></tr>
       </table>
 
       <table class="tabel-visit">
@@ -483,6 +593,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
           <td><div class="garis-ttd">&nbsp;</div></td>
           <td><div class="garis-ttd">&nbsp;</div></td>
         </tr>
+        <tr>
+          <td id="pvOrtuNama" class="ttd-nama"></td>
+          <td id="pvGuruNama" class="ttd-nama"></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td id="pvGuruNip" class="ttd-nip"></td>
+        </tr>
       </table>
 
       <div class="mengetahui-box">
@@ -503,39 +621,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
   <div id="printAreaDinas">
     <div class="kertas">
-      <div class="judul-dok" style="margin-top:30px;">LAPORAN HASIL PERJALANAN DINAS</div>
+      <div class="judul-dok">LAPORAN HASIL PERJALANAN DINAS</div>
 
-      <table class="form-info-rapat" style="width:100%; margin-top:20px;">
+      <table class="form-info-rapat tabel-identitas-dinas">
         <colgroup>
-          <col style="width:110px;">
+          <col style="width:92px;">
           <col style="width:14px;">
           <col>
         </colgroup>
-        <tr><td colspan="3">Yang Melakukan Perjalanan Dinas :</td></tr>
+        <tr><td colspan="3" class="row-judul-dinas">Yang Melakukan Perjalanan Dinas :</td></tr>
         <tr><td>Nama</td><td>:</td><td id="pdNamaPetugas"></td></tr>
         <tr><td>NIP</td><td>:</td><td id="pdNipPetugas"></td></tr>
-        <tr><td>Jabatan</td><td>:</td><td>Guru Bimbingan dan Konseling</td></tr>
+        <tr><td>Jabatan</td><td>:</td><td>Guru</td></tr>
       </table>
 
-      <p style="margin-top:14px;">Menyampaikan Laporan Perjalanan Dinas sebagai berikut :</p>
+      <p class="intro-dinas">Menyampaikan Laporan Perjalanan Dinas sebagai berikut :</p>
 
-      <p style="margin-top:10px;"><b>Dasar</b></p>
+      <p class="section-dinas"><b>Dasar</b></p>
       <p id="pdDasar">Surat Tugas Kepala SMK Negeri 2 Banjarmasin Nomor : </p>
 
-      <p style="margin-top:10px;">Perjalanan Dinas dilakukan pada tanggal <span id="pdTanggal">.............................</span></p>
+      <p class="section-dinas">Perjalanan Dinas dilakukan pada tanggal <span id="pdTanggal">.............................</span></p>
 
-      <p style="margin-top:10px;"><b>Keperluan :</b></p>
+      <p class="section-dinas"><b>Keperluan :</b></p>
       <p>Home Visit</p>
 
-      <p style="margin-top:10px;"><b>Hasil :</b></p>
+      <p class="section-dinas"><b>Hasil :</b></p>
       <p id="pdHasil" style="white-space: pre-line;"></p>
 
       <div class="pd-ttd-tanggal">
-        <p id="pdKotaTgl">Banjarmasin, .......................... 2026</p>
-        <div class="ttd-space"></div>
-        <div class="garis-ttd-inline">&nbsp;</div>
+        <table>
+          <tr><td id="pdKotaTgl">Banjarmasin, ..........................</td></tr>
+          <tr class="ttd-space-row"><td>&nbsp;</td></tr>
+          <tr><td id="pdTtdNama"></td></tr>
+          <tr><td id="pdTtdNip"></td></tr>
+        </table>
       </div>
     </div>
+  </div>
+
+  <div id="printAreaRekapVisit">
+    <div class="print-kop" style="text-align:center; font-family:'Times New Roman', serif; margin-bottom:10px;">
+      <h2 style="font-weight:bold; font-size:14pt; margin:0 0 2px;">REKAP HOME VISIT</h2>
+      <p style="font-size:10pt; margin:0; color:#333;">SMK Negeri 2 Banjarmasin</p>
+    </div>
+    <table>
+      <colgroup>
+        <col style="width:5%;"><col style="width:12%;"><col style="width:8%;"><col style="width:12%;">
+        <col style="width:9%;"><col style="width:15%;"><col style="width:12%;"><col style="width:12%;"><col style="width:15%;">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>No</th><th>Nama Siswa</th><th>Kelas/Jurusan</th><th>Orang Tua/Wali</th>
+          <th>Tanggal</th><th>Alamat</th><th>Masalah</th><th>Guru BK</th><th>Foto Dokumentasi</th>
+        </tr>
+      </thead>
+      <tbody id="isiPrintRekapVisit"></tbody>
+    </table>
   </div>
 
 <script>
@@ -544,6 +685,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   let fotoBaruHV = [];
   let fotoLamaHV = [];
   let idDetailAktif = null;
+
+  const NIP_GURU_BK = <?php echo json_encode($NIP_GURU_BK, JSON_UNESCAPED_UNICODE); ?>;
+
+  function isiNipDariGuruBK(nama) {
+    const nip = NIP_GURU_BK[nama] || '';
+    if (nip) document.getElementById('fNipPetugas').value = nip;
+  }
 
   function muatData(keyword = '') {
     const fd = new FormData();
@@ -554,10 +702,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .then(data => { if (data.success) { dataVisit = data.data; renderTabel(); } });
   }
 
+  function terapkanFilterGuruBK() {
+    const nilai = document.getElementById('filterGuruBK').value;
+    document.getElementById('btnEksporTerpilih').disabled = (nilai === '');
+    renderTabel();
+  }
+
+  function dataVisitTerfilter() {
+    const guru = document.getElementById('filterGuruBK') ? document.getElementById('filterGuruBK').value : '';
+    if (!guru) return dataVisit;
+    return dataVisit.filter(d => (d.nama_petugas || '') === guru);
+  }
+
+  function eksporData(mode) {
+    const guru = document.getElementById('filterGuruBK').value;
+    if (mode === 'terpilih' && !guru) {
+      alert('Pilih nama Guru BK terlebih dahulu untuk mengekspor data terpilih.');
+      return;
+    }
+    const dataEkspor = mode === 'terpilih' ? dataVisitTerfilter() : dataVisit;
+    if (dataEkspor.length === 0) { alert('Tidak ada data untuk diekspor.'); return; }
+    cetakKunjunganBanyak(dataEkspor);
+  }
+
   function renderTabel() {
     const tbody = document.getElementById('isiTabelVisit');
-    if (dataVisit.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7">
+    const data = dataVisitTerfilter();
+    if (data.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8">
         <div class="empty-state">
           <i class="fas fa-house-circle-check"></i>
           <p class="empty-title">Belum ada data Home Visit</p>
@@ -566,7 +738,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       </td></tr>`;
       return;
     }
-    tbody.innerHTML = dataVisit.map((d, i) => `
+    tbody.innerHTML = data.map((d, i) => `
       <tr class="border-b hover:bg-gray-50">
         <td class="px-3 py-2">${i + 1}</td>
         <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
@@ -574,6 +746,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         <td class="px-3 py-2">${formatTgl(d.hari_tanggal)}</td>
         <td class="px-3 py-2">${escapeHtml(d.nama_ortu_wali || '-')}</td>
         <td class="px-3 py-2 max-w-xs truncate" title="${escapeHtml(d.alamat || '')}">${escapeHtml(d.alamat || '-')}</td>
+        <td class="px-3 py-2">${escapeHtml(d.nama_petugas || '-')}</td>
         <td class="px-3 py-2 text-center whitespace-nowrap">
           <button onclick="lihatDetail(${d.id_visit})" class="action-btn action-btn-view mr-1" title="Lihat detail & cetak PDF"><i class="fas fa-eye"></i></button>
           <button onclick="bukaModalEdit(${d.id_visit})" class="action-btn action-btn-edit mr-1" title="Edit data ini"><i class="fas fa-pen"></i></button>
@@ -603,6 +776,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     ['fNis','fNamaSiswa','fKelas','fJurusan','fHariTanggal','fNamaOrtuWali','fAlamat','fMasalah','fHasilDicapai','fKeterangan','fTindakLanjut','fNamaPetugas','fNipPetugas','fNoSurat','fTglDinas','fHasilDinas'].forEach(id => {
       document.getElementById(id).value = '';
     });
+    document.querySelectorAll('.bidang-layanan-cb').forEach(cb => cb.checked = false);
+    document.getElementById('fBidangLayananError').classList.add('hidden');
     document.getElementById('fHasilDinas').value =
       '1. Menjalin komunikasi langsung dengan orang tua/wali siswa.\n2. Mengetahui kondisi lingkungan tempat tinggal siswa.\n3. Menyampaikan informasi terkait perkembangan belajar dan sikap siswa di sekolah serta di tempat PK.\n4. Mencari solusi atas permasalahan yang dialami siswa.';
     fotoBaruHV = [];
@@ -633,6 +808,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     document.getElementById('fHasilDicapai').value = d.hasil_dicapai || '';
     document.getElementById('fKeterangan').value = d.keterangan || '';
     document.getElementById('fTindakLanjut').value = d.tindak_lanjut || '';
+    const selectedBidangHV = (d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean);
+    document.querySelectorAll('.bidang-layanan-cb').forEach(cb => { cb.checked = selectedBidangHV.includes(cb.value); });
+    document.getElementById('fBidangLayananError').classList.add('hidden');
     document.getElementById('fNamaPetugas').value = d.nama_petugas || '';
     document.getElementById('fNipPetugas').value = d.nip_petugas || '';
     document.getElementById('fNoSurat').value = d.no_surat_tugas || '';
@@ -683,6 +861,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     const namaSiswa = document.getElementById('fNamaSiswa').value.trim();
     if (!namaSiswa) { alert('Nama Siswa wajib diisi.'); return; }
 
+    const bidangCheckedHV = Array.from(document.querySelectorAll('.bidang-layanan-cb:checked')).map(cb => cb.value);
+    if (bidangCheckedHV.length < 1) {
+      document.getElementById('fBidangLayananError').classList.remove('hidden');
+      document.getElementById('fBidangLayananGroup').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    document.getElementById('fBidangLayananError').classList.add('hidden');
+
     const btn = document.getElementById('btnSimpanHV');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
@@ -697,6 +883,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     fd.append('hari_tanggal', document.getElementById('fHariTanggal').value);
     fd.append('nama_ortu_wali', document.getElementById('fNamaOrtuWali').value);
     fd.append('alamat', document.getElementById('fAlamat').value);
+    fd.append('bidang_layanan', bidangCheckedHV.join(','));
     fd.append('masalah', document.getElementById('fMasalah').value);
     fd.append('hasil_dicapai', document.getElementById('fHasilDicapai').value);
     fd.append('keterangan', document.getElementById('fKeterangan').value);
@@ -758,6 +945,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       </div>
       <div class="space-y-4 py-4 border-b border-gray-100">
         ${item('Alamat', escapeHtml(d.alamat || '-'), true)}
+        ${item('Bidang Layanan', (d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean).map(b => `<span class="inline-block bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-semibold mr-1">${escapeHtml(b)}</span>`).join('') || '<span class="text-gray-300">-</span>', true)}
         ${item('Masalah', escapeHtml(d.masalah || '-'), true)}
         ${item('Hasil yang Dicapai', escapeHtml(d.hasil_dicapai || '-'), true)}
         ${item('Keterangan', escapeHtml(d.keterangan || '-'), true)}
@@ -826,11 +1014,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     document.getElementById('pvKelas').textContent = (d.kelas || '-') + (d.jurusan ? ' / ' + d.jurusan : '');
     document.getElementById('pvTanggal').textContent = formatTgl(d.hari_tanggal);
     document.getElementById('pvAlamat').textContent = d.alamat || '-';
+    document.getElementById('pvBidangLayanan').textContent = (d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean).join(', ') || '-';
     document.getElementById('pvOrtu').textContent = d.nama_ortu_wali || '-';
     document.getElementById('pvMasalah').textContent = d.masalah || '-';
     document.getElementById('pvHasil').textContent = d.hasil_dicapai || '-';
     document.getElementById('pvKet').textContent = d.keterangan || '-';
     document.getElementById('pvKotaTgl').textContent = 'Banjarmasin, ' + formatTgl(d.hari_tanggal || new Date().toISOString().slice(0,10));
+    document.getElementById('pvOrtuNama').textContent = d.nama_ortu_wali || '';
+    document.getElementById('pvGuruNama').textContent = d.nama_petugas || '';
+    document.getElementById('pvGuruNip').textContent = d.nip_petugas ? ('NIP. ' + d.nip_petugas) : '';
 
     let foto = [];
     try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
@@ -881,13 +1073,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     document.getElementById('pdTanggal').textContent = formatTgl(d.tanggal_dinas || d.hari_tanggal);
     document.getElementById('pdHasil').textContent = d.hasil_dinas || '-';
     document.getElementById('pdKotaTgl').textContent = 'Banjarmasin, ' + formatTgl(d.tanggal_dinas || d.hari_tanggal || new Date().toISOString().slice(0,10));
+    document.getElementById('pdTtdNama').textContent = d.nama_petugas || '.......................................';
+    document.getElementById('pdTtdNip').textContent = d.nip_petugas ? ('NIP. ' + d.nip_petugas) : '.......................................';
 
     document.body.classList.add('mode-cetak', 'cetak-dinas');
     window.print();
   }
 
+  function escapeHtmlRekap(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  function fotoRekapHtml(d) {
+    let foto = [];
+    try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) { foto = []; }
+    if (!Array.isArray(foto) || foto.length === 0) return '-';
+    const p = foto[0];
+    if (!p) return '-';
+    const src = window.location.origin + BASE_URL + p;
+    return `<img src="${escapeHtmlRekap(src)}" alt="foto" class="foto-rekap-img" style="max-height:70px; max-width:90px; object-fit:contain; display:block; margin:0 auto; border:0.5pt solid #999;">`;
+  }
+
+  function cetakKunjunganBanyak(daftar) {
+    const tbody = document.getElementById('isiPrintRekapVisit');
+    tbody.innerHTML = daftar.map((d, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtmlRekap(d.nama_siswa)}</td>
+        <td>${escapeHtmlRekap(d.kelas || '-')}${d.jurusan ? ' / ' + escapeHtmlRekap(d.jurusan) : ''}</td>
+        <td>${escapeHtmlRekap(d.nama_ortu_wali || '-')}</td>
+        <td>${formatTgl(d.hari_tanggal)}</td>
+        <td>${escapeHtmlRekap(d.alamat || '-')}</td>
+        <td>${escapeHtmlRekap(d.masalah || '-')}</td>
+        <td>${escapeHtmlRekap(d.nama_petugas || '-')}</td>
+        <td class="td-foto-rekap">${fotoRekapHtml(d)}</td>
+      </tr>
+    `).join('');
+    document.body.classList.add('mode-cetak', 'cetak-rekap');
+
+    const imgs = Array.from(document.querySelectorAll('#printAreaRekapVisit img.foto-rekap-img'));
+    if (imgs.length === 0) {
+      window.print();
+      return;
+    }
+    Promise.all(imgs.map(img => new Promise(resolve => {
+      if (img.complete && img.naturalWidth > 0) { resolve(); return; }
+      img.onload = resolve;
+      img.onerror = function () {
+        const span = document.createElement('span');
+        span.textContent = '-';
+        img.replaceWith(span);
+        resolve();
+      };
+    }))).then(() => window.print());
+  }
+
   window.addEventListener('afterprint', () => {
-    document.body.classList.remove('mode-cetak', 'cetak-visit', 'cetak-dinas');
+    document.body.classList.remove('mode-cetak', 'cetak-visit', 'cetak-dinas', 'cetak-rekap');
   });
 
   document.addEventListener('DOMContentLoaded', () => { muatData(); });

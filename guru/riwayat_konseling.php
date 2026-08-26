@@ -400,6 +400,14 @@ $waktu_durasi_options = [15, 30, 45, 60];
             document.getElementById('edit_nama_guru').value = data.nama_guru || '';
             document.getElementById('edit_nip_guru_bk').value = data.nip_guru_bk || '';
 
+            // Set Bidang Layanan checkboxes
+            let selectedBidang = (data.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean);
+            $('.edit-bidang-layanan-cb').each(function () {
+                $(this).prop('checked', selectedBidang.includes(this.value));
+            });
+            document.getElementById('edit_bidang_layanan').value = selectedBidang.join(',');
+            $('#edit_bidang_layanan_error').addClass('hidden');
+
             // Reset deleted
             deletedDocs = [];
             document.getElementById('edit_deleted_docs').value = '';
@@ -472,6 +480,17 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         return false;
                     }
                 }
+
+                // --- VALIDASI & SUSUN BIDANG LAYANAN ---
+                let editBidangChecked = $('.edit-bidang-layanan-cb:checked').map(function () { return this.value; }).get();
+                if (editBidangChecked.length < 1) {
+                    $('#edit_bidang_layanan_error').removeClass('hidden');
+                    document.getElementById('edit_bidang_layanan_group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                $('#edit_bidang_layanan_error').addClass('hidden');
+                document.getElementById('edit_bidang_layanan').value = editBidangChecked.join(',');
+                // ---------------------------------
 
                 let form = document.getElementById("editKonselingForm");
                 let formData = new FormData(form);
@@ -613,6 +632,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-[80px] border-r border-gray-700 hide-on-mobile">Pang. Ke-</th>
                             <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[150px]">Waktu & Tempat</th>
                             <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[150px] hide-on-mobile">Atas Dasar</th>
+                            <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[150px] hide-on-mobile">Bidang Layanan</th>
                             <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[250px] hide-on-mobile">Teknik Pendekatan</th>
                             <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[250px] hide-on-mobile">Teknik Konseling</th>
                             <th class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[350px] hide-on-mobile">Gejala yang Nampak</th>
@@ -656,6 +676,22 @@ $waktu_durasi_options = [15, 30, 45, 60];
                                     </td>
                                     <td class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[150px] hide-on-mobile">
                                         <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs"><?= htmlspecialchars($data['atas_dasar']) ?></div>
+                                    </td>
+                                    <td class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[150px] hide-on-mobile">
+                                        <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs flex flex-wrap gap-1">
+                                            <?php
+                                            $bidang_list = !empty($data['bidang_layanan']) ? array_filter(array_map('trim', explode(',', $data['bidang_layanan']))) : [];
+                                            if (count($bidang_list) > 0):
+                                                foreach ($bidang_list as $bidang):
+                                            ?>
+                                                <span class="inline-block bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($bidang) ?></span>
+                                            <?php
+                                                endforeach;
+                                            else:
+                                                echo '<span class="text-gray-400 italic">-</span>';
+                                            endif;
+                                            ?>
+                                        </div>
                                     </td>
                                     <td class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[250px] hide-on-mobile">
                                         <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs"><?= htmlspecialchars($data['pendekatan_konseling']) ?></div>
@@ -713,6 +749,7 @@ $waktu_durasi_options = [15, 30, 45, 60];
                                                         "hasil_dicapai" => $data["hasil_dicapai"],
                                                         "nama_guru" => $data["nama_guru"] ?? "",
                                                         "nip_guru_bk" => "",
+                                                        "bidang_layanan" => $data["bidang_layanan"] ?? "",
                                                         "docs" => $docs
                                                     ], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>)'
                                                     class="w-full bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition duration-200 text-xs font-semibold shadow-md">
@@ -992,6 +1029,28 @@ $waktu_durasi_options = [15, 30, 45, 60];
                             <input type="text" name="tempat" id="edit_tempat" required
                                 class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                         </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-layer-group mr-1"></i> Bidang Layanan
+                        </label>
+                        <div id="edit_bidang_layanan_group" class="flex flex-wrap gap-4 p-3 border-2 border-gray-300 rounded-lg">
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Pribadi"> Pribadi
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Sosial"> Sosial
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Belajar"> Belajar
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Karir"> Karir
+                            </label>
+                        </div>
+                        <input type="hidden" name="bidang_layanan" id="edit_bidang_layanan">
+                        <p id="edit_bidang_layanan_error" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
                     </div>
 
                     <div class="mb-6">

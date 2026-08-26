@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         if ($keyword !== '') {
             $where .= " AND (nama_siswa LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR nama_ortu LIKE '%$keyword%' OR permasalahan LIKE '%$keyword%')";
         }
-        $q = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu $where ORDER BY tanggal_pemanggilan DESC, id_konsultasi DESC");
+        $q = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu $where ORDER BY tanggal_pemanggilan ASC, id_konsultasi ASC");
         $data = [];
         while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
         echo json_encode(['success' => true, 'data' => $data]);
@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $hasil = mysqli_real_escape_string($koneksi, $_POST['hasil_konsultasi'] ?? '');
         $kesepakatan = mysqli_real_escape_string($koneksi, $_POST['kesepakatan'] ?? '');
         $tindak_lanjut = mysqli_real_escape_string($koneksi, $_POST['tindak_lanjut'] ?? '');
+        $bidang_layanan = mysqli_real_escape_string($koneksi, $_POST['bidang_layanan'] ?? '');
 
         if ($nama_siswa === '') {
             echo json_encode(['success' => false, 'message' => 'Nama siswa wajib diisi.']);
@@ -111,14 +112,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                         nama_guru_bk='$nama_guru_bk',
                         tanggal_pemanggilan='$tgl_panggil', tanggal_kedatangan=$tgl_datang_sql,
                         permasalahan='$permasalahan', hasil_konsultasi='$hasil', kesepakatan='$kesepakatan',
-                        tindak_lanjut='$tindak_lanjut', dokumentasi='$dokumentasi'
+                        tindak_lanjut='$tindak_lanjut', dokumentasi='$dokumentasi', bidang_layanan='$bidang_layanan'
                       WHERE id_konsultasi = $id";
         } else {
             $tgl_datang_sql = $tgl_datang !== '' ? "'$tgl_datang'" : 'NULL';
             $query = "INSERT INTO konsultasi_ortu
-                        (nis, nama_siswa, kelas, jurusan, nama_ortu, no_telp, nama_guru_bk, tanggal_pemanggilan, tanggal_kedatangan, permasalahan, hasil_konsultasi, kesepakatan, tindak_lanjut, dokumentasi, id_guru)
+                        (nis, nama_siswa, kelas, jurusan, nama_ortu, no_telp, nama_guru_bk, tanggal_pemanggilan, tanggal_kedatangan, permasalahan, hasil_konsultasi, kesepakatan, tindak_lanjut, dokumentasi, bidang_layanan, id_guru)
                       VALUES
-                        ('$nis','$nama_siswa','$kelas','$jurusan','$nama_ortu','$no_telp','$nama_guru_bk','$tgl_panggil',$tgl_datang_sql,'$permasalahan','$hasil','$kesepakatan','$tindak_lanjut','$dokumentasi',$id_guru_login)";
+                        ('$nis','$nama_siswa','$kelas','$jurusan','$nama_ortu','$no_telp','$nama_guru_bk','$tgl_panggil',$tgl_datang_sql,'$permasalahan','$hasil','$kesepakatan','$tindak_lanjut','$dokumentasi','$bidang_layanan',$id_guru_login)";
         }
 
         if (mysqli_query($koneksi, $query)) {
@@ -156,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     exit;
 }
 
-$daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_guru = $id_guru_login ORDER BY tanggal_pemanggilan DESC, id_konsultasi DESC");
+$daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_guru = $id_guru_login ORDER BY tanggal_pemanggilan ASC, id_konsultasi ASC");
 ?>
 
 <!doctype html>
@@ -255,13 +256,29 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
       </div>
       <div class="flex gap-2">
-        <button onclick="cetakRekap()" class="btn-action bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Cetak rekap seluruh data konsultasi ke PDF">
-          <i class="fas fa-file-pdf mr-1"></i> Export PDF (Rekap)
-        </button>
         <button onclick="bukaModalTambah()" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Tambah catatan konsultasi orang tua baru">
           <i class="fas fa-plus mr-1"></i> Tambah Data
         </button>
       </div>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-2 mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+      <div class="flex-1 min-w-[220px]">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Filter Guru BK</label>
+        <select id="filterGuruBK" class="w-full px-3 py-2 border rounded-lg text-sm" onchange="terapkanFilterGuruBK()">
+          <option value="">Semua Guru BK</option>
+          <?php foreach ($daftar_guru_bk as $nama_guru_opt): ?>
+          <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <button type="button" onclick="cetakRekap('semua')" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm">
+        <i class="fas fa-file-pdf mr-1"></i> Ekspor Seluruh Data
+      </button>
+      <button type="button" id="btnEksporTerpilih" onclick="cetakRekap('terpilih')" disabled
+        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+        <i class="fas fa-file-pdf mr-1"></i> Ekspor Data Terpilih
+      </button>
     </div>
 
     <div class="overflow-x-auto">
@@ -349,6 +366,25 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
         </div>
 
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Bidang Layanan</label>
+          <div id="fBidangLayananGroup" class="flex flex-wrap gap-4 p-3 border rounded-lg">
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Pribadi"> Pribadi
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Sosial"> Sosial
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Belajar"> Belajar
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" class="bidang-layanan-cb" value="Karir"> Karir
+            </label>
+          </div>
+          <p id="fBidangLayananError" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Permasalahan</label>
           <textarea id="fPermasalahan" rows="2" class="w-full px-3 py-2 border rounded text-sm"></textarea>
         </div>
@@ -397,16 +433,16 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     </div>
     <table>
       <colgroup>
-        <col style="width:3%;"><col style="width:10%;"><col style="width:5%;"><col style="width:7%;">
-        <col style="width:10%;"><col style="width:9%;"><col style="width:16%;"><col style="width:8%;">
-        <col style="width:8%;"><col style="width:9%;"><col style="width:15%;">
+        <col style="width:3%;"><col style="width:9%;"><col style="width:5%;"><col style="width:6%;">
+        <col style="width:9%;"><col style="width:8%;"><col style="width:14%;"><col style="width:7%;">
+        <col style="width:7%;"><col style="width:8%;"><col style="width:13%;"><col style="width:11%;">
       </colgroup>
       <thead>
         <tr>
           <th>No</th><th>Nama Siswa</th><th>Kelas</th><th>Jurusan</th><th>Orang Tua/Wali</th>
           <th>No Telp/HP</th><th>Guru BK</th>
           <th>Tgl.<br>Pemanggilan</th><th>Tgl.<br>Kedatangan</th>
-          <th>Permasalahan</th><th>Foto Dokumentasi</th>
+          <th>Bidang Layanan</th><th>Permasalahan</th><th>Foto Dokumentasi</th>
         </tr>
       </thead>
       <tbody id="isiPrintKonsultasi"></tbody>
@@ -433,9 +469,22 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       });
   }
 
+  function terapkanFilterGuruBK() {
+    const nilai = document.getElementById('filterGuruBK').value;
+    document.getElementById('btnEksporTerpilih').disabled = (nilai === '');
+    renderTabel();
+  }
+
+  function dataKonsultasiTerfilter() {
+    const guru = document.getElementById('filterGuruBK') ? document.getElementById('filterGuruBK').value : '';
+    if (!guru) return dataKonsultasi;
+    return dataKonsultasi.filter(d => (d.nama_guru_bk || '') === guru);
+  }
+
   function renderTabel() {
     const tbody = document.getElementById('isiTabelKonsultasi');
-    if (dataKonsultasi.length === 0) {
+    const data = dataKonsultasiTerfilter();
+    if (data.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10">
         <div class="empty-state">
           <i class="fas fa-comments"></i>
@@ -445,7 +494,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
       </td></tr>`;
       return;
     }
-    tbody.innerHTML = dataKonsultasi.map((d, i) => `
+    tbody.innerHTML = data.map((d, i) => `
       <tr class="border-b hover:bg-gray-50">
         <td class="px-3 py-2">${i + 1}</td>
         <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
@@ -489,6 +538,8 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     });
     fotoBaruKO = [];
     fotoLamaKO = [];
+    document.querySelectorAll('.bidang-layanan-cb').forEach(cb => cb.checked = false);
+    document.getElementById('fBidangLayananError').classList.add('hidden');
     document.getElementById('boxFotoKO').innerHTML = '<p class="text-xs text-gray-400 col-span-3">Belum ada foto.</p>';
   }
 
@@ -517,6 +568,9 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     document.getElementById('fHasil').value = d.hasil_konsultasi || '';
     document.getElementById('fKesepakatan').value = d.kesepakatan || '';
     document.getElementById('fTindakLanjut').value = d.tindak_lanjut || '';
+    const selectedBidangKO = (d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean);
+    document.querySelectorAll('.bidang-layanan-cb').forEach(cb => { cb.checked = selectedBidangKO.includes(cb.value); });
+    document.getElementById('fBidangLayananError').classList.add('hidden');
 
     try {
       const foto = JSON.parse(d.dokumentasi || '[]');
@@ -559,6 +613,14 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     const namaSiswa = document.getElementById('fNamaSiswa').value.trim();
     if (!namaSiswa) { alert('Nama Siswa wajib diisi.'); return; }
 
+    const bidangCheckedKO = Array.from(document.querySelectorAll('.bidang-layanan-cb:checked')).map(cb => cb.value);
+    if (bidangCheckedKO.length < 1) {
+      document.getElementById('fBidangLayananError').classList.remove('hidden');
+      document.getElementById('fBidangLayananGroup').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    document.getElementById('fBidangLayananError').classList.add('hidden');
+
     const btn = document.getElementById('btnSimpanKO');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
@@ -575,6 +637,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     fd.append('nama_guru_bk', document.getElementById('fGuruBK').value);
     fd.append('tanggal_pemanggilan', document.getElementById('fTglPanggil').value);
     fd.append('tanggal_kedatangan', document.getElementById('fTglDatang').value);
+    fd.append('bidang_layanan', bidangCheckedKO.join(','));
     fd.append('permasalahan', document.getElementById('fPermasalahan').value);
     fd.append('hasil_konsultasi', document.getElementById('fHasil').value);
     fd.append('kesepakatan', document.getElementById('fKesepakatan').value);
@@ -638,6 +701,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
         ${item('Tanggal Kedatangan', formatTgl(d.tanggal_kedatangan))}
       </div>
       <div class="space-y-4 py-4 border-b border-gray-100">
+        ${item('Bidang Layanan', (d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean).map(b => `<span class="inline-block bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-semibold mr-1">${escapeHtml(b)}</span>`).join('') || '<span class="text-gray-300">-</span>', true)}
         ${item('Permasalahan', escapeHtml(d.permasalahan || '-'), true)}
         ${item('Hasil Konsultasi', escapeHtml(d.hasil_konsultasi || '-'), true)}
         ${item('Kesepakatan', escapeHtml(d.kesepakatan || '-'), true)}
@@ -705,10 +769,16 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
     });
   }
 
-  function cetakRekap() {
-    if (dataKonsultasi.length === 0) { alert('Tidak ada data untuk dicetak.'); return; }
+  function cetakRekap(mode) {
+    const guru = document.getElementById('filterGuruBK').value;
+    if (mode === 'terpilih' && !guru) {
+      alert('Pilih nama Guru BK terlebih dahulu untuk mengekspor data terpilih.');
+      return;
+    }
+    const dataEkspor = mode === 'terpilih' ? dataKonsultasiTerfilter() : dataKonsultasi;
+    if (dataEkspor.length === 0) { alert('Tidak ada data untuk dicetak.'); return; }
     const tbody = document.getElementById('isiPrintKonsultasi');
-    tbody.innerHTML = dataKonsultasi.map((d, i) => {
+    tbody.innerHTML = dataEkspor.map((d, i) => {
       let foto = [];
       try { foto = JSON.parse(d.dokumentasi || '[]'); } catch (e) {}
       const fotoHtml = foto.length ? `<div class="foto-frame-pdf"><img src="${BASE_URL}${foto[0]}"></div>` : '-';
@@ -723,6 +793,7 @@ $daftar_awal = mysqli_query($koneksi, "SELECT * FROM konsultasi_ortu WHERE id_gu
           <td>${escapeHtml(d.nama_guru_bk || '-')}</td>
           <td>${formatTgl(d.tanggal_pemanggilan)}</td>
           <td>${formatTgl(d.tanggal_kedatangan)}</td>
+          <td>${escapeHtml((d.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean).join(', ') || '-')}</td>
           <td>${escapeHtml(d.permasalahan || '-')}</td>
           <td style="text-align:center;">${fotoHtml}</td>
         </tr>

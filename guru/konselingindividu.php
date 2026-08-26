@@ -302,6 +302,8 @@ $waktu_durasi_options = [15, 30, 45, 60];
             modal.classList.remove('open');
             document.body.classList.remove('overflow-hidden');
             document.getElementById('konselingForm').reset();
+            $('.bidang-layanan-cb').prop('checked', false);
+            $('#bidang_layanan_error').addClass('hidden');
         }
 
         function openPdfViewerModal(pdfUrl) {
@@ -349,6 +351,17 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         return false;
                     }
                 }
+                // ---------------------------------
+
+                // --- VALIDASI & SUSUN BIDANG LAYANAN ---
+                let bidangChecked = $('.bidang-layanan-cb:checked').map(function () { return this.value; }).get();
+                if (bidangChecked.length < 1) {
+                    $('#bidang_layanan_error').removeClass('hidden');
+                    document.getElementById('bidang_layanan_group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                $('#bidang_layanan_error').addClass('hidden');
+                document.getElementById('bidang_layanan').value = bidangChecked.join(',');
                 // ---------------------------------
 
                 let form = document.getElementById("konselingForm");
@@ -779,6 +792,28 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         <input type="text" name="tempat" id="tempat" value="Ruang BK" required
                             class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition">
                     </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-layer-group mr-1"></i> Bidang Layanan
+                    </label>
+                    <div id="bidang_layanan_group" class="flex flex-wrap gap-4 p-3 border-2 border-gray-300 rounded-lg">
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" class="bidang-layanan-cb" value="Pribadi"> Pribadi
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" class="bidang-layanan-cb" value="Sosial"> Sosial
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" class="bidang-layanan-cb" value="Belajar"> Belajar
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" class="bidang-layanan-cb" value="Karir"> Karir
+                        </label>
+                    </div>
+                    <input type="hidden" name="bidang_layanan" id="bidang_layanan">
+                    <p id="bidang_layanan_error" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
                 </div>
 
                 <div class="mb-6">

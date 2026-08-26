@@ -34,6 +34,37 @@ $id_hasil_kepribadian = $siswa['id_hasil_kepribadian'] ?? null;
 $id_hasil_kepribadian_js = json_encode($id_hasil_kepribadian);
 
 $nama_siswa = isset($siswa['nama']) ? $siswa['nama'] : 'Siswa';
+$kelas_siswa = isset($siswa['kelas']) ? $siswa['kelas'] : '';
+$jurusan_siswa = isset($siswa['jurusan']) ? $siswa['jurusan'] : '';
+$kelas_jurusan_siswa = trim($kelas_siswa . ' ' . $jurusan_siswa);
+
+// Ringkasan Bimbingan Klasikal untuk siswa yang login (dipakai kartu menu baru di bawah)
+$kelas_esc_bk   = mysqli_real_escape_string($koneksi, $kelas_siswa);
+$jurusan_esc_bk = mysqli_real_escape_string($koneksi, $jurusan_siswa);
+$total_materi_bk = 0;
+if ($kelas_siswa !== '') {
+    $q_materi_bk = mysqli_query($koneksi, "
+        SELECT COUNT(DISTINCT bm.id_materi) AS jml
+        FROM bk_materi bm
+        INNER JOIN bk_materi_sasaran bms ON bms.id_materi = bm.id_materi
+        WHERE bm.status_aktif = 1 AND bms.kelas = '$kelas_esc_bk' AND bms.jurusan = '$jurusan_esc_bk'
+    ");
+    if ($q_materi_bk) $total_materi_bk = (int) mysqli_fetch_assoc($q_materi_bk)['jml'];
+}
+
+$daftar_kontak_guru_bk = [
+    ['nama' => 'Dhea Nur Aziza, S.Pd', 'no_wa' => '+62 822-5040-4860'],
+    ['nama' => 'Dian Riyani, S.Pd', 'no_wa' => '+62 812-2323-2499'],
+    ['nama' => 'Putri Hidayatie, S.Pd', 'no_wa' => '+62 821-5984-9901'],
+    ['nama' => 'Rini Rodhiati, S.Pd', 'no_wa' => '+62 852-4868-1425'],
+    ['nama' => "Khalisatun Ni'mah, S.Pd", 'no_wa' => '+62 881-0808-97430'],
+    ['nama' => 'Tiara Wulansari, S.Pd', 'no_wa' => '+62 819-3280-7450'],
+    ['nama' => 'Gusti Muhammad Fajri Ramadhan, S.Pd', 'no_wa' => '+62 882-0202-93369'],
+    ['nama' => 'Abdul Basith, S.Pd', 'no_wa' => '+62 895-1400-1294'],
+    ['nama' => 'Desy Arianti, S.Pd', 'no_wa' => '+62 813-4810-9595'],
+    ['nama' => 'Pahrurazi, S.Pd', 'no_wa' => '+62 895-2975-8712'],
+];
+$daftar_kontak_guru_bk_js = json_encode($daftar_kontak_guru_bk, JSON_UNESCAPED_UNICODE);
 
 $field_labels = [
     'nama_panggilan'            => 'Nama Panggilan',
@@ -346,6 +377,48 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             box-shadow: 0 2px 6px rgba(0,0,0,0.04) !important;
             transform: none !important;
         }
+
+        .bk-card {
+            background: linear-gradient(135deg, #ffffff 55%, rgba(42, 97, 99, 0.05) 100%);
+            border: 1px solid #E5E7EB;
+            box-shadow: 0 2px 10px rgba(22, 59, 60, 0.06);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .bk-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(42, 97, 99, 0.35);
+            box-shadow: 0 16px 32px rgba(22, 59, 60, 0.14);
+        }
+        .bk-card-glow {
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 160px;
+            height: 160px;
+            border-radius: 9999px;
+            background: radial-gradient(circle, rgba(42, 97, 99, 0.12) 0%, rgba(42, 97, 99, 0) 70%);
+            pointer-events: none;
+        }
+        .bk-icon-wrap {
+            width: 4.5rem;
+            height: 4.5rem;
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--navbar-bg-light));
+            box-shadow: 0 8px 16px rgba(22, 59, 60, 0.25);
+            transition: transform 0.3s ease;
+        }
+        .bk-card:hover .bk-icon-wrap {
+            transform: scale(1.06) rotate(-3deg);
+        }
+        .bk-card:hover .bk-card-cta span {
+            background-color: rgba(42, 97, 99, 0.14) !important;
+        }
+        .bk-card:hover .bk-card-cta i {
+            transform: translateX(3px);
+        }
         .lock-overlay {
             position: absolute;
             inset: 0;
@@ -377,6 +450,43 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
     </style>
 
     <script>
+        const DAFTAR_KONTAK_GURU_BK = <?php echo $daftar_kontak_guru_bk_js; ?>;
+        const NAMA_SISWA_UNTUK_WA = <?php echo json_encode($nama_siswa, JSON_UNESCAPED_UNICODE); ?>;
+        const KELAS_SISWA_UNTUK_WA = <?php echo json_encode($kelas_jurusan_siswa, JSON_UNESCAPED_UNICODE); ?>;
+
+        function formatNomorWa(nomor) {
+            let n = String(nomor || '').replace(/[^0-9]/g, '');
+            if (n.startsWith('0')) n = '62' + n.slice(1);
+            else if (!n.startsWith('62')) n = '62' + n;
+            return n;
+        }
+
+        function bukaWaGuruBK(nomor) {
+            const nomorFinal = formatNomorWa(nomor);
+            if (!nomorFinal) { alert('Nomor WhatsApp guru ini belum diatur.'); return; }
+            const kelasTeks = KELAS_SISWA_UNTUK_WA ? (' dari kelas ' + KELAS_SISWA_UNTUK_WA) : '';
+            const pesan = 'Assalamu\'alaikum, saya ' + NAMA_SISWA_UNTUK_WA + kelasTeks + ', izin ingin berkonsultasi dengan Bapak/Ibu Guru BK mengenai ...';
+            window.open('https://wa.me/' + nomorFinal + '?text=' + encodeURIComponent(pesan), '_blank');
+            tutupModalWaGuruBK();
+        }
+
+        function bukaModalWaGuruBK() {
+            const modal = document.getElementById('modalWaGuruBK');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function tutupModalWaGuruBK() {
+            const modal = document.getElementById('modalWaGuruBK');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        document.addEventListener('click', function (e) {
+            const modal = document.getElementById('modalWaGuruBK');
+            if (modal && !modal.classList.contains('hidden') && e.target === modal) {
+                tutupModalWaGuruBK();
+            }
+        });
+
         function toggleMenu() {
             const menu = document.getElementById('mobileMenu');
             const overlay = document.getElementById('menuOverlay');
@@ -517,8 +627,42 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
             <p class="text-base md:text-xl font-light text-teal-50/90 max-w-2xl mx-auto">
                 Temukan potensi terbaik dan arah masa depan Anda di sini!
             </p>
+            <div class="mt-6" id="wrapWaGuruBK">
+                <?php if (count($daftar_kontak_guru_bk) > 0): ?>
+                <button type="button" onclick="bukaModalWaGuruBK()" id="btnWaGuruBK"
+                    class="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5b] text-white font-semibold px-5 py-2.5 rounded-full shadow-md transition">
+                    <i class="fab fa-whatsapp text-lg"></i> Hubungi Guru BK
+                </button>
+                <?php else: ?>
+                <button type="button" disabled title="Nomor WhatsApp Guru BK belum diatur oleh admin"
+                    class="inline-flex items-center gap-2 bg-white/20 text-white/70 font-semibold px-5 py-2.5 rounded-full cursor-not-allowed">
+                    <i class="fab fa-whatsapp text-lg"></i> Hubungi Guru BK
+                </button>
+                <?php endif; ?>
+            </div>
         </div>
+
     </section>
+
+    <?php if (count($daftar_kontak_guru_bk) > 0): ?>
+    <div id="modalWaGuruBK" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9998]">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[80vh] overflow-y-auto text-gray-800">
+            <div class="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
+                <h2 class="text-base font-bold text-gray-800"><i class="fab fa-whatsapp text-[#25D366] mr-1"></i> Hubungi Guru BK</h2>
+                <button type="button" onclick="tutupModalWaGuruBK()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="py-1">
+                <?php foreach ($daftar_kontak_guru_bk as $kontak): ?>
+                <a href="#" onclick="bukaWaGuruBK('<?php echo htmlspecialchars(addslashes($kontak['no_wa']), ENT_QUOTES); ?>'); return false;"
+                    class="flex items-center gap-3 px-5 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                    <i class="fab fa-whatsapp text-[#25D366] text-lg"></i>
+                    <span><?php echo htmlspecialchars($kontak['nama']); ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <?php if (isset($_SESSION['pesan_sukses'])): ?>
     <div id="alert-message" class="toast-success fixed top-5 right-5 z-[9999] w-[calc(100%-2.5rem)] max-w-sm">
         <div class="bg-white border-l-4 border-[#2F9160] text-gray-800 rounded-lg shadow-2xl overflow-hidden">
@@ -544,6 +688,44 @@ $status_asesmen_js = $is_tes_asesmen_done ? 'true' : 'false';
         unset($_SESSION['pesan_sukses']); 
     ?>
 <?php endif; ?>
+    <section id="bk-materi-section" class="pt-10 md:pt-12 px-4 container mx-auto">
+        <div class="max-w-7xl mx-auto">
+            <a href="bimbinganklasikal_siswa.php" class="block group">
+                <div class="bk-card rounded-2xl p-6 md:p-7 flex flex-col md:flex-row md:items-center gap-5 md:gap-7 relative overflow-hidden">
+                    <div class="bk-card-glow"></div>
+                    <div class="bk-icon-wrap flex-shrink-0">
+                        <i class="fas fa-chalkboard-user text-white text-2xl md:text-3xl"></i>
+                    </div>
+                    <div class="flex-grow min-w-0 relative">
+                        <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                            <h3 class="text-lg md:text-xl font-bold text-gray-800">Bimbingan Klasikal</h3>
+                            <?php if ($total_materi_bk > 0): ?>
+                            <span class="inline-flex items-center gap-1 text-xs font-bold bg-[#2A6163]/10 primary-color px-2.5 py-1 rounded-full">
+                                <i class="fas fa-layer-group text-[10px]"></i> <?php echo $total_materi_bk; ?> Materi Tersedia
+                            </span>
+                            <?php else: ?>
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+                                Belum ada materi
+                            </span>
+                            <?php endif; ?>
+                        </div>
+                        <p class="text-sm md:text-base text-gray-500 leading-relaxed max-w-2xl">
+                            Ikuti materi bimbingan klasikal dari Guru BK sesuai kelas Anda. Selesaikan materi secara berurutan untuk membuka materi berikutnya.
+                        </p>
+                    </div>
+                    <div class="bk-card-cta flex-shrink-0 self-start md:self-center relative">
+                        <span class="hidden md:inline-flex items-center gap-2 text-sm font-bold primary-color bg-[#2A6163]/[0.07] px-4 py-2.5 rounded-xl transition-colors">
+                            Buka <i class="fas fa-arrow-right ml-0.5 text-sm transition-transform"></i>
+                        </span>
+                        <span class="md:hidden inline-flex items-center gap-1 text-sm font-bold primary-color">
+                            Buka <i class="fas fa-chevron-right ml-0.5 text-sm"></i>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </section>
+
     <section id="test-section" class="py-12 md:py-16 px-4 flex-grow container mx-auto">
         <div class="text-center mb-10 max-w-2xl mx-auto">
             <h2 class="text-2xl md:text-3xl font-extrabold primary-color mb-2">

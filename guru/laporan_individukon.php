@@ -144,6 +144,7 @@ $hasil_dicapai       = mysqli_real_escape_string($koneksi, $_POST['hasil_dicapai
 $status_konseling    = mysqli_real_escape_string($koneksi, $_POST['status_konseling'] ?? ''); 
 $nama_guru_input     = mysqli_real_escape_string($koneksi, $_POST['nama_guru'] ?? '');
 $nip_guru_bk_input   = mysqli_real_escape_string($koneksi, $_POST['nip_guru_bk'] ?? '');
+$bidang_layanan      = mysqli_real_escape_string($koneksi, $_POST['bidang_layanan'] ?? '');
 
 $deleted_docs_json   = $_POST['deleted_docs'] ?? '[]';
 $deleted_docs        = json_decode($deleted_docs_json, true);
@@ -181,7 +182,8 @@ if ($is_edit) {
         hasil_dicapai = '$hasil_dicapai',
         status_konseling = '$status_konseling',
         nama_guru = '$nama_guru_input',
-        atas_dasar = '$atas_dasar'
+        atas_dasar = '$atas_dasar',
+        bidang_layanan = '$bidang_layanan'
         WHERE id_konseling = '$id_konseling_edit'";
 
     if (!mysqli_query($koneksi, $query)) {
@@ -249,9 +251,9 @@ if ($is_edit) {
     // MODE CREATE (tetap sama seperti sebelumnya)
     // =====================================================
     $query = "INSERT INTO konseling_individu 
-    (id_siswa, no_input, tanggal_pelaksanaan, waktu_durasi, tempat, pertemuan_ke, panggilan_ke, gejala_nampak, pendekatan_konseling, teknik_konseling, hasil_dicapai, status_konseling, nama_guru, atas_dasar, created_at) 
+    (id_siswa, no_input, tanggal_pelaksanaan, waktu_durasi, tempat, pertemuan_ke, panggilan_ke, gejala_nampak, pendekatan_konseling, teknik_konseling, hasil_dicapai, status_konseling, nama_guru, atas_dasar, bidang_layanan, created_at) 
     VALUES 
-    ('$id_siswa', '$no_input', '$tanggal_pelaksanaan', '$waktu_durasi', '$tempat', '$pertemuan_ke', '$panggilan_ke', '$gejala_nampak', '$pendekatan', '$teknik', '$hasil_dicapai', '$status_konseling', '$nama_guru_input', '$atas_dasar', NOW())";
+    ('$id_siswa', '$no_input', '$tanggal_pelaksanaan', '$waktu_durasi', '$tempat', '$pertemuan_ke', '$panggilan_ke', '$gejala_nampak', '$pendekatan', '$teknik', '$hasil_dicapai', '$status_konseling', '$nama_guru_input', '$atas_dasar', '$bidang_layanan', NOW())";
 
     if (!mysqli_query($koneksi, $query)) {
         http_response_code(500);
@@ -349,6 +351,7 @@ $html = "
     <tr><td class='label'>Pertemuan Ke-</td><td>: " . htmlspecialchars($pertemuan_ke) . "</td></tr>
     <tr><td class='label'>Waktu / Durasi</td><td>: " . htmlspecialchars($waktu_durasi) . "</td></tr>
     <tr><td class='label'>Tempat</td><td>: " . htmlspecialchars($tempat) . "</td></tr>
+    <tr><td class='label'>Bidang Layanan</td><td>: " . htmlspecialchars(str_replace(',', ', ', $bidang_layanan)) . "</td></tr>
     <tr><td class='label'>Teknik Pendekatan</td><td>: " . htmlspecialchars($pendekatan) . "</td></tr>
     <tr><td class='label'>Teknik Konseling</td><td>: " . htmlspecialchars($teknik) . "</td></tr>
 </table>

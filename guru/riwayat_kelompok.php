@@ -106,16 +106,20 @@ if (!empty($filter_search)) {
         OR k.catatan_khusus LIKE ?
         OR k.teknik_konseling LIKE ?
         OR k.hasil_layanan LIKE ?
+        OR k.gejala LIKE ?
+        OR k.hasil_dicapai LIKE ?
     ) ";
 
-    $bind_params .= 'ssssss';
+    $bind_params .= 'ssssssss';
     $search_term = "%$filter_search%";
     $bind_values[] = $search_term; // siswa.nama
     $bind_values[] = $search_term; // siswa.nis
     $bind_values[] = $search_term; // nama_guru
     $bind_values[] = $search_term; // catatan_khusus (teknik pendekatan)
     $bind_values[] = $search_term; // teknik_konseling
-    $bind_values[] = $search_term; // hasil_layanan (gejala & hasil)
+    $bind_values[] = $search_term; // hasil_layanan (kolom lama)
+    $bind_values[] = $search_term; // gejala
+    $bind_values[] = $search_term; // hasil_dicapai
 }
 
 $where_sql = count($where_clauses) > 0 ? " WHERE " . implode(" AND ", $where_clauses) : "";
@@ -560,6 +564,7 @@ $waktu_durasi_options = [30, 45, 60, 90];
                                 <p><strong>Pertemuan Ke-:</strong> <span class="font-medium primary-color">${report.pertemuan_ke}</span></p>
                                 <p><strong>Waktu & Durasi:</strong> ${report.waktu_durasi}</p>
                                 <p><strong>Tempat:</strong> ${report.tempat}</p> 	
+                                <p class="md:col-span-2"><strong>Bidang Layanan:</strong> ${(report.bidang_layanan || '').split(',').filter(Boolean).join(', ') || '-'}</p>
                                 <p class="md:col-span-2"><strong>Teknik Pendekatan:</strong> ${report.catatan_khusus}</p>
                                 <p class="md:col-span-2"><strong>Teknik Konseling:</strong> ${report.teknik_konseling}</p>
                             </div>
@@ -570,8 +575,13 @@ $waktu_durasi_options = [30, 45, 60, 90];
                             </div>
 
                             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+                                <h4 class="font-semibold text-gray-700 mb-2 border-b pb-1 primary-color"><i class="fas fa-eye mr-1"></i> Gejala yang Nampak:</h4>
+                                <p class="whitespace-pre-wrap text-sm text-gray-600">${report.gejala || 'Tidak ada catatan Gejala yang Nampak.'}</p>
+                            </div>
+
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
                                 <h4 class="font-semibold text-gray-700 mb-2 border-b pb-1 primary-color"><i class="fas fa-bullseye mr-1"></i> Hasil yang Dicapai:</h4>
-                                <p class="whitespace-pre-wrap text-sm text-gray-600">${report.hasil_layanan || 'Tidak ada catatan Hasil yang dicapai.'}</p>
+                                <p class="whitespace-pre-wrap text-sm text-gray-600">${report.hasil_dicapai || report.hasil_layanan || 'Tidak ada catatan Hasil yang dicapai.'}</p>
                             </div>
                         `;
 
@@ -676,9 +686,18 @@ $waktu_durasi_options = [30, 45, 60, 90];
                     document.getElementById('edit_pertemuan_ke').value = r.pertemuan_ke || '';
                     document.getElementById('edit_catatan_khusus').value = r.catatan_khusus || '';
                     document.getElementById('edit_teknik_konseling').value = r.teknik_konseling || '';
-                    document.getElementById('edit_hasil_layanan').value = r.hasil_layanan || '';
+                    document.getElementById('edit_gejala').value = r.gejala || '';
+                    document.getElementById('edit_hasil_layanan').value = r.hasil_dicapai || r.hasil_layanan || '';
                     document.getElementById('edit_guru_pembimbing').value = r.nama_guru || '';
                     document.getElementById('edit_tempat').value = r.tempat || 'Ruang BK';
+
+                    // Set Bidang Layanan checkboxes
+                    let selectedBidang = (r.bidang_layanan || '').split(',').map(s => s.trim()).filter(Boolean);
+                    $('.edit-bidang-layanan-cb').each(function () {
+                        $(this).prop('checked', selectedBidang.includes(this.value));
+                    });
+                    document.getElementById('edit_bidang_layanan').value = selectedBidang.join(',');
+                    $('#edit_bidang_layanan_error').addClass('hidden');
 
                     // Dokumentasi lama
                     const container = document.getElementById('editExistingDocs');
@@ -755,6 +774,17 @@ $waktu_durasi_options = [30, 45, 60, 90];
                         return false;
                     }
                 }
+
+                // --- VALIDASI & SUSUN BIDANG LAYANAN ---
+                let editBidangChecked = $('.edit-bidang-layanan-cb:checked').map(function () { return this.value; }).get();
+                if (editBidangChecked.length < 1) {
+                    $('#edit_bidang_layanan_error').removeClass('hidden');
+                    document.getElementById('edit_bidang_layanan_group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                $('#edit_bidang_layanan_error').addClass('hidden');
+                document.getElementById('edit_bidang_layanan').value = editBidangChecked.join(',');
+                // ---------------------------------
 
                 let form = document.getElementById("editKelompokForm");
                 let formData = new FormData(form);
@@ -980,7 +1010,13 @@ $waktu_durasi_options = [30, 45, 60, 90];
                                 class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[200px]">
                                 Guru BK Pelaksana</th>
                             <th
-                                class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[350px] hide-on-mobile">
+                                class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[150px] hide-on-mobile">
+                                Bidang Layanan</th>
+                            <th
+                                class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[280px] hide-on-mobile">
+                                Gejala yang Nampak</th>
+                            <th
+                                class="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-gray-700 w-[280px] hide-on-mobile">
                                 Hasil yang Dicapai</th>
 
                             <th class="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-[140px]">Aksi
@@ -1021,9 +1057,32 @@ $waktu_durasi_options = [30, 45, 60, 90];
                                 <?= htmlspecialchars($data['nama_guru']) ?>
                             </td>
                             <td
-                                class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[350px] hide-on-mobile">
+                                class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[150px] hide-on-mobile">
+                                <div class="flex flex-wrap gap-1">
+                                    <?php
+                                    $bidang_list = !empty($data['bidang_layanan']) ? array_filter(array_map('trim', explode(',', $data['bidang_layanan']))) : [];
+                                    if (count($bidang_list) > 0):
+                                        foreach ($bidang_list as $bidang):
+                                    ?>
+                                        <span class="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($bidang) ?></span>
+                                    <?php
+                                        endforeach;
+                                    else:
+                                        echo '<span class="text-gray-400 italic">-</span>';
+                                    endif;
+                                    ?>
+                                </div>
+                            </td>
+                            <td
+                                class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[280px] hide-on-mobile">
                                 <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs">
-                                    <?= htmlspecialchars($data['hasil_layanan']) ?>
+                                    <?= nl2br(htmlspecialchars($data['gejala'] ?? '')) ?>
+                                </div>
+                            </td>
+                            <td
+                                class="px-3 py-3 text-sm text-gray-600 border-r border-gray-200 w-[280px] hide-on-mobile">
+                                <div class="max-h-[80px] overflow-y-auto p-0.5 text-xs">
+                                    <?= nl2br(htmlspecialchars($data['hasil_dicapai'] ?? $data['hasil_layanan'] ?? '')) ?>
                                 </div>
                             </td>
 
@@ -1271,6 +1330,28 @@ $waktu_durasi_options = [30, 45, 60, 90];
                         </div>
                     </div>
 
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-layer-group mr-1"></i> Bidang Layanan
+                        </label>
+                        <div id="edit_bidang_layanan_group" class="flex flex-wrap gap-4 p-3 border-2 border-gray-300 rounded-lg">
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Pribadi"> Pribadi
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Sosial"> Sosial
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Belajar"> Belajar
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="edit-bidang-layanan-cb" value="Karir"> Karir
+                            </label>
+                        </div>
+                        <input type="hidden" name="bidang_layanan" id="edit_bidang_layanan">
+                        <p id="edit_bidang_layanan_error" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label for="edit_catatan_khusus" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -1289,10 +1370,18 @@ $waktu_durasi_options = [30, 45, 60, 90];
                     </div>
 
                     <div class="mb-6">
-                        <label for="edit_hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-check-circle mr-1"></i> Gejala dan Hasil yang Dicapai
+                        <label for="edit_gejala" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-eye mr-1"></i> Gejala yang Nampak
                         </label>
-                        <textarea name="hasil_yang_dicapai" id="edit_hasil_layanan" rows="3" required
+                        <textarea name="gejala" id="edit_gejala" rows="3" required
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="edit_hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-check-circle mr-1"></i> Hasil yang Dicapai
+                        </label>
+                        <textarea name="hasil_dicapai" id="edit_hasil_layanan" rows="3" required
                             class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
                     </div>
 

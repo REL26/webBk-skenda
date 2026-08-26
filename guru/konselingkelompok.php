@@ -470,6 +470,17 @@ $waktu_durasi_options = [15, 30, 45, 60];
                 }
                 // ---------------------------------
 
+                // --- VALIDASI & SUSUN BIDANG LAYANAN ---
+                let bidangChecked = $('.bidang-layanan-cb:checked').map(function () { return this.value; }).get();
+                if (bidangChecked.length < 1) {
+                    $('#bidang_layanan_error').removeClass('hidden');
+                    document.getElementById('bidang_layanan_group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+                $('#bidang_layanan_error').addClass('hidden');
+                document.getElementById('bidang_layanan').value = bidangChecked.join(',');
+                // ---------------------------------
+
                 let form = document.getElementById("konselingFormGroup");
                 let formData = new FormData(form);
                 const submitButton = document.getElementById('submitGroupBtn');
@@ -939,6 +950,28 @@ $waktu_durasi_options = [15, 30, 45, 60];
                         </div>
                     </div>
 
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-layer-group mr-1"></i> Bidang Layanan
+                        </label>
+                        <div id="bidang_layanan_group" class="flex flex-wrap gap-4 p-3 border-2 border-gray-300 rounded-lg">
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="bidang-layanan-cb" value="Pribadi"> Pribadi
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="bidang-layanan-cb" value="Sosial"> Sosial
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="bidang-layanan-cb" value="Belajar"> Belajar
+                            </label>
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" class="bidang-layanan-cb" value="Karir"> Karir
+                            </label>
+                        </div>
+                        <input type="hidden" name="bidang_layanan" id="bidang_layanan">
+                        <p id="bidang_layanan_error" class="text-xs text-red-500 mt-1 hidden">Pilih minimal 1 bidang layanan.</p>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
                             <label for="catatan_khusus" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -959,11 +992,20 @@ $waktu_durasi_options = [15, 30, 45, 60];
                     </div>
 
                     <div class="mb-6">
-                        <label for="hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-check-circle mr-1"></i> Gejala dan Hasil yang Dicapai
+                        <label for="gejala" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-eye mr-1"></i> Gejala yang Nampak
                         </label>
-                        <textarea name="hasil_yang_dicapai" id="hasil_layanan" rows="3" required
-                            placeholder="Deskripsikan proses dan hasil progress yang dicapai..."
+                        <textarea name="gejala" id="gejala" rows="3" required
+                            placeholder="Deskripsikan gejala atau perilaku yang terlihat..."
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                    </div>
+
+                    <div class="mb-6">
+                        <label for="hasil_layanan" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-check-circle mr-1"></i> Hasil yang Dicapai
+                        </label>
+                        <textarea name="hasil_dicapai" id="hasil_layanan" rows="3" required
+                            placeholder="Deskripsikan hasil atau progress yang dicapai dalam sesi ini..."
                             class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
                     </div>
 
