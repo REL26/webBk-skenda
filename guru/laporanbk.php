@@ -22,15 +22,45 @@ function hitungSemesterTahunAjaran($bulan, $tahun) {
     return ['semester' => 'Genap', 'tahun_pelajaran' => ($tahun - 1) . '/' . $tahun];
 }
 
-function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
-    $namaGuruFilter = trim((string) $namaGuruFilter);
-    $filterEsc = $namaGuruFilter !== '' ? mysqli_real_escape_string($koneksi, $namaGuruFilter) : '';
+const BIDANG_LAPORAN_BK = ['Pribadi', 'Belajar', 'Sosial', 'Karier'];
 
+// Template deskripsi "Bentuk Kegiatan" Bagian III, dipetakan dari jenis layanan.
+// Sengaja berupa PEMETAAN TETAP (bukan field form baru) supaya guru tidak perlu
+// mengisi apa pun tambahan -- cukup buat laporan layanan seperti biasa, lalu
+// Bentuk Kegiatan otomatis terisi deskripsi aktivitas yang sesuai. Kalau nanti
+// ada jenis layanan baru atau template perlu direvisi, cukup tambah/ubah baris
+// di peta ini saja.
+const TEMPLATE_BENTUK_KEGIATAN_BK = [
+    'Konseling Individu'   => 'Konseling tatap muka dan pendampingan siswa',
+    'Konseling Kelompok'   => 'Diskusi kelompok dan pendampingan siswa',
+    'Bimbingan Kelompok'   => 'Diskusi kelompok dan pendampingan siswa',
+    'Home Visit'           => 'Kunjungan dan pendampingan siswa di rumah',
+    'Panggilan Ortu'       => 'Pertemuan dan koordinasi bersama orang tua/wali',
+];
+
+function templateBentukKegiatanBK($jenisLayanan) {
+    return TEMPLATE_BENTUK_KEGIATAN_BK[$jenisLayanan] ?? '';
+}
+
+function normalisasiBidangBK($rawBidangLayanan) {
+    static $peta = ['Pribadi' => 'Pribadi', 'Belajar' => 'Belajar', 'Sosial' => 'Sosial', 'Karir' => 'Karier', 'Karier' => 'Karier'];
+    $hasil = [];
+    foreach (explode(',', (string) $rawBidangLayanan) as $b) {
+        $b = trim($b);
+        if ($b === '') continue;
+        $norm = $peta[$b] ?? null;
+        if ($norm !== null && !in_array($norm, $hasil, true)) {
+            $hasil[] = $norm;
+        }
+    }
+    return $hasil;
+}
+
+function getRekapOtomatisBK($koneksi, $awal, $akhir) {
     $modul = [
         [
             'label' => 'Konseling Individu',
-            'guru_kolom' => 'ki.nama_guru',
-            'sql' => "SELECT ki.tanggal_pelaksanaan AS tgl, 'Konseling Individu' AS jenis,
+            'sql' => "SELECT ki.tanggal_pelaksanaan AS tgl, 'Konseling Individu' AS jenis, ki.nama_guru AS guru,
                         COALESCE(NULLIF(s.kelas,''),'-') AS kelas, COALESCE(NULLIF(s.jurusan,''),'-') AS jurusan, 1 AS jml
                       FROM konseling_individu ki
                       LEFT JOIN siswa s ON s.id_siswa = ki.id_siswa
@@ -39,20 +69,18 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
         ],
         [
             'label' => 'Konseling & Bimbingan Kelompok',
-            'guru_kolom' => 'k.nama_guru',
-            'sql' => "SELECT k.tanggal_pelaksanaan AS tgl, k.jenis_layanan AS jenis,
+            'sql' => "SELECT k.tanggal_pelaksanaan AS tgl, k.jenis_layanan AS jenis, k.nama_guru AS guru,
                         COALESCE(NULLIF(s.kelas,''),'-') AS kelas, COALESCE(NULLIF(s.jurusan,''),'-') AS jurusan, COUNT(*) AS jml
                       FROM kelompok k
                       JOIN detail_kelompok dk ON dk.id_kelompok = k.id_kelompok
                       JOIN siswa s ON s.id_siswa = dk.id_siswa
                       WHERE k.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
                         AND k.jenis_layanan IN ('Konseling Kelompok','Bimbingan Kelompok')",
-            'groupby' => 'GROUP BY k.id_kelompok, k.tanggal_pelaksanaan, k.jenis_layanan, s.kelas, s.jurusan',
+            'groupby' => 'GROUP BY k.id_kelompok, k.tanggal_pelaksanaan, k.jenis_layanan, k.nama_guru, s.kelas, s.jurusan',
         ],
         [
             'label' => 'Home Visit',
-            'guru_kolom' => 'hv.nama_petugas',
-            'sql' => "SELECT hv.hari_tanggal AS tgl, 'Home Visit' AS jenis,
+            'sql' => "SELECT hv.hari_tanggal AS tgl, 'Home Visit' AS jenis, hv.nama_petugas AS guru,
                         COALESCE(NULLIF(s.kelas,''), NULLIF(hv.kelas,''), '-') AS kelas,
                         COALESCE(NULLIF(s.jurusan,''), NULLIF(hv.jurusan,''), '-') AS jurusan, 1 AS jml
                       FROM home_visit hv
@@ -62,8 +90,7 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
         ],
         [
             'label' => 'Panggilan Ortu',
-            'guru_kolom' => 'ko.nama_guru_bk',
-            'sql' => "SELECT ko.tanggal_pemanggilan AS tgl, 'Panggilan Ortu' AS jenis,
+            'sql' => "SELECT ko.tanggal_pemanggilan AS tgl, 'Panggilan Ortu' AS jenis, ko.nama_guru_bk AS guru,
                         COALESCE(NULLIF(s.kelas,''), NULLIF(ko.kelas,''), '-') AS kelas,
                         COALESCE(NULLIF(s.jurusan,''), NULLIF(ko.jurusan,''), '-') AS jurusan, 1 AS jml
                       FROM konsultasi_ortu ko
@@ -76,9 +103,6 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
     $grup = [];
     foreach ($modul as $m) {
         $sql = $m['sql'];
-        if ($filterEsc !== '') {
-            $sql .= " AND {$m['guru_kolom']} = '$filterEsc'";
-        }
         if (!empty($m['groupby'])) {
             $sql .= ' ' . $m['groupby'];
         }
@@ -88,9 +112,10 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
             continue;
         }
         while ($r = mysqli_fetch_assoc($res)) {
-            $key = $r['tgl'] . '|' . $r['jenis'];
+            $guru = trim((string) $r['guru']);
+            $key = $r['tgl'] . '|' . $r['jenis'] . '|' . $guru;
             if (!isset($grup[$key])) {
-                $grup[$key] = ['tanggal' => $r['tgl'], 'jenis_layanan' => $r['jenis'], 'sasaran' => [], 'jumlah' => 0];
+                $grup[$key] = ['tanggal' => $r['tgl'], 'jenis_layanan' => $r['jenis'], 'guru' => $guru, 'sasaran' => [], 'jumlah' => 0];
             }
             $label = trim($r['kelas'] . ' ' . $r['jurusan']);
             if ($label === '') $label = '-';
@@ -103,15 +128,115 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir, $namaGuruFilter = '') {
 
     ksort($grup);
     $hasil = [];
-    foreach ($grup as $g) {
+    foreach ($grup as $key => $g) {
         $hasil[] = [
+            'sumber_key'      => 'keg-' . md5($key),
             'jenis_layanan'   => $g['jenis_layanan'],
             'sasaran_kelas'   => implode(', ', $g['sasaran']),
             'jumlah_siswa'    => (string) $g['jumlah'],
             'waktu'           => $g['tanggal'],
-            'bentuk_kegiatan' => '',
-            'keterangan'      => '',
+            'bentuk_kegiatan' => templateBentukKegiatanBK($g['jenis_layanan']),
+            'keterangan'      => 'Terlaksana',
+            'nama_guru'       => $g['guru'],
         ];
+    }
+    return $hasil;
+}
+
+// Menghasilkan SATU BARIS PER PERMASALAHAN (bukan gabungan per-bidang), supaya
+// tiap permasalahan bisa punya Jumlah Siswa & Tindak Awal sendiri, dan bisa
+// disaring per Guru BK di sisi tampilan tanpa perlu query ulang ke server.
+// TIDAK ada filter guru di sini secara sengaja -- filter Guru BK sekarang murni
+// tampilan (client-side), supaya data asli tidak pernah berubah/hilang hanya
+// karena guru mengganti-ganti pilihan filter.
+function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
+    $modul = [
+        [
+            'label' => 'Konseling Individu',
+            'sql' => "SELECT ki.id_konseling AS id_sumber, ki.nama_guru AS guru, ki.bidang_layanan AS bidang, ki.gejala_nampak AS teks
+                      FROM konseling_individu ki
+                      WHERE ki.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
+                      ORDER BY ki.id_konseling ASC",
+        ],
+        [
+            'label' => 'Konseling/Bimbingan Kelompok',
+            'sql' => "SELECT k.id_kelompok AS id_sumber, k.nama_guru AS guru, k.bidang_layanan AS bidang, k.gejala AS teks, k.jenis_layanan AS jenis
+                      FROM kelompok k
+                      WHERE k.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
+                        AND k.jenis_layanan IN ('Konseling Kelompok','Bimbingan Kelompok')
+                      ORDER BY k.id_kelompok ASC",
+        ],
+        [
+            'label' => 'Home Visit',
+            'sql' => "SELECT hv.id_visit AS id_sumber, hv.nama_petugas AS guru, hv.bidang_layanan AS bidang, hv.masalah AS teks
+                      FROM home_visit hv
+                      WHERE hv.hari_tanggal BETWEEN '$awal' AND '$akhir'
+                      ORDER BY hv.id_visit ASC",
+        ],
+        [
+            'label' => 'Panggilan Ortu',
+            'sql' => "SELECT ko.id_konsultasi AS id_sumber, ko.nama_guru_bk AS guru, ko.bidang_layanan AS bidang, ko.permasalahan AS teks
+                      FROM konsultasi_ortu ko
+                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+                      ORDER BY ko.id_konsultasi ASC",
+        ],
+    ];
+
+    // Kelompokkan per bidang dulu (urutan bidang tetap: Pribadi, Belajar, Sosial, Karier).
+    $per_bidang = [];
+    foreach (BIDANG_LAPORAN_BK as $b) { $per_bidang[$b] = []; }
+
+    foreach ($modul as $m) {
+        $res = mysqli_query($koneksi, $m['sql']);
+        if (!$res) {
+            error_log('Rekap masalah otomatis BK gagal untuk modul "' . $m['label'] . '": ' . mysqli_error($koneksi));
+            continue;
+        }
+        while ($r = mysqli_fetch_assoc($res)) {
+            $bidangNorm = normalisasiBidangBK($r['bidang'] ?? '');
+            if (empty($bidangNorm)) continue;
+
+            $teksRaw = (string) ($r['teks'] ?? '');
+            // Kalau satu laporan memuat beberapa permasalahan/gejala (dipisah baris
+            // baru), pecah jadi baris Bagian IV yang terpisah -- sesuai poin 2.
+            $barisTeks = preg_split('/\r\n|\r|\n/', $teksRaw);
+            $barisTeks = array_values(array_filter(array_map('trim', $barisTeks), fn($x) => $x !== ''));
+            if (empty($barisTeks)) continue;
+
+            $jenisSumber = !empty($r['jenis']) ? $r['jenis'] : $m['label'];
+            $guru = trim((string) ($r['guru'] ?? ''));
+            $idSumber = (string) ($r['id_sumber'] ?? '');
+
+            foreach ($bidangNorm as $b) {
+                foreach ($barisTeks as $iBaris => $teksBaris) {
+                    // Kunci stabil per-bidang: modul + id baris sumber + indeks baris
+                    // teks + bidang. Dipakai Bagian IV (satu baris tampilan per bidang).
+                    $kunciMentah = $m['label'] . '|' . $idSumber . '|' . $iBaris . '|' . $b;
+                    // Kunci "asal" TANPA bidang: mengidentifikasi satu kegiatan/laporan
+                    // + satu kalimat permasalahan yang sama, terlepas dari berapa
+                    // bidang yang dipilih guru untuknya. Dipakai Bagian V supaya satu
+                    // kegiatan yang sama tidak dobel hanya karena dipilih >1 bidang.
+                    $kunciAsal = $m['label'] . '|' . $idSumber . '|' . $iBaris;
+                    $per_bidang[$b][] = [
+                        'sumber_key'        => 'masalah-' . md5($kunciMentah),
+                        'sumber_asal'       => 'asal-' . md5($kunciAsal),
+                        'bidang'            => $b,
+                        'masalah'           => $teksBaris,
+                        'jml_siswa_masalah' => '',
+                        'tindak_awal'       => '',
+                        'nama_guru'         => $guru,
+                        'jenis_sumber'      => $jenisSumber,
+                    ];
+                }
+            }
+        }
+    }
+
+    $hasil = [];
+    foreach (BIDANG_LAPORAN_BK as $b) {
+        foreach ($per_bidang[$b] as $baris) {
+            $hasil[] = $baris;
+        }
     }
     return $hasil;
 }
@@ -150,11 +275,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             echo json_encode(['success' => false, 'message' => 'Bulan/tahun tidak valid.']);
             exit;
         }
-        $guruFilter = trim($_POST['guru'] ?? '');
         $awal  = sprintf('%04d-%02d-01', $tahun, $bulan);
         $akhir = date('Y-m-t', strtotime($awal));
-        $rekap = getRekapOtomatisBK($koneksi, $awal, $akhir, $guruFilter);
-        echo json_encode(['success' => true, 'rekap' => $rekap, 'guru_filter' => $guruFilter]);
+        // Catatan: sengaja TIDAK memfilter guru di sini. Data yang dikirim ke
+        // client SELALU lengkap (semua guru); Filter Guru BK di halaman hanya
+        // menyaring TAMPILAN di browser, supaya data asli tidak pernah berubah
+        // atau hilang akibat gonta-ganti filter.
+        $rekap   = getRekapOtomatisBK($koneksi, $awal, $akhir);
+        $masalah = getMasalahOtomatisBK($koneksi, $awal, $akhir);
+        echo json_encode(['success' => true, 'rekap' => $rekap, 'masalah' => $masalah]);
         exit;
     }
 
@@ -394,6 +523,10 @@ if ($laporan_id > 0) {
                   min-width: 800px;
               }
 
+              .baris-tersembunyi-filter {
+                  display: none !important;
+              }
+
               .card-hover {
                   transition: all 0.3s ease;
               }
@@ -595,83 +728,7 @@ if ($laporan_id > 0) {
                 width: 100% !important;
                 table-layout: fixed !important;
               }
-              
-              #rekapMasalah {
-                border-collapse: collapse !important;
-              }
-              
-              #rekapMasalah td, #rekapMasalah th {
-                border: 1px solid #d1d5db !important;
-              }
 
-
-              #rekapMasalah thead th {
-                text-align: center !important;
-                vertical-align: middle !important;
-              }
-
-              #rekapMasalah td:nth-child(3),
-              #rekapMasalah th:nth-child(3) {
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-                word-break: break-word !important;
-                white-space: normal !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                padding: 4px 2px !important;
-                width: 10% !important;
-              }
-
-              #rekapMasalah td:nth-child(3) select {
-                width: 100% !important;
-                min-height: 34px;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-                white-space: normal !important;
-                text-align: center !important;
-                background: transparent !important;
-                border: none !important;
-                outline: none !important;
-                font-size: 0.875rem !important;
-                padding: 4px 24px 4px 4px !important;
-                cursor: pointer !important;
-                -webkit-appearance: none !important;
-                appearance: none !important;
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E") !important;
-                background-repeat: no-repeat !important;
-                background-position: right 6px center !important;
-                background-size: 12px 12px !important;
-                position: relative !important;
-              }
-
-              #rekapMasalah td:nth-child(3) select option {
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-                padding: 2px 4px !important;
-              }
-
-              #rekapMasalah colgroup col:nth-child(3) { width: 10% !important; }
-              #rekapMasalah colgroup col:nth-child(5) { width: 22% !important; }
-              #rekapMasalah colgroup col:nth-child(7) { width: 22% !important; }
-              #rekapMasalah colgroup col:nth-child(6) { width: 10% !important; }
-
-              #rekapMasalah thead th:nth-child(5),
-              #rekapMasalah thead th:nth-child(7),
-              #rekapMasalah thead th:nth-child(6) {
-                text-align: center !important;
-                vertical-align: middle !important;
-                line-height: 1.3 !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-                white-space: normal !important;
-              }
-
-              #rekapMasalah tbody td:nth-child(5),
-              #rekapMasalah tbody td:nth-child(7) {
-                text-align: left !important;
-                vertical-align: middle !important;
-              }
               @media print {
 
   @page {
@@ -820,30 +877,29 @@ if ($laporan_id > 0) {
     border: 1pt solid #000000 !important;
     padding: 4pt 5pt !important;
     vertical-align: middle !important;
+    white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
-    line-height: 1.4 !important;
+    word-break: break-word !important;
+    line-height: 1.35 !important;
   }
 
   th {
     font-weight: bold !important;
     text-align: center !important;
+    vertical-align: middle !important;
     background-color: #e8e8e8 !important;
+    line-height: 1.25 !important;
+    padding: 5pt 3pt !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-  }
-
-  #rekapMasalah thead th {
-    word-wrap: normal !important;
-    overflow-wrap: normal !important;
-    word-break: keep-all !important;
-    white-space: normal !important;
   }
 
   tr {
     page-break-inside: avoid !important;
   }
 
+  /* Kolom "Aksi" (selalu kolom terakhir tiap tabel laporan) tidak dicetak. */
   th:last-child,
   td:last-child {
     display: none !important;
@@ -853,105 +909,95 @@ if ($laporan_id > 0) {
     visibility: collapse !important;
   }
 
-  #rekapKegiatan,
-  #tindakLanjut {
+  /* ===================== BAGIAN III - REKAP KEGIATAN (7 kolom cetak) =====================
+     No 4% | Jenis Layanan 13% | Sasaran 11% | Jumlah Siswa 8% | Waktu 10% | Bentuk Kegiatan 24% | Keterangan 30% */
+  #rekapKegiatan {
     table-layout: fixed !important;
     width: 100% !important;
   }
 
-  #rekapKegiatan th,
-  #rekapKegiatan td,
-  #tindakLanjut th,
-  #tindakLanjut td {
+  #rekapKegiatan th:nth-child(1), #rekapKegiatan td:nth-child(1) { width: 4%  !important; text-align: center !important; white-space: nowrap !important; }
+  #rekapKegiatan th:nth-child(2), #rekapKegiatan td:nth-child(2) { width: 13% !important; text-align: left !important; }
+  #rekapKegiatan th:nth-child(3), #rekapKegiatan td:nth-child(3) { width: 11% !important; text-align: center !important; }
+  #rekapKegiatan th:nth-child(4), #rekapKegiatan td:nth-child(4) { width: 8%  !important; text-align: center !important; }
+  #rekapKegiatan th:nth-child(5), #rekapKegiatan td:nth-child(5) { width: 10% !important; text-align: center !important; }
+  #rekapKegiatan th:nth-child(6), #rekapKegiatan td:nth-child(6) { width: 24% !important; text-align: left !important; }
+  #rekapKegiatan th:nth-child(7), #rekapKegiatan td:nth-child(7) { width: 30% !important; text-align: left !important; }
+
+  /* ===================== BAGIAN IV - REKAP PERMASALAHAN (5 kolom cetak) =====================
+     No 5% | Bidang 12% | Permasalahan 40% | Jumlah Siswa 10% | Tindak Awal 33%
+     Kolom No & Bidang digabung (rowspan) per kelompok bidang -- lihat JS
+     terapkanRowspanBidangIV(); ukurannya tetap konsisten di layar maupun cetak.
+     PENTING: lebar sel BODY memakai selector class (.sel-no, .sel-bidang, dst),
+     BUKAN td:nth-child -- karena baris ke-2/ke-3 dst dalam satu kelompok bidang
+     TIDAK memiliki sel No/Bidang sama sekali di DOM (sungguhan dihapus, bukan
+     cuma disembunyikan, supaya rowspan bekerja benar). Kalau pakai nth-child,
+     baris pendek itu akan salah dapat gaya kolom No/Bidang -- itulah penyebab
+     tabel Bagian IV terlihat tidak rata saat dicetak/PDF sebelumnya. */
+  #rekapMasalah {
+    table-layout: fixed !important;
+    width: 100% !important;
+  }
+
+  #rekapMasalah th:nth-child(1) { width: 5%  !important; text-align: center !important; vertical-align: middle !important; }
+  #rekapMasalah th:nth-child(2) { width: 12% !important; text-align: center !important; vertical-align: middle !important; }
+  #rekapMasalah th:nth-child(3) { width: 40% !important; text-align: left !important; }
+  #rekapMasalah th:nth-child(4) { width: 10% !important; text-align: center !important; }
+  #rekapMasalah th:nth-child(5) { width: 33% !important; text-align: left !important; }
+
+  #rekapMasalah td.sel-no          { width: 5%  !important; text-align: center !important; vertical-align: middle !important; }
+  #rekapMasalah td.sel-bidang      { width: 12% !important; text-align: center !important; vertical-align: middle !important; }
+  #rekapMasalah td.sel-permasalahan { width: 40% !important; text-align: left !important; vertical-align: top !important; }
+  #rekapMasalah td.sel-jumlah      { width: 10% !important; text-align: center !important; vertical-align: top !important; }
+  #rekapMasalah td.sel-tindak      { width: 33% !important; text-align: left !important; vertical-align: top !important; }
+
+  /* Isi cell (lewat .print-value-proxy) ikut posisi vertikal sel induknya +
+     tidak pernah keluar dari batas kolom, berapa pun panjang teksnya. */
+  #rekapMasalah td.sel-permasalahan .print-value-proxy,
+  #rekapMasalah td.sel-jumlah .print-value-proxy,
+  #rekapMasalah td.sel-tindak .print-value-proxy {
+    width: 100% !important;
+    max-width: 100% !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: anywhere !important;
     word-break: break-word !important;
   }
 
-  #rekapKegiatan th:nth-child(1),
-  #rekapKegiatan td:nth-child(1) {
-    width: 4% !important;
-    white-space: nowrap !important;
-    text-align: center !important;
+  #rekapMasalah td.sel-no,
+  #rekapMasalah td.sel-bidang {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
-  #rekapKegiatan th:nth-child(2),
-  #rekapKegiatan td:nth-child(2) {
-    width: 14% !important;
+  /* ===================== BAGIAN V - TINDAK LANJUT (6 kolom cetak) =====================
+     No 4% | Permasalahan 28% | Layanan BK 16% | Tindak Lanjut 18% | Bulan 12% | Pihak Terkait 22% */
+  #tindakLanjut {
+    table-layout: fixed !important;
+    width: 100% !important;
   }
 
-  #rekapKegiatan th:nth-child(3),
-  #rekapKegiatan td:nth-child(3) {
-    width: 12% !important;
-    text-align: center !important;
-  }
+  #tindakLanjut th:nth-child(1), #tindakLanjut td:nth-child(1) { width: 4%  !important; text-align: center !important; white-space: nowrap !important; }
+  #tindakLanjut th:nth-child(2), #tindakLanjut td:nth-child(2) { width: 28% !important; text-align: left !important; }
+  #tindakLanjut th:nth-child(3), #tindakLanjut td:nth-child(3) { width: 16% !important; text-align: left !important; }
+  #tindakLanjut th:nth-child(4), #tindakLanjut td:nth-child(4) { width: 18% !important; text-align: left !important; }
+  #tindakLanjut th:nth-child(5), #tindakLanjut td:nth-child(5) { width: 12% !important; text-align: center !important; }
+  #tindakLanjut th:nth-child(6), #tindakLanjut td:nth-child(6) { width: 22% !important; text-align: left !important; }
 
-  #rekapKegiatan th:nth-child(4),
-  #rekapKegiatan td:nth-child(4) {
-    width: 8% !important;
-    text-align: center !important;
-  }
-
-  #rekapKegiatan th:nth-child(5),
-  #rekapKegiatan td:nth-child(5) {
-    width: 14% !important;
-  }
-
-  #rekapKegiatan th:nth-child(6),
-  #rekapKegiatan td:nth-child(6) {
-    width: 24% !important;
-    text-align: left !important;
-  }
-
-  #rekapKegiatan th:nth-child(7),
-  #rekapKegiatan td:nth-child(7) {
-    width: 24% !important;
-    text-align: left !important;
-  }
-
-  #tindakLanjut th:nth-child(1),
-  #tindakLanjut td:nth-child(1) {
-    width: 4% !important;
-    white-space: nowrap !important;
-    text-align: center !important;
-  }
-
-  #tindakLanjut th:nth-child(2),
-  #tindakLanjut td:nth-child(2) {
-    width: 24% !important;
-    text-align: left !important;
-  }
-
-  #tindakLanjut th:nth-child(3),
-  #tindakLanjut td:nth-child(3) {
-    width: 14% !important;
-  }
-
-  #tindakLanjut th:nth-child(4),
-  #tindakLanjut td:nth-child(4) {
-    width: 22% !important;
-    text-align: left !important;
-  }
-
-  #tindakLanjut th:nth-child(5),
-  #tindakLanjut td:nth-child(5) {
-    width: 12% !important;
-    text-align: center !important;
-  }
-
-  #tindakLanjut th:nth-child(6),
-  #tindakLanjut td:nth-child(6) {
-    width: 24% !important;
-  }
-
+  /* Teks isi (via .print-value-proxy, dibuat saat 'beforeprint' di JS) SELALU
+     wrap ke baris berikutnya, tidak pernah terpotong -- berlaku merata di
+     Bagian III, IV, dan V. */
+  #rekapKegiatan th,
+  #rekapKegiatan td,
   #rekapMasalah th,
-  #rekapMasalah td {
-    overflow-wrap: anywhere !important;
-  }
-
-  .print-value-proxy {
-    overflow-wrap: anywhere !important;
+  #rekapMasalah td,
+  #tindakLanjut th,
+  #tindakLanjut td {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
   }
 
   input[type="text"],
@@ -978,9 +1024,13 @@ if ($laporan_id > 0) {
     color: transparent !important;
   }
 
+  /* Input/textarea/select asli disembunyikan saat cetak; teksnya sudah
+     dipindah ke .print-value-proxy oleh event 'beforeprint' di JS supaya
+     bisa wrap bebas tanpa batasan lebar input aslinya. */
   table input[type="text"],
   table input[type="number"],
   table input[type="date"],
+  table select,
   table textarea {
     display: none !important;
   }
@@ -994,6 +1044,8 @@ if ($laporan_id > 0) {
 
   .penutup-ttd-wrap {
     display: block !important;
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
   .penutup-ttd-wrap .penutup-judul {
@@ -1072,9 +1124,28 @@ if ($laporan_id > 0) {
   }
 
   .report-section > summary {
-    display: none !important;
+    display: block !important;
+    list-style: none !important;
     padding: 0 !important;
+    margin-bottom: 6pt !important;
     background: transparent !important;
+    cursor: default !important;
+  }
+
+  .report-section > summary::-webkit-details-marker,
+  .report-section > summary::marker {
+    display: none !important;
+  }
+
+  .report-section > summary .section-title {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   .report-section > .report-section-body {
@@ -1150,189 +1221,7 @@ if ($laporan_id > 0) {
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
-  }
-
-  #rekapMasalah td {
-    border: 1pt solid #000000 !important;
-  }
-  
-  #rekapKegiatan, #rekapMasalah, #tindakLanjut {
-    width: 100% !important;
-  }
-  
-  .col-no-print {
-    width: 4% !important;
-    min-width: 35px !important;
-  }
-  
-  .col-tgl-print {
-    width: 14% !important;
-  }
-  #rekapMasalah {
-    table-layout: fixed !important;
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-
-  #rekapMasalah th,
-  #rekapMasalah td {
-    border: 1pt solid #000000 !important;
-    padding: 4pt 4pt !important;
-  }
-
-  #rekapMasalah thead th {
-    background-color: #e8e8e8 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    font-weight: bold !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    padding: 4pt 3pt !important;
-  }
-
-
-  #rekapMasalah td:nth-child(1),
-  #rekapMasalah th:nth-child(1) {
-    width: 4% !important;
-    min-width: 20pt !important;
-    max-width: 30pt !important;
-    white-space: nowrap !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(2),
-  #rekapMasalah th:nth-child(2) {
-    width: 12% !important;
-    min-width: 60pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(3),
-  #rekapMasalah th:nth-child(3) {
-    width: 10% !important;
-    min-width: 45pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
     word-break: break-word !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    padding: 4pt 2pt !important;
-  }
-
-  #rekapMasalah td:nth-child(4),
-  #rekapMasalah th:nth-child(4) {
-    width: 10% !important;
-    min-width: 35pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(5),
-  #rekapMasalah th:nth-child(5) {
-    width: 22% !important;
-    min-width: 60pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: left !important;
-  }
-
-  #rekapMasalah td:nth-child(6),
-  #rekapMasalah th:nth-child(6) {
-    width: 10% !important;
-    min-width: 34pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(7),
-  #rekapMasalah th:nth-child(7) {
-    width: 22% !important;
-    min-width: 60pt !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: left !important;
-  }
-
-  #rekapMasalah td:nth-child(8),
-  #rekapMasalah th:nth-child(8) {
-    display: none !important;
-  }
-
-  #rekapMasalah colgroup col:nth-child(8) {
-    display: none !important;
-  }
-
-  #rekapMasalah .print-value-proxy {
-    display: block !important;
-    font-family: "Times New Roman", Times, serif !important;
-    font-size: 10pt !important;
-    color: #000 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    line-height: 1.4 !important;
-  }
-
-  #rekapMasalah td:nth-child(2) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(3) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    word-break: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(4) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(5) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: left !important;
-  }
-
-  #rekapMasalah td:nth-child(6) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: center !important;
-  }
-
-  #rekapMasalah td:nth-child(7) .print-value-proxy {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    text-align: left !important;
-  }
-
-  #rekapMasalah thead th {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
-    line-height: 1.3 !important;
-    font-size: 10pt !important;
-    text-align: center !important;
-    vertical-align: middle !important;
   }
 
   .table-scroll-wrapper {
@@ -1394,7 +1283,7 @@ if ($laporan_id > 0) {
                 <td style="padding:2pt 0; font-weight:bold; text-align:center;"><?php echo htmlspecialchars($laporan['nama_dokumen']); ?></td>
               </tr>
               <tr>
-                <td style="padding:2pt 0; text-align:center;"><?php echo htmlspecialchars($laporan['semester']); ?> &mdash; <?php echo htmlspecialchars($laporan['tahun_pelajaran']); ?></td>
+                <td style="padding:2pt 0; text-align:center;"><?php echo htmlspecialchars($laporan['semester']); ?> <?php echo htmlspecialchars($laporan['tahun_pelajaran']); ?></td>
               </tr>
               <tr>
                 <td style="padding:2pt 0; text-align:center;"><?php echo htmlspecialchars($laporan['sasaran']); ?></td>
@@ -1479,6 +1368,24 @@ if ($laporan_id > 0) {
             </div>
           </div>
 
+          <div class="no-print mb-8 bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-end gap-2">
+            <div class="flex-1 min-w-[240px]">
+              <label class="block text-xs font-medium text-gray-700 mb-1">
+                <i class="fas fa-filter mr-1"></i> Filter Guru BK
+              </label>
+              <select id="filterGuruBK" class="input w-full px-3 py-2 border rounded text-sm">
+                <option value="">Semua Guru BK</option>
+                <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
+                <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+                <?php endforeach; ?>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">
+                Berlaku untuk seluruh bagian laporan (III, IV, V) beserta hasil cetak/PDF-nya.
+                Filter ini hanya menyaring tampilan data asli tidak berubah.
+              </p>
+            </div>
+          </div>
+
           <details class="report-section mb-8 no-print-toggle" open>
             <summary>
               <h3 class="text-lg font-bold text-gray-800 section-title">
@@ -1488,17 +1395,6 @@ if ($laporan_id > 0) {
               <i class="fas fa-chevron-down chevron no-print"></i>
             </summary>
             <div class="report-section-body">
-              <div class="no-print flex flex-wrap items-end gap-2 mb-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div class="flex-1 min-w-[220px]">
-                  <label class="block text-xs font-medium text-gray-600 mb-1">Filter Guru BK (Bagian III)</label>
-                  <select id="filterGuruRekapBK" class="input w-full px-3 py-2 border rounded text-sm">
-                    <option value="">Semua Guru BK</option>
-                    <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
-                    <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
-                    <?php endforeach; ?>
-                  </select>
-                </div>
-              </div>
               <div class="table-scroll-wrapper">
                 <table
                   id="rekapKegiatan"
@@ -1507,12 +1403,12 @@ if ($laporan_id > 0) {
                   <thead>
                     <tr class="bg-gray-200">
                       <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Jenis Layanan</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:12%;">Sasaran</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:8%;">Jumlah Siswa</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Waktu</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Bentuk Kegiatan</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Keterangan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:14%;">Jenis<br>Layanan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:12%;">Sasaran</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:8%;">Jumlah<br>Siswa</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center col-tanggal">Waktu</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:16%;">Bentuk<br>Kegiatan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:16%;">Keterangan</th>
                       <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
                     </tr>
                   </thead>
@@ -1538,6 +1434,15 @@ if ($laporan_id > 0) {
               <i class="fas fa-chevron-down chevron no-print"></i>
             </summary>
             <div class="report-section-body">
+              <div class="no-print flex flex-wrap items-center gap-2 mb-3">
+                <span class="text-xs font-medium text-gray-600 mr-1">Tambah baris permasalahan ke bidang:</span>
+                <?php foreach (BIDANG_LAPORAN_BK as $b): ?>
+                <button type="button" onclick="tambahBarisMasalahManual('<?php echo htmlspecialchars($b, ENT_QUOTES); ?>')"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300">
+                  <i class="fas fa-plus mr-1"></i><?php echo htmlspecialchars($b); ?>
+                </button>
+                <?php endforeach; ?>
+              </div>
               <div class="table-scroll-wrapper">
                 <table
                   id="rekapMasalah"
@@ -1545,19 +1450,15 @@ if ($laporan_id > 0) {
                 >
                   <colgroup>
                     <col style="width: 4%;" />
-                    <col style="width: 12%;" />
-                    <col style="width: 10%;" />
-                    <col style="width: 10%;" />
-                    <col style="width: 22%;" />
-                    <col style="width: 10%;" />
-                    <col style="width: 22%;" />
-                    <col style="width: 5%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 39%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 28%;" />
+                    <col style="width: 7%;" />
                   </colgroup>
                   <thead>
                     <tr class="bg-gray-200">
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Tanggal</th>
-                      <th class="border border-gray-300 px-1 py-2 text-sm text-center">Kelas</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
@@ -1568,12 +1469,12 @@ if ($laporan_id > 0) {
                   <tbody></tbody>
                 </table>
               </div>
-              <button
-                onclick="tambahMasalah()"
-                class="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm no-print"
-              >
-                <i class="fas fa-plus mr-2"></i> Tambah Baris
-              </button>
+              <p class="text-xs text-gray-500 mt-2 no-print">
+                Permasalahan terisi otomatis dari laporan Home Visit, Konseling Individu/Kelompok,
+                dan Konsultasi Orang Tua bulan ini &mdash; tetap bisa diedit manual. Jumlah Siswa selalu diisi manual.
+                Nomor mengikuti 4 bidang (Pribadi, Belajar, Sosial, Karier); beberapa permasalahan pada
+                bidang yang sama akan berbagi nomor yang sama.
+              </p>
             </div>
           </details>
 
@@ -1594,11 +1495,11 @@ if ($laporan_id > 0) {
                   <thead>
                     <tr class="bg-gray-200">
                       <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:18%;">Permasalahan</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:14%;">Layanan BK</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Tindak Lanjut</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm col-tanggal">Bulan</th>
-                      <th class="border border-gray-300 px-3 py-2 text-sm" style="width:16%;">Pihak Terkait</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:18%;">Permasalahan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:14%;">Layanan<br>BK</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:16%;">Tindak<br>Lanjut</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center col-tanggal">Bulan</th>
+                      <th class="border border-gray-300 px-3 py-2 text-sm text-center" style="width:16%;">Pihak<br>Terkait</th>
                       <th class="border border-gray-300 px-3 py-2 text-sm text-center no-print" style="width:5%;">Aksi</th>
                     </tr>
                   </thead>
@@ -1841,28 +1742,31 @@ if ($laporan_id > 0) {
             const rowNum = tbody.rows.length;
 
             row.className = "hover:bg-gray-50 transition-colors";
+            row.dataset.sumberKey = '';
+            row.dataset.manual = '1';
+            row.dataset.namaGuru = '';
 
             row.innerHTML = `
             <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <textarea name="jenis_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Jenis Layanan" oninput="autoResizeTextarea(this)"></textarea>
+                <textarea name="jenis_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Jenis Layanan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="text" name="sasaran_kelas[]" list="listSasaranKegiatan" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Mis: PPLG B XII, RPL X">
+                <input type="text" name="sasaran_kelas[]" list="listSasaranKegiatan" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" placeholder="Mis: PPLG B XII, RPL X" oninput="tandaiManual(this)">
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <input type="number" name="jumlah_siswa[]" min="0" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0">
+                <input type="number" name="jumlah_siswa[]" min="0" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0; tandaiManual(this)">
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <div class="date-input-wrapper">
-                    <input type="date" name="waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
+                    <input type="date" name="waktu[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this); tandaiManual(this)">
                 </div>
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="bentuk_kegiatan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Bentuk" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <textarea name="keterangan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Keterangan" oninput="autoResizeTextarea(this)"></textarea>
+                <textarea name="keterangan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Keterangan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 transition">
@@ -1870,6 +1774,37 @@ if ($laporan_id > 0) {
                 </button>
             </td>
         `;
+            return row;
+          }
+
+          function tandaiManual(el) {
+            const tr = el.closest('tr');
+            if (tr) tr.dataset.manual = '1';
+          }
+
+          function ambilNilaiElemen(el) {
+            if (!el) return '';
+            if (el.tagName === 'SELECT' && el.multiple) {
+              return Array.from(el.selectedOptions).map((o) => o.value).join(', ');
+            }
+            return el.value;
+          }
+
+          function setNilaiElemen(el, val) {
+            if (!el) return;
+            if (el.tagName === 'SELECT' && el.multiple) {
+              const dipilih = new Set(String(val || '').split(',').map((s) => s.trim()).filter(Boolean));
+              Array.from(el.options).forEach((o) => { o.selected = dipilih.has(o.value); });
+              return;
+            }
+            el.value = val !== undefined && val !== null ? val : '';
+          }
+
+          function perbaruiNomorBaris(tbody) {
+            Array.from(tbody.rows).forEach((tr, idx) => {
+              const selNo = tr.cells[0];
+              if (selNo) selNo.textContent = idx + 1;
+            });
           }
 
           function autoResizeTextarea(el) {
@@ -1953,49 +1888,244 @@ if ($laporan_id > 0) {
           function updateTanggalDisplay(inputEl) {
           }
 
-          function tambahMasalah() {
+          const BIDANG_LAPORAN_BK = ['Pribadi', 'Belajar', 'Sosial', 'Karier'];
+
+          function buatKunciManualUnik(prefix) {
+            return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          }
+
+          // Satu baris = satu permasalahan. "No" dan "Bidang" ditampilkan lewat
+          // rowspan (lihat terapkanRowspanBidangIV) sehingga beberapa permasalahan
+          // pada bidang yang sama berbagi satu nomor, tanpa membuat nomor baru.
+          function buatBarisMasalah(namaBidang, opts) {
+            opts = opts || {};
             const table = document.getElementById("rekapMasalah");
             const tbody = table.querySelector("tbody");
-            const row = tbody.insertRow();
-            const rowNum = tbody.rows.length;
+            const row = document.createElement('tr');
 
-            let optionKelasMasalah = '<option value="">Pilih Kelas</option>';
-            urutkanDataSasaran(dataSasaran).forEach((item) => {
-              optionKelasMasalah += `<option value="${item}">${formatKelasTampilan(item)}</option>`;
-            });
+            // Baris "filler" (baris-kosong-tampilan-<bidang>) tidak dihitung sebagai
+            // baris data sungguhan saat menentukan posisi sisip -- dia murni penanda
+            // visual, selalu ditaruh paling akhir dalam grup bidangnya.
+            const barisBidangSama = Array.from(tbody.querySelectorAll('tr'))
+              .filter((tr) => tr.dataset.bidang === namaBidang && tr.dataset.filler !== '1');
 
+            if (barisBidangSama.length > 0) {
+              // Sudah ada baris bidang ini -- taruh tepat setelah baris terakhirnya,
+              // supaya grup bidang tetap berurutan/tidak tercerai-berai.
+              const last = barisBidangSama[barisBidangSama.length - 1];
+              if (last.nextSibling) last.parentNode.insertBefore(row, last.nextSibling);
+              else last.parentNode.appendChild(row);
+            } else {
+              // Belum ada baris bidang ini -- sisipkan tepat sebelum bidang
+              // berikutnya (urutan tetap: Pribadi, Belajar, Sosial, Karier).
+              const idxBidang = BIDANG_LAPORAN_BK.indexOf(namaBidang);
+              let sisipSebelum = null;
+              for (let i = idxBidang + 1; i < BIDANG_LAPORAN_BK.length && !sisipSebelum; i++) {
+                sisipSebelum = Array.from(tbody.querySelectorAll('tr')).find((tr) => tr.dataset.bidang === BIDANG_LAPORAN_BK[i]) || null;
+              }
+              if (sisipSebelum) sisipSebelum.parentNode.insertBefore(row, sisipSebelum);
+              else tbody.appendChild(row);
+            }
+
+            return isiKontenBarisMasalah(row, namaBidang, opts);
+          }
+
+          function isiKontenBarisMasalah(row, namaBidang, opts) {
+            opts = opts || {};
             row.className = "hover:bg-gray-50 transition-colors";
+            row.dataset.bidang = namaBidang;
+            row.dataset.sumberKey = opts.sumberKey || buatKunciManualUnik('manual');
+            // sumberAsal mengidentifikasi kegiatan/laporan+permasalahan yang sama
+            // TANPA memandang bidang -- dipakai untuk mencegah duplikasi di Bagian V
+            // ketika satu laporan dipilih ke lebih dari satu bidang. Baris manual
+            // (tanpa opts.sumberAsal) memakai sumberKey-nya sendiri sebagai fallback,
+            // supaya tetap unik/terpisah dari baris manual lain.
+            row.dataset.sumberAsal = opts.sumberAsal || row.dataset.sumberKey;
+            row.dataset.manual = opts.manual ? '1' : '0';
+            row.dataset.namaGuru = opts.namaGuru || '';
+            row.dataset.jenisSumber = opts.jenisSumber || '';
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
-            <td class="border border-gray-300 px-1 py-1">
-                <div class="date-input-wrapper">
-                    <input type="date" name="masalah_tanggal[]" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none" onchange="updateTanggalDisplay(this)">
-                </div>
+            <td class="sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
+            <td class="sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700"></td>
+            <td class="sel-permasalahan border border-gray-300 px-1 py-1">
+                <textarea name="masalah[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Deskripsi masalah" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
-            <td class="border border-gray-300 px-1 py-1 text-center" style="word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;white-space:normal;vertical-align:middle;">
-                <select name="masalah_kelas[]" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none cursor-pointer" style="word-wrap:break-word;overflow-wrap:break-word;white-space:normal;text-align:center;min-height:34px;padding-right:24px;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 12 12%22%3E%3Cpath fill=%22%236b7280%22 d=%22M6 8L1 3h10z%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 6px center;background-size:12px 12px;-webkit-appearance:none;appearance:none;">
-                    ${optionKelasMasalah}
-                </select>
+            <td class="sel-jumlah border border-gray-300 px-1 py-1 text-center">
+                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0; tandaiManual(this)">
             </td>
-            <td class="border border-gray-300 px-1 py-1">
-                <textarea name="bidang[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Bidang" oninput="autoResizeTextarea(this)"></textarea>
+            <td class="sel-tindak border border-gray-300 px-1 py-1">
+                <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak awal" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
-            <td class="border border-gray-300 px-1 py-1">
-                <textarea name="masalah[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Deskripsi masalah" oninput="autoResizeTextarea(this)"></textarea>
-            </td>
-            <td class="border border-gray-300 px-1 py-1 text-center">
-                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0">
-            </td>
-            <td class="border border-gray-300 px-1 py-1">
-                <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak awal" oninput="autoResizeTextarea(this)"></textarea>
-            </td>
-            <td class="border border-gray-300 px-1 py-1 text-center no-print">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
+            <td class="sel-aksi border border-gray-300 px-1 py-1 text-center no-print">
+                <button type="button" onclick="hapusBarisMasalah(this)" class="text-red-500 hover:text-red-700 transition" title="Hapus baris permasalahan ini">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         `;
+            return row;
+          }
+
+          // Baris statis (tidak diedit, tidak ikut disimpan) yang MUNCUL HANYA
+          // ketika seluruh baris data sungguhan pada suatu bidang sedang
+          // disembunyikan oleh Filter Guru BK -- supaya kelompok bidang itu
+          // (No + nama Bidang) tetap terlihat, tidak lenyap dari tabel/PDF.
+          // Ini murni tampilan: filter tidak pernah mengubah data/struktur asli.
+          function buatBarisFillerBidang(namaBidang) {
+            const table = document.getElementById("rekapMasalah");
+            const tbody = table.querySelector("tbody");
+            const row = document.createElement('tr');
+            row.className = "bg-gray-50";
+            row.dataset.bidang = namaBidang;
+            row.dataset.filler = '1';
+            row.style.display = 'none';
+            row.innerHTML = `
+            <td class="sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
+            <td class="sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700"></td>
+            <td class="sel-permasalahan border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">&mdash;</td>
+            <td class="sel-jumlah border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">0</td>
+            <td class="sel-tindak border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">&mdash;</td>
+            <td class="sel-aksi border border-gray-300 px-1 py-2 text-center no-print"></td>
+        `;
+
+            const barisBidangSama = Array.from(tbody.querySelectorAll('tr')).filter((tr) => tr.dataset.bidang === namaBidang);
+            if (barisBidangSama.length > 0) {
+              const last = barisBidangSama[barisBidangSama.length - 1];
+              if (last.nextSibling) last.parentNode.insertBefore(row, last.nextSibling);
+              else last.parentNode.appendChild(row);
+            } else {
+              tbody.appendChild(row);
+            }
+            return row;
+          }
+
+          // Pastikan tiap bidang punya persis 1 baris filler (dibuat sekali,
+          // lalu tinggal ditampilkan/disembunyikan oleh terapkanRowspanBidangIV).
+          function pastikanFillerBidangIV() {
+            const tbody = document.querySelector('#rekapMasalah tbody');
+            if (!tbody) return;
+            BIDANG_LAPORAN_BK.forEach((b) => {
+              const ada = Array.from(tbody.querySelectorAll('tr')).some((tr) => tr.dataset.bidang === b && tr.dataset.filler === '1');
+              if (!ada) buatBarisFillerBidang(b);
+            });
+          }
+
+          function tambahBarisMasalahManual(namaBidang) {
+            const row = buatBarisMasalah(namaBidang, { manual: true });
+            terapkanRowspanBidangIV();
+            terapkanFilterGuru();
+            row.querySelector('[name="masalah[]"]')?.focus();
+          }
+
+          function hapusBarisMasalah(btn) {
+            const tr = btn.closest('tr');
+            if (!tr) return;
+            const tbody = tr.closest('tbody');
+            const bidang = tr.dataset.bidang;
+            const jumlahSebidang = Array.from(tbody.querySelectorAll('tr'))
+              .filter((r) => r.dataset.bidang === bidang && r.dataset.filler !== '1').length;
+
+            if (jumlahSebidang <= 1) {
+              // Selalu sisakan minimal 1 baris per bidang supaya nomor/bidang tetap ada.
+              const elMasalah = tr.querySelector('[name="masalah[]"]');
+              const elJml = tr.querySelector('[name="jml_siswa_masalah[]"]');
+              const elTindak = tr.querySelector('[name="tindak_awal[]"]');
+              [elMasalah, elJml, elTindak].forEach((el) => { if (el) el.value = ''; });
+              if (elMasalah) autoResizeTextarea(elMasalah);
+              if (elTindak) autoResizeTextarea(elTindak);
+              tr.dataset.manual = '1';
+              return;
+            }
+
+            tr.remove();
+            terapkanRowspanBidangIV();
+          }
+
+          // Menghitung ulang penggabungan (rowspan) kolom No & Bidang berdasarkan
+          // baris yang SEDANG TAMPIL (mengikuti filter guru aktif). Kalau filter
+          // membuat semua baris data sungguhan pada suatu bidang tersembunyi,
+          // baris filler bidang itu yang ditampilkan sebagai gantinya -- supaya
+          // ke-4 bidang SELALU ada di tabel/PDF, apa pun hasil filternya.
+          function terapkanRowspanBidangIV() {
+            const tbody = document.querySelector('#rekapMasalah tbody');
+            if (!tbody) return;
+            pastikanFillerBidangIV();
+
+            const nomorBidang = {};
+            BIDANG_LAPORAN_BK.forEach((b, i) => { nomorBidang[b] = i + 1; });
+
+            const semuaBaris = Array.from(tbody.rows);
+            let i = 0;
+            while (i < semuaBaris.length) {
+              const bidang = semuaBaris[i].dataset.bidang;
+              let j = i;
+              while (j < semuaBaris.length && semuaBaris[j].dataset.bidang === bidang) j++;
+              const grup = semuaBaris.slice(i, j);
+              const grupNyata = grup.filter((tr) => tr.dataset.filler !== '1');
+              const grupFiller = grup.find((tr) => tr.dataset.filler === '1');
+              let grupTampil = grupNyata.filter((tr) => !tr.classList.contains('baris-tersembunyi-filter'));
+
+              if (grupTampil.length === 0 && grupFiller) {
+                grupFiller.style.display = '';
+                grupTampil = [grupFiller];
+              } else if (grupFiller) {
+                grupFiller.style.display = 'none';
+              }
+
+              grup.forEach((tr) => {
+                let tdNo = tr.querySelector('.sel-no');
+                let tdBidang = tr.querySelector('.sel-bidang');
+                const isPertamaTampil = grupTampil.length > 0 && tr === grupTampil[0];
+
+                if (isPertamaTampil) {
+                  // Baris ini yang "memegang" gabungan No + Bidang untuk
+                  // kelompoknya -- pastikan sel-nya ADA sebagai elemen DOM
+                  // nyata (dibuat lagi kalau sebelumnya sempat dilepas karena
+                  // baris ini dulu bukan yang pertama tampil).
+                  if (!tdNo) {
+                    tdNo = document.createElement('td');
+                    tdNo.className = 'sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700';
+                    tr.insertBefore(tdNo, tr.firstChild);
+                  }
+                  if (!tdBidang) {
+                    tdBidang = document.createElement('td');
+                    tdBidang.className = 'sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700';
+                    tdNo.after(tdBidang);
+                  }
+                  tdNo.style.display = '';
+                  tdBidang.style.display = '';
+                  tdNo.rowSpan = grupTampil.length;
+                  tdBidang.rowSpan = grupTampil.length;
+                  tdNo.textContent = nomorBidang[bidang] || '';
+                  tdBidang.textContent = bidang;
+                } else {
+                  // PENTING: sel No/Bidang pada baris SELAIN yang pertama harus
+                  // benar-benar DIHAPUS dari DOM (bukan cuma display:none).
+                  // Kalau hanya disembunyikan, browser tetap menghitungnya
+                  // sebagai "kolom hilang" pada baris itu, sehingga isi kolom
+                  // Permasalahan/Jumlah Siswa/Tindak Awal ikut bergeser ke kiri
+                  // dan tabel jadi tidak rata saat dicetak/PDF -- ini pemicu
+                  // masalah "tabel Bagian IV tidak rata" yang terlihat di PDF.
+                  if (tdNo) tdNo.remove();
+                  if (tdBidang) tdBidang.remove();
+                }
+              });
+
+              i = j;
+            }
+          }
+
+          // Pastikan setiap 4 bidang selalu punya minimal 1 baris DATA sungguhan
+          // (kosong kalau memang belum ada permasalahan), supaya struktur "4
+          // kelompok nomor" pada Bagian IV selalu tersedia untuk diisi/disimpan.
+          function pastikanSemuaBidangAdaBarisIV() {
+            const tbody = document.querySelector('#rekapMasalah tbody');
+            if (!tbody) return;
+            BIDANG_LAPORAN_BK.forEach((b) => {
+              const ada = Array.from(tbody.querySelectorAll('tr')).some((tr) => tr.dataset.bidang === b && tr.dataset.filler !== '1');
+              if (!ada) buatBarisMasalah(b, { manual: true });
+            });
+            pastikanFillerBidangIV();
           }
 
           function tambahTindak() {
@@ -2005,14 +2135,17 @@ if ($laporan_id > 0) {
             const rowNum = tbody.rows.length;
 
             row.className = "hover:bg-gray-50 transition-colors";
+            row.dataset.sumberKey = '';
+            row.dataset.manual = '1';
+            row.dataset.namaGuru = '';
 
             row.innerHTML = `
             <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
             <td class="border border-gray-300 px-1 py-1">
-                <textarea name="tl_permasalahan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Permasalahan" oninput="autoResizeTextarea(this)"></textarea>
+                <textarea name="tl_permasalahan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Permasalahan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
-                <textarea name="tl_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Layanan BK" oninput="autoResizeTextarea(this)"></textarea>
+                <textarea name="tl_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Layanan BK" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="tl_tindak_lanjut[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak lanjut" oninput="autoResizeTextarea(this)"></textarea>
@@ -2043,6 +2176,7 @@ if ($laporan_id > 0) {
                 </button>
             </td>
         `;
+            return row;
           }
 
           function renderFotoDokumentasi(box, src) {
@@ -2148,8 +2282,6 @@ if ($laporan_id > 0) {
               const idLaporanEl = document.getElementById('idLaporan');
               if (!idLaporanEl || !idLaporanEl.value || idLaporanEl.value === '0') {
                 document.getElementById('bulanLaporan').value = '';
-                tambahMasalah();
-                tambahTindak();
                 siapkanLaporanBulanBaru();
               }
 
@@ -2216,38 +2348,314 @@ if ($laporan_id > 0) {
             inputBulan.addEventListener('change', () => prosesPerubahanBulan(false));
           }
 
-          // Ambil rekap kegiatan (Section III) secara LIVE dari tabel sumber
-          // (konseling individu, kelompok, home visit, panggilan ortu) untuk
-          // bulan/tahun tertentu, lalu isi ke tabel rekapKegiatan.
-          // Dipakai baik saat memulai laporan bulan baru maupun saat membuka
-          // laporan yang sudah ada (draft/final) agar selalu ikut perubahan
-          // (edit/hapus) terbaru dari modul-modul sumber.
-          async function muatRekapKegiatan(bulan, tahun, guruFilter) {
-            const tbodyRekap = document.querySelector('#rekapKegiatan tbody');
-            tbodyRekap.innerHTML = '';
-            if (guruFilter === undefined) {
-              const selFilter = document.getElementById('filterGuruRekapBK');
-              guruFilter = selFilter ? selFilter.value : '';
-            }
+          const KOLOM_REKAP = ['jenis_layanan', 'sasaran_kelas', 'jumlah_siswa', 'waktu', 'bentuk_kegiatan', 'keterangan'];
+          // Catatan: 'bidang' TIDAK lagi termasuk kolom form per-baris -- Bidang
+          // sekarang murni struktural (dataset.bidang + rowspan), bukan field
+          // yang diedit langsung per baris permasalahan.
+          const KOLOM_MASALAH = ['masalah', 'jml_siswa_masalah', 'tindak_awal'];
+          const KOLOM_TINDAK = ['tl_permasalahan', 'tl_layanan', 'tl_tindak_lanjut', 'tl_waktu', 'tl_pihak'];
 
-            try {
-              const rekapRes = await fetch('laporanbk.php', {
-                method: 'POST',
-                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan, tahun, guru: guruFilter || '' }),
-              });
-              const hasil = await rekapRes.json();
-              if (hasil.success && hasil.rekap && hasil.rekap.length > 0) {
-                hasil.rekap.forEach((baris) => {
-                  tambahRekap();
-                  isiBarisTerakhir(tbodyRekap, KOLOM_REKAP, baris);
+          const FIELD_SELALU_MANUAL = {
+            masalah: ['jml_siswa_masalah', 'tindak_awal'],
+          };
+
+          function isiBarisTerakhir(tbody, kolom, dataBaris) {
+            const tr = tbody.rows[tbody.rows.length - 1];
+            kolom.forEach((nama) => {
+              const el = tr.querySelector(`[name="${nama}[]"]`);
+              if (el && dataBaris[nama] !== undefined) {
+                setNilaiElemen(el, dataBaris[nama]);
+                if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
+              }
+            });
+          }
+
+          function kunciKontenRekap(jenisLayanan, waktu) {
+            return String(jenisLayanan || '').trim().toLowerCase() + '|' + String(waktu || '').trim();
+          }
+
+          function mergeOtomatisKeTabel(tbodySelector, dataFresh, fnTambahBaris, kolomList, opts) {
+            opts = opts || {};
+            const skipFields = opts.skipFields || [];
+            const isiJikaKosongFields = opts.isiJikaKosongFields || [];
+            const keteranganField = opts.keteranganField || null;
+            const tbody = document.querySelector(tbodySelector);
+            if (!tbody) return;
+
+            const barisAda = Array.from(tbody.querySelectorAll('tr'));
+            const petaKey = {};
+            const petaKonten = {};
+            barisAda.forEach((tr) => {
+              if (tr.dataset.sumberKey) {
+                petaKey[tr.dataset.sumberKey] = tr;
+              } else if (opts.kunciKonten) {
+                const elJenis = tr.querySelector('[name="jenis_layanan[]"]');
+                const elWaktu = tr.querySelector('[name="waktu[]"]');
+                const k = kunciKontenRekap(elJenis ? elJenis.value : '', elWaktu ? elWaktu.value : '');
+                if (k !== '|' && !petaKonten[k]) petaKonten[k] = tr;
+              }
+            });
+
+            const keyFresh = new Set();
+
+            (dataFresh || []).forEach((baris) => {
+              if (!baris.sumber_key) return;
+              keyFresh.add(baris.sumber_key);
+              let tr = petaKey[baris.sumber_key];
+
+              if (!tr && opts.kunciKonten) {
+                const k = kunciKontenRekap(baris.jenis_layanan, baris.waktu);
+                if (petaKonten[k]) {
+                  tr = petaKonten[k];
+                  tr.dataset.sumberKey = baris.sumber_key;
+                  tr.dataset.manual = '0';
+                  delete petaKonten[k];
+                }
+              }
+
+              if (tr) {
+                tr.dataset.namaGuru = baris.nama_guru || '';
+                if (baris.jenis_sumber !== undefined) tr.dataset.jenisSumber = baris.jenis_sumber || '';
+                if (tr.dataset.manual === '1') return;
+
+                kolomList.forEach((nama) => {
+                  if (baris[nama] === undefined) return;
+                  const el = tr.querySelector(`[name="${nama}[]"]`);
+                  if (!el) return;
+                  if (nama === keteranganField) {
+                    const nilaiSaatIni = ambilNilaiElemen(el);
+                    if (!nilaiSaatIni || nilaiSaatIni === 'Terlaksana') {
+                      setNilaiElemen(el, baris[nama] || 'Terlaksana');
+                    }
+                    return;
+                  }
+                  // Field seperti Bentuk Kegiatan: BOLEH diisikan otomatis
+                  // (mengejar/backfill) selama selnya MASIH KOSONG -- ini juga
+                  // mencakup baris lama yang sempat tersimpan kosong sebelum
+                  // template Bentuk Kegiatan ditambahkan. Begitu ada isinya
+                  // (otomatis atau ditulis manual oleh guru), tidak akan
+                  // ditimpa lagi oleh refresh data berikutnya.
+                  if (isiJikaKosongFields.includes(nama)) {
+                    if (!ambilNilaiElemen(el)) {
+                      setNilaiElemen(el, baris[nama]);
+                      if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
+                    }
+                    return;
+                  }
+                  if (skipFields.includes(nama)) return;
+                  setNilaiElemen(el, baris[nama]);
+                  if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
                 });
               } else {
-                tambahRekap();
+                fnTambahBaris(baris);
+                tr = tbody.rows[tbody.rows.length - 1];
+                tr.dataset.sumberKey = baris.sumber_key;
+                tr.dataset.manual = '0';
+                tr.dataset.namaGuru = baris.nama_guru || '';
+                tr.dataset.jenisSumber = baris.jenis_sumber || '';
+                isiBarisTerakhir(tbody, kolomList, baris);
+                if (keteranganField) {
+                  const elK = tr.querySelector(`[name="${keteranganField}[]"]`);
+                  if (elK && !ambilNilaiElemen(elK)) setNilaiElemen(elK, 'Terlaksana');
+                }
+              }
+            });
+
+            barisAda.forEach((tr) => {
+              if (tr.dataset.sumberKey && !keyFresh.has(tr.dataset.sumberKey) && tr.dataset.manual !== '1') {
+                tr.remove();
+              }
+            });
+
+            perbaruiNomorBaris(tbody);
+          }
+
+          // Menyalin Bagian IV -> Bagian V. PENTING: satu laporan/kegiatan yang
+          // sama bisa muncul sebagai BEBERAPA baris di Bagian IV (satu per bidang
+          // yang dipilih guru untuknya), tapi tetap harus jadi SATU baris saja di
+          // Bagian V -- karena itu tetap satu kegiatan/permasalahan yang sama,
+          // bukan beberapa kegiatan. Dedup dilakukan lewat "sumber_asal" (identitas
+          // laporan+kalimat masalah TANPA bidang), bukan "sumber_key" milik IV
+          // (yang sengaja unik per-bidang supaya baris IV-nya terpisah per bidang).
+          // Kalau satu laporan memang punya beberapa KALIMAT masalah berbeda,
+          // masing-masing tetap dapat sumber_asal sendiri -> tetap jadi baris V
+          // terpisah (sesuai aturan "beberapa permasalahan = beberapa baris").
+          function sinkronTindakDariMasalah() {
+            const tbodyIV = document.querySelector('#rekapMasalah tbody');
+            const tbodyV = document.querySelector('#tindakLanjut tbody');
+            if (!tbodyIV || !tbodyV) return;
+
+            const barisV = Array.from(tbodyV.querySelectorAll('tr'));
+            const petaKey = {};
+            barisV.forEach((tr) => { if (tr.dataset.sumberKey) petaKey[tr.dataset.sumberKey] = tr; });
+
+            const keyFresh = new Set();
+            const sumberAsalSudahDiproses = new Set();
+
+            Array.from(tbodyIV.querySelectorAll('tr')).forEach((trIV) => {
+              if (trIV.dataset.filler === '1') return; // baris filler tampilan, bukan data
+              const sumberKeyIV = trIV.dataset.sumberKey;
+              if (!sumberKeyIV) return;
+
+              const elMasalahIV = trIV.querySelector('[name="masalah[]"]');
+              const teksMasalah = elMasalahIV ? ambilNilaiElemen(elMasalahIV).trim() : '';
+              if (!teksMasalah) return;
+
+              // Sudah ada baris V untuk kegiatan/permasalahan (sumber_asal) yang
+              // sama dari duplikasi bidang lain -- lewati, jangan buat baris kedua.
+              const sumberAsal = trIV.dataset.sumberAsal || sumberKeyIV;
+              if (sumberAsalSudahDiproses.has(sumberAsal)) return;
+              sumberAsalSudahDiproses.add(sumberAsal);
+
+              keyFresh.add(sumberAsal);
+              const jenisSumber = trIV.dataset.jenisSumber || '';
+              const namaGuru = trIV.dataset.namaGuru || '';
+
+              let trV = petaKey[sumberAsal];
+              if (trV) {
+                trV.dataset.namaGuru = namaGuru;
+                if (trV.dataset.manual === '1') return;
+
+                const elP = trV.querySelector('[name="tl_permasalahan[]"]');
+                const elL = trV.querySelector('[name="tl_layanan[]"]');
+                if (elP) { setNilaiElemen(elP, teksMasalah); autoResizeTextarea(elP); }
+                if (elL) { setNilaiElemen(elL, jenisSumber); autoResizeTextarea(elL); }
+              } else {
+                tambahTindak();
+                trV = tbodyV.rows[tbodyV.rows.length - 1];
+                trV.dataset.sumberKey = sumberAsal;
+                trV.dataset.manual = '0';
+                trV.dataset.namaGuru = namaGuru;
+
+                const elP = trV.querySelector('[name="tl_permasalahan[]"]');
+                const elL = trV.querySelector('[name="tl_layanan[]"]');
+                if (elP) { setNilaiElemen(elP, teksMasalah); autoResizeTextarea(elP); }
+                if (elL) { setNilaiElemen(elL, jenisSumber); autoResizeTextarea(elL); }
+              }
+            });
+
+            barisV.forEach((tr) => {
+              if (tr.dataset.sumberKey && !keyFresh.has(tr.dataset.sumberKey) && tr.dataset.manual !== '1') {
+                tr.remove();
+              }
+            });
+
+            perbaruiNomorBaris(tbodyV);
+          }
+
+          function terapkanFilterGuru() {
+            const sel = document.getElementById('filterGuruBK');
+            const nilai = sel ? sel.value : '';
+            ['#rekapKegiatan tbody', '#rekapMasalah tbody', '#tindakLanjut tbody'].forEach((sel2) => {
+              document.querySelectorAll(`${sel2} > tr`).forEach((tr) => {
+                const guru = tr.dataset.namaGuru || '';
+                const tampil = !nilai || !guru || guru === nilai;
+                tr.classList.toggle('baris-tersembunyi-filter', !tampil);
+              });
+            });
+            // Rowspan No/Bidang Bagian IV bergantung baris mana yang tampil,
+            // jadi harus dihitung ulang setiap kali filter berubah.
+            terapkanRowspanBidangIV();
+          }
+
+          // Merge khusus Bagian IV: setiap permasalahan otomatis adalah baris
+          // tersendiri (bukan bucket gabungan), disisipkan pada posisi yang benar
+          // di dalam grup bidangnya. Baris manual (termasuk baris auto yang sudah
+          // diedit manual) tidak pernah ditimpa atau dihapus oleh data live.
+          function mergeMasalahIV(dataFresh) {
+            const tbody = document.querySelector('#rekapMasalah tbody');
+            if (!tbody) return;
+
+            const petaKey = {};
+            Array.from(tbody.querySelectorAll('tr')).forEach((tr) => {
+              if (tr.dataset.sumberKey) petaKey[tr.dataset.sumberKey] = tr;
+            });
+
+            const keyFresh = new Set();
+
+            (dataFresh || []).forEach((baris) => {
+              if (!baris.sumber_key) return;
+              keyFresh.add(baris.sumber_key);
+              const trAda = petaKey[baris.sumber_key];
+
+              if (trAda) {
+                trAda.dataset.namaGuru = baris.nama_guru || '';
+                trAda.dataset.jenisSumber = baris.jenis_sumber || '';
+                trAda.dataset.sumberAsal = baris.sumber_asal || trAda.dataset.sumberKey;
+                if (trAda.dataset.manual === '1') return;
+
+                ['masalah', 'jml_siswa_masalah', 'tindak_awal'].forEach((nama) => {
+                  if (FIELD_SELALU_MANUAL.masalah.includes(nama)) return;
+                  if (baris[nama] === undefined) return;
+                  const el = trAda.querySelector(`[name="${nama}[]"]`);
+                  if (!el) return;
+                  setNilaiElemen(el, baris[nama]);
+                  if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
+                });
+              } else {
+                const row = buatBarisMasalah(baris.bidang, {
+                  sumberKey: baris.sumber_key,
+                  sumberAsal: baris.sumber_asal,
+                  manual: false,
+                  namaGuru: baris.nama_guru,
+                  jenisSumber: baris.jenis_sumber,
+                });
+                const elMasalah = row.querySelector('[name="masalah[]"]');
+                if (elMasalah) { setNilaiElemen(elMasalah, baris.masalah); autoResizeTextarea(elMasalah); }
+              }
+            });
+
+            // Hapus baris auto lama yang sudah tidak ada di data terbaru (mis. data
+            // sumbernya dihapus/diedit di modul asal) -- kecuali sudah diedit manual.
+            Array.from(tbody.querySelectorAll('tr')).forEach((tr) => {
+              if (tr.dataset.sumberKey && !keyFresh.has(tr.dataset.sumberKey) && tr.dataset.manual !== '1' && !tr.dataset.sumberKey.startsWith('manual-')) {
+                tr.remove();
+              }
+            });
+
+            pastikanSemuaBidangAdaBarisIV();
+            terapkanRowspanBidangIV();
+          }
+
+          let seqMuatDataOtomatis = 0;
+
+          // Mengambil data otomatis Bagian III & IV SELALU LENGKAP (tanpa filter
+          // guru) dari server, lalu di-merge ke tabel. Filter Guru BK TIDAK memicu
+          // fungsi ini lagi -- lihat terapkanFilterGuru() yang murni menyaring
+          // tampilan di browser tanpa fetch ulang, supaya data tidak pernah
+          // ter-reset/hilang/tertukar akibat gonta-ganti filter.
+          async function muatDataOtomatis(bulan, tahun) {
+            const seqSaya = ++seqMuatDataOtomatis;
+            const tbodyRekap = document.querySelector('#rekapKegiatan tbody');
+
+            pastikanSemuaBidangAdaBarisIV();
+
+            try {
+              const res = await fetch('laporanbk.php', {
+                method: 'POST',
+                body: new URLSearchParams({ action: 'get_rekap_otomatis', bulan, tahun }),
+              });
+              const hasil = await res.json();
+              if (seqSaya !== seqMuatDataOtomatis) return;
+              if (hasil.success) {
+                mergeOtomatisKeTabel('#rekapKegiatan tbody', hasil.rekap || [], tambahRekap, KOLOM_REKAP, {
+                  isiJikaKosongFields: ['bentuk_kegiatan'],
+                  keteranganField: 'keterangan',
+                  kunciKonten: true,
+                });
+                mergeMasalahIV(hasil.masalah || []);
               }
             } catch (e) {
               console.error(e);
-              tambahRekap();
             }
+
+            if (seqSaya !== seqMuatDataOtomatis) return;
+
+            if (!tbodyRekap || tbodyRekap.rows.length === 0) tambahRekap();
+
+            sinkronTindakDariMasalah();
+
+            terapkanFilterGuru();
           }
 
           async function prosesPerubahanBulan(saatMuatAwal) {
@@ -2268,7 +2676,7 @@ if ($laporan_id > 0) {
               console.error(e);
             }
 
-            await muatRekapKegiatan(info.bulan, info.tahun);
+            await muatDataOtomatis(info.bulan, info.tahun);
           }
 
           function ambilBulanTahunAktif() {
@@ -2278,10 +2686,17 @@ if ($laporan_id > 0) {
             return terapkanInfoBulan(document.getElementById('bulanLaporan').value);
           }
 
-          document.getElementById('filterGuruRekapBK').addEventListener('change', function () {
-            const info = ambilBulanTahunAktif();
-            if (info) muatRekapKegiatan(info.bulan, info.tahun, this.value);
-          });
+          const elFilterGuruBK = document.getElementById('filterGuruBK');
+          if (elFilterGuruBK) {
+            // PENTING: ganti filter TIDAK memicu fetch/merge ulang ke server sama
+            // sekali -- murni menyembunyikan/menampilkan baris yang sudah ada di
+            // tabel (lihat terapkanFilterGuru). Ini yang membuat filter aman
+            // diganti berkali-kali tanpa risiko data ter-reset, hilang, atau
+            // tertukar antar bagian (III, IV, V) maupun saat dicetak ke PDF.
+            elFilterGuruBK.addEventListener('change', function () {
+              terapkanFilterGuru();
+            });
+          }
 
           document.addEventListener("DOMContentLoaded", () => {
             document
@@ -2294,15 +2709,12 @@ if ($laporan_id > 0) {
 
             if (window.DATA_LAPORAN_EXISTING) {
               restoreSemuaTabel(window.DATA_LAPORAN_EXISTING);
-              // Selalu tarik ulang rekap kegiatan secara live, termasuk untuk
-              // laporan yang sudah final, supaya sasaran/jumlah/dll ikut
-              // ter-update kalau ada perubahan di modul sumber.
               if (window.LAPORAN_BULAN_AKTIF && window.LAPORAN_TAHUN_AKTIF) {
-                muatRekapKegiatan(window.LAPORAN_BULAN_AKTIF, window.LAPORAN_TAHUN_AKTIF);
+                muatDataOtomatis(window.LAPORAN_BULAN_AKTIF, window.LAPORAN_TAHUN_AKTIF);
+              } else {
+                terapkanFilterGuru();
               }
             } else {
-              tambahMasalah();
-              tambahTindak();
               siapkanLaporanBulanBaru();
             }
 
@@ -2313,47 +2725,73 @@ if ($laporan_id > 0) {
             }
           });
 
-          const KOLOM_REKAP = ['jenis_layanan', 'sasaran_kelas', 'jumlah_siswa', 'waktu', 'bentuk_kegiatan', 'keterangan'];
-          const KOLOM_MASALAH = ['masalah_tanggal', 'masalah_kelas', 'bidang', 'masalah', 'jml_siswa_masalah', 'tindak_awal'];
-          const KOLOM_TINDAK = ['tl_permasalahan', 'tl_layanan', 'tl_tindak_lanjut', 'tl_waktu', 'tl_pihak'];
-
-          function isiBarisTerakhir(tbody, kolom, dataBaris) {
-            const tr = tbody.rows[tbody.rows.length - 1];
-            kolom.forEach((nama) => {
-              const el = tr.querySelector(`[name="${nama}[]"]`);
-              if (el && dataBaris[nama] !== undefined) {
-                el.value = dataBaris[nama];
-                if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
-              }
-            });
-          }
-
           function restoreSemuaTabel(data) {
-            // Catatan: Section III (Rekap Kegiatan) SENGAJA tidak direstore dari
-            // snapshot (data.rekap) di sini. Section ini selalu diisi ulang
-            // secara live lewat muatRekapKegiatan() supaya otomatis mengikuti
-            // perubahan (edit/hapus) terbaru di modul konseling individu,
-            // kelompok, home visit, dan panggilan ortu.
+            const rekap = data.rekap || [];
             const masalah = data.masalah || [];
             const tindak = data.tindak || [];
 
-            if (masalah.length === 0) {
-              tambahMasalah();
-            } else {
-              masalah.forEach((baris) => {
-                tambahMasalah();
-                isiBarisTerakhir(document.querySelector('#rekapMasalah tbody'), KOLOM_MASALAH, baris);
-              });
-            }
+            rekap.forEach((baris) => {
+              const tr = tambahRekap();
+              isiBarisTerakhir(document.querySelector('#rekapKegiatan tbody'), KOLOM_REKAP, baris);
+              tr.dataset.sumberKey = baris.sumber_key || '';
+              tr.dataset.manual = baris.sumber_key ? (baris.manual ? '1' : '0') : '1';
+              tr.dataset.namaGuru = baris.nama_guru || '';
+            });
 
-            if (tindak.length === 0) {
-              tambahTindak();
-            } else {
-              tindak.forEach((baris) => {
-                tambahTindak();
-                isiBarisTerakhir(document.querySelector('#tindakLanjut tbody'), KOLOM_TINDAK, baris);
+            // Bagian IV bisa berisi dua format data lama/baru:
+            // - BARU: satu baris tersimpan = satu permasalahan (sumber_key unik
+            //   per permasalahan, baik otomatis "masalah-..." maupun manual
+            //   "manual-...").
+            // - LAMA (sebelum fitur ini dipecah per-baris): satu baris tersimpan
+            //   = satu bidang ("sumber_key" berupa "bidang-xxx") berisi beberapa
+            //   permasalahan digabung dalam satu teks multi-baris. Ini otomatis
+            //   dipecah jadi baris-baris terpisah supaya tetap tampil benar,
+            //   dan ditandai manual (aman, tidak akan tertimpa data live).
+            masalah.forEach((baris) => {
+              const bidangLegacy = BIDANG_LAPORAN_BK.find((b) => baris.sumber_key === 'bidang-' + b.toLowerCase());
+              const namaBidang = bidangLegacy || BIDANG_LAPORAN_BK.find((b) => b === baris.bidang) || BIDANG_LAPORAN_BK[0];
+
+              if (bidangLegacy) {
+                const teksGabung = String(baris.masalah || '').split(/\r\n|\r|\n/).map((s) => s.trim()).filter(Boolean);
+                if (teksGabung.length === 0) teksGabung.push('');
+                teksGabung.forEach((teks) => {
+                  const tr = buatBarisMasalah(namaBidang, { manual: true });
+                  const elMasalah = tr.querySelector('[name="masalah[]"]');
+                  setNilaiElemen(elMasalah, teks);
+                  autoResizeTextarea(elMasalah);
+                });
+                return;
+              }
+
+              const tr = buatBarisMasalah(namaBidang, {
+                sumberKey: baris.sumber_key || buatKunciManualUnik('manual'),
+                sumberAsal: baris.sumber_asal || baris.sumber_key,
+                manual: !!baris.manual,
+                namaGuru: baris.nama_guru || '',
+                jenisSumber: baris.jenis_sumber || '',
               });
-            }
+              // Isi langsung lewat referensi baris `tr` (bukan isiBarisTerakhir),
+              // karena buatBarisMasalah menyisipkan baris secara posisional
+              // (sesuai urutan bidang), belum tentu jadi baris terakhir di tbody.
+              KOLOM_MASALAH.forEach((nama) => {
+                const el = tr.querySelector(`[name="${nama}[]"]`);
+                if (el && baris[nama] !== undefined) {
+                  setNilaiElemen(el, baris[nama]);
+                  if (el.tagName === 'TEXTAREA') autoResizeTextarea(el);
+                }
+              });
+            });
+
+            pastikanSemuaBidangAdaBarisIV();
+            terapkanRowspanBidangIV();
+
+            tindak.forEach((baris) => {
+              const tr = tambahTindak();
+              isiBarisTerakhir(document.querySelector('#tindakLanjut tbody'), KOLOM_TINDAK, baris);
+              tr.dataset.sumberKey = baris.sumber_key || '';
+              tr.dataset.manual = baris.sumber_key ? (baris.manual ? '1' : '0') : '1';
+              tr.dataset.namaGuru = baris.nama_guru || '';
+            });
           }
 
           function syncPrintText(selectEl, targetId) {
@@ -2365,9 +2803,13 @@ if ($laporan_id > 0) {
             document.querySelectorAll('table select').forEach(function (sel) {
               const span = document.createElement('span');
               span.className = 'print-value-proxy';
-              span.textContent = sel.value
-                ? sel.options[sel.selectedIndex]?.text || sel.value
-                : '';
+              if (sel.multiple) {
+                span.textContent = Array.from(sel.selectedOptions).map(function (o) { return o.text; }).join(', ');
+              } else {
+                span.textContent = sel.value
+                  ? sel.options[sel.selectedIndex]?.text || sel.value
+                  : '';
+              }
               sel.parentNode.insertBefore(span, sel.nextSibling);
             });
 
@@ -2426,14 +2868,34 @@ if ($laporan_id > 0) {
           function kumpulkanBarisTabel(tbodySelector, kolom) {
             const hasil = [];
             document.querySelectorAll(`${tbodySelector} tr`).forEach((tr) => {
+              // Baris filler (lihat buatBarisFillerBidang) murni tampilan saat
+              // Filter Guru BK menyembunyikan seluruh data suatu bidang -- tidak
+              // pernah ikut disimpan sebagai data laporan.
+              if (tr.dataset.filler === '1') return;
+
               const baris = {};
               let adaIsi = false;
               kolom.forEach((nama) => {
                 const el = tr.querySelector(`[name="${nama}[]"]`);
-                const val = el ? el.value : '';
+                const val = el ? ambilNilaiElemen(el) : '';
                 baris[nama] = val;
                 if (val) adaIsi = true;
               });
+              if (tr.dataset.sumberKey) {
+                adaIsi = true;
+                baris.sumber_key = tr.dataset.sumberKey;
+                baris.sumber_asal = tr.dataset.sumberAsal || tr.dataset.sumberKey;
+                baris.manual = tr.dataset.manual === '1';
+                baris.nama_guru = tr.dataset.namaGuru || '';
+                if (tr.dataset.jenisSumber !== undefined) baris.jenis_sumber = tr.dataset.jenisSumber || '';
+              }
+              // Bagian IV: bidang bersifat struktural (bukan field form), tapi
+              // tetap harus ikut tersimpan supaya baris bisa direstore ke grup
+              // bidang yang benar saat laporan dibuka lagi.
+              if (tr.dataset.bidang) {
+                adaIsi = true;
+                baris.bidang = tr.dataset.bidang;
+              }
               if (adaIsi) hasil.push(baris);
             });
             return hasil;

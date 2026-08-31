@@ -176,6 +176,16 @@ function isi($v, $satuan = '') {
     return htmlspecialchars($v) . ($satuan ? ' ' . $satuan : '');
 }
 
+// Format angka penghasilan jadi format Rupiah Indonesia yang benar, mis. 3000000
+// menjadi "Rp 3.000.000" (titik sebagai pemisah ribuan, tanpa desimal karena
+// nilai penghasilan selalu bulat).
+function formatRupiah($v) {
+    if ($v === null || $v === '' || !is_numeric($v)) {
+        return '<span style="color:#9aa3af;">Belum diisi</span>';
+    }
+    return 'Rp ' . number_format((float) $v, 0, ',', '.');
+}
+
 $url_kembali = "detail_biodata.php?id_siswa=" . urlencode($id_siswa);
 ?>
 <!DOCTYPE html>
@@ -437,7 +447,7 @@ table { border-collapse: collapse; width: 100%; }
             <tr><td class="label">Agama</td><td class="colon">:</td><td><?php echo isi($siswa['agama']); ?></td></tr>
             <tr><td class="label">Suku</td><td class="colon">:</td><td><?php echo isi($siswa['suku']); ?></td></tr>
             <tr><td class="label">Tinggi / Berat Badan</td><td class="colon">:</td><td><?php echo isi($siswa['tinggi_badan'], 'cm'); ?> / <?php echo isi($siswa['berat_badan'], 'kg'); ?></td></tr>
-            <tr><td class="label">Riwayat Penyakit</td><td class="colon">:</td><td><?php echo isi($siswa['riwayat_penyakit']); ?></td></tr>
+            <tr><td class="label">Riwayat Penyakit</td><td class="colon">:</td><td><?php echo ($siswa['riwayat_penyakit'] === null || $siswa['riwayat_penyakit'] === '') ? 'Tidak ada' : htmlspecialchars($siswa['riwayat_penyakit']); ?></td></tr>
         </table>
         <table class="data-table">
             <tr><td class="label">Alamat Lengkap</td><td class="colon">:</td><td><?php echo isi($siswa['alamat_lengkap']); ?></td></tr>
@@ -482,7 +492,7 @@ table { border-collapse: collapse; width: 100%; }
             <tr>
                 <td class="label">Penghasilan Ayah</td>
                 <td class="colon">:</td>
-                <td><?php echo isi($siswa['penghasilan_ayah']); ?></td>
+                <td><?php echo formatRupiah($siswa['penghasilan_ayah']); ?></td>
             </tr>
             <tr>
                 <td class="label">No. HP Ayah</td>
@@ -516,7 +526,7 @@ table { border-collapse: collapse; width: 100%; }
             <tr>
                 <td class="label">Penghasilan Ibu</td>
                 <td class="colon">:</td>
-                <td><?php echo isi($siswa['penghasilan_ibu']); ?></td>
+                <td><?php echo formatRupiah($siswa['penghasilan_ibu']); ?></td>
             </tr>
             <tr>
                 <td class="label">No. HP Ibu</td>

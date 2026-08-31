@@ -37,6 +37,7 @@ $query_siswa = "
         s.id_siswa,
         s.nis,
         s.nama,
+        s.jenis_kelamin,
         s.kelas,
         s.jurusan,
         t.tahun AS tahun_ajaran,
@@ -51,7 +52,28 @@ $query_siswa = "
             WHERE id_siswa = s.id_siswa
             ORDER BY tanggal_tes DESC
             LIMIT 1
-        ) AS skor_gb_latest
+        ) AS skor_gb_latest,
+        (
+            SELECT skor_visual
+            FROM hasil_gayabelajar
+            WHERE id_siswa = s.id_siswa
+            ORDER BY tanggal_tes DESC
+            LIMIT 1
+        ) AS skor_visual_latest,
+        (
+            SELECT skor_auditori
+            FROM hasil_gayabelajar
+            WHERE id_siswa = s.id_siswa
+            ORDER BY tanggal_tes DESC
+            LIMIT 1
+        ) AS skor_auditori_latest,
+        (
+            SELECT skor_kinestetik
+            FROM hasil_gayabelajar
+            WHERE id_siswa = s.id_siswa
+            ORDER BY tanggal_tes DESC
+            LIMIT 1
+        ) AS skor_kinestetik_latest
     FROM siswa s
     JOIN tahun_ajaran t ON s.tahun_ajaran_id = t.id_tahun
     $where_sql
@@ -72,10 +94,23 @@ $gb_counts = [
     'Belum Tes' => 0
 ];
 
-foreach ($data_siswa as $siswa) {
+foreach ($data_siswa as &$siswa) {
     $tipe = empty($siswa['skor_gb_latest']) ? 'Belum Tes' : $siswa['skor_gb_latest'];
     $gb_counts[$tipe]++;
+
+    $sv = (int)($siswa['skor_visual_latest'] ?? 0);
+    $sa = (int)($siswa['skor_auditori_latest'] ?? 0);
+    $sk = (int)($siswa['skor_kinestetik_latest'] ?? 0);
+    $total_skor_siswa = $sv + $sa + $sk;
+
+    if ($tipe === 'Belum Tes' || $total_skor_siswa === 0) {
+        $siswa['persentase_gb'] = null;
+    } else {
+        $skor_dominan = max($sv, $sa, $sk);
+        $siswa['persentase_gb'] = round(($skor_dominan / $total_skor_siswa) * 100);
+    }
 }
+unset($siswa);
 
 $gb_belum_tes = $gb_counts['Belum Tes'];
 unset($gb_counts['Belum Tes']);
@@ -330,10 +365,15 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             
             @page {
                 size: A4 portrait;
-                margin: 0.8cm;
+                margin: 0.5cm;
             }
 
-            .no-print {
+            .no-print,
+            nav,
+            aside,
+            header,
+            #sidebar,
+            .sidebar {
                 display: none !important;
             }
             .show-on-print {
@@ -364,19 +404,36 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             }
 
             .print-header,
-            .report-section,
-            .data-table-report,
             .wawasan-data-pdf {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
 
+            .report-section {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+
+            .data-table-report {
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+
+            .data-table-report tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .data-table-report thead {
+                display: table-header-group;
+            }
+
             .print-header {
                 display: block !important;
-                margin-bottom: 15px;
-                padding-top: 5px;
-                border-bottom: 3px double #333;
-                padding-bottom: 8px;
+                margin-bottom: 6px;
+                padding-top: 2px;
+                border-bottom: 2px double #333;
+                padding-bottom: 4px;
             }
 
             .header-content {
@@ -387,20 +444,20 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             }
 
             .header-logo {
-                height: 70px;
-                width: 70px;
-                margin-right: 15px;
+                height: 45px;
+                width: 45px;
+                margin-right: 10px;
             }
 
             .header-title {
                 text-align: center;
                 flex-grow: 1;
-                line-height: 1.2;
-                padding-top: 5px;
+                line-height: 1.1;
+                padding-top: 2px;
             }
 
             .header-title h1 {
-                font-size: 1.5rem;
+                font-size: 1.1rem;
                 font-weight: 800;
                 margin: 0;
                 color: #333;
@@ -408,23 +465,27 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             }
 
             .header-title h2 {
-                font-size: 1.1rem;
+                font-size: 0.85rem;
                 font-weight: 600;
-                margin: 3px 0 5px;
+                margin: 2px 0 3px;
                 color: #555;
             }
 
             .header-title p {
-                font-size: 0.85rem;
+                font-size: 0.7rem;
                 margin: 0;
                 color: #555;
             }
 
             .report-section {
                 padding: 0 !important;
-                margin-top: 15px !important;
+                margin-top: 6px !important;
                 box-shadow: none !important;
                 border: none !important;
+            }
+
+            .report-section h4 {
+                margin-bottom: 2px !important;
             }
 
             .data-table-report {
@@ -459,6 +520,17 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                 font-weight: 700 !important;
                 background-color: #ffe599 !important;
                 color: #000 !important;
+            }
+
+            .print-mt-tight {
+                margin-top: 6px !important;
+            }
+
+            .data-table-siswa th,
+            .data-table-siswa td {
+                padding: 1.5px 4px;
+                font-size: 0.62rem;
+                line-height: 1.15;
             }
 
             .chart-container,
@@ -589,7 +661,9 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
     </script>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
-<?php include __DIR__ . '/partials/sidebar.php'; ?>
+<div class="no-print">
+    <?php include __DIR__ . '/partials/sidebar.php'; ?>
+</div>
 <main class="flex-1 p-4 sm:p-4 lg:p-6 md:ml-[260px]">
             
             <div class="print-header hidden">
@@ -811,9 +885,52 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
 </div>
 
                 
-                <div class="report-section show-on-print-only mt-6">
-                    <h4 style="font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 5px;">
-                        1. Hasil Tes Gaya Belajar
+                <div class="report-section show-on-print-only print-mt-tight">
+                    <h4 style="font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 2px;">
+                        1. Daftar Siswa dan Hasil Gaya Belajar
+                    </h4>
+                    <table class="data-table-report data-table-siswa">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width: 5%; text-align:center;">No</th>
+                                <th rowspan="2" style="width: 22%;">Nama Siswa</th>
+                                <th rowspan="2" style="width: 12%; text-align:center;">NIS</th>
+                                <th rowspan="2" style="width: 6%; text-align:center;">JK</th>
+                                <th colspan="3" style="text-align:center;">Jumlah Skor</th>
+                                <th rowspan="2" style="width: 16%; text-align:center;">Hasil</th>
+                            </tr>
+                            <tr>
+                                <th style="width: 11%; text-align:center;">Visual</th>
+                                <th style="width: 11%; text-align:center;">Auditorial</th>
+                                <th style="width: 11%; text-align:center;">Kinestetik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $no_urut = 1; foreach ($data_siswa as $siswa_row):
+                                $hasil_gb = empty($siswa_row['skor_gb_latest']) ? 'Belum Tes' : strtoupper($siswa_row['skor_gb_latest']);
+                                $sv = $siswa_row['skor_visual_latest'];
+                                $sa = $siswa_row['skor_auditori_latest'];
+                                $sk = $siswa_row['skor_kinestetik_latest'];
+                                $has_score = !is_null($sv) && !is_null($sa) && !is_null($sk);
+                            ?>
+                                <tr>
+                                    <td style="text-align: center;"><?php echo $no_urut++; ?></td>
+                                    <td><?php echo htmlspecialchars($siswa_row['nama']); ?></td>
+                                    <td style="text-align: center;"><?php echo htmlspecialchars($siswa_row['nis']); ?></td>
+                                    <td style="text-align: center;"><?php echo htmlspecialchars($siswa_row['jenis_kelamin'] ?? ''); ?></td>
+                                    <td style="text-align: center;"><?php echo $has_score ? (int)$sv : '-'; ?></td>
+                                    <td style="text-align: center;"><?php echo $has_score ? (int)$sa : '-'; ?></td>
+                                    <td style="text-align: center;"><?php echo $has_score ? (int)$sk : '-'; ?></td>
+                                    <td style="text-align: center;"><?php echo $hasil_gb; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="report-section show-on-print-only print-mt-tight">
+                    <h4 style="font-size: 0.8rem; font-weight: 700; color: #333; margin-bottom: 2px;">
+                        2. Rekap Kategori Gaya Belajar
                     </h4>
                     <table class="data-table-report">
                         <thead>

@@ -27,6 +27,85 @@ $query_kecerdasan = mysqli_query($koneksi, "
 ");
 $hasil_kecerdasan = mysqli_fetch_assoc($query_kecerdasan);
 
+// ================= TRACK RECORD BIMBINGAN & KONSELING (khusus untuk export PDF) =================
+$nis_siswa = $siswa['nis'] ?? '';
+
+$track_record_bk = [
+    'individu'       => ['label' => 'Konseling Individu',              'jumlah' => 0, 'gejala' => []],
+    'kelompok'       => ['label' => 'Konseling Kelompok',               'jumlah' => 0, 'gejala' => []],
+    'home_visit'     => ['label' => 'Home Visit',                       'jumlah' => 0, 'gejala' => []],
+    'panggilan_ortu' => ['label' => 'Konsultasi/Panggilan Orang Tua',   'jumlah' => 0, 'gejala' => []],
+];
+
+// 1. Konseling Individu (relasi via id_siswa)
+$q_individu = mysqli_query($koneksi, "
+    SELECT gejala_nampak
+    FROM konseling_individu
+    WHERE id_siswa = '$id_siswa'
+");
+if ($q_individu) {
+    while ($r = mysqli_fetch_assoc($q_individu)) {
+        $track_record_bk['individu']['jumlah']++;
+        $g = trim($r['gejala_nampak'] ?? '');
+        if ($g !== '') $track_record_bk['individu']['gejala'][] = $g;
+    }
+}
+
+// 2. Konseling Kelompok (relasi via detail_kelompok -> kelompok)
+$q_kelompok = mysqli_query($koneksi, "
+    SELECT k.gejala, k.topik_masalah
+    FROM detail_kelompok dk
+    JOIN kelompok k ON k.id_kelompok = dk.id_kelompok
+    WHERE dk.id_siswa = '$id_siswa'
+");
+if ($q_kelompok) {
+    while ($r = mysqli_fetch_assoc($q_kelompok)) {
+        $track_record_bk['kelompok']['jumlah']++;
+        $g = trim($r['gejala'] ?? '') !== '' ? trim($r['gejala']) : trim($r['topik_masalah'] ?? '');
+        if ($g !== '') $track_record_bk['kelompok']['gejala'][] = $g;
+    }
+}
+
+// 3. Home Visit (relasi via NIS, karena tabel home_visit tidak punya id_siswa)
+if ($nis_siswa !== '') {
+    $q_visit = mysqli_query($koneksi, "
+        SELECT masalah
+        FROM home_visit
+        WHERE nis = '" . mysqli_real_escape_string($koneksi, $nis_siswa) . "'
+    ");
+    if ($q_visit) {
+        while ($r = mysqli_fetch_assoc($q_visit)) {
+            $track_record_bk['home_visit']['jumlah']++;
+            $g = trim($r['masalah'] ?? '');
+            if ($g !== '') $track_record_bk['home_visit']['gejala'][] = $g;
+        }
+    }
+}
+
+// 4. Konsultasi/Panggilan Orang Tua (relasi via NIS)
+if ($nis_siswa !== '') {
+    $q_ortu = mysqli_query($koneksi, "
+        SELECT permasalahan
+        FROM konsultasi_ortu
+        WHERE nis = '" . mysqli_real_escape_string($koneksi, $nis_siswa) . "'
+    ");
+    if ($q_ortu) {
+        while ($r = mysqli_fetch_assoc($q_ortu)) {
+            $track_record_bk['panggilan_ortu']['jumlah']++;
+            $g = trim($r['permasalahan'] ?? '');
+            if ($g !== '') $track_record_bk['panggilan_ortu']['gejala'][] = $g;
+        }
+    }
+}
+
+// Ringkas gejala/permasalahan per kategori: ambil catatan unik saja, digabung singkat
+foreach ($track_record_bk as $key_bk => &$data_bk) {
+    $gejala_unik = array_values(array_unique(array_filter(array_map('trim', $data_bk['gejala']))));
+    $data_bk['gejala_ringkas'] = !empty($gejala_unik) ? implode(', ', $gejala_unik) : '';
+}
+unset($data_bk);
+// ================= END TRACK RECORD BK =================
+
 $hasil_tes_kemampuan_calculated = "Belum Mengisi";
 if ($hasil_kecerdasan) {
     $skor_kecerdasan = [
@@ -376,6 +455,14 @@ table { border-collapse: collapse; }
         box-shadow: none !important;
         margin: 0 !important;
     }
+    .track-record-bk {
+        display: block !important;
+    }
+}
+
+/* Track Record BK: hanya muncul pada hasil ekspor/print, disembunyikan di halaman web */
+.track-record-bk {
+    display: none;
 }
 
 @media (max-width: 850px) {
@@ -705,6 +792,38 @@ table { border-collapse: collapse; }
 
 </tr>
 </table>
+
+<!-- ========== TRACK RECORD BIMBINGAN & KONSELING (khusus tampil saat Ekspor PDF) ========== -->
+<div class="track-record-bk" style="padding:14px 24px 18px 24px;border-top:1px solid #dde3ea;background-color:#f9fafb;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+    <tr>
+        <td style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;border-bottom:2px solid #4a90c4;padding-bottom:4px;">
+            <table cellpadding="0" cellspacing="0"><tr>
+                <td width="7" height="7" style="width:7px;height:7px;background-color:#4a90c4;font-size:1px;line-height:1px;">&nbsp;</td>
+                <td style="padding-left:6px;font-size:9px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;">Track Record Bimbingan dan Konseling</td>
+            </tr></table>
+        </td>
+    </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:8px;">
+        <?php foreach ($track_record_bk as $key_bk => $data_bk): ?>
+        <tr>
+            <td style="padding:5px 0;border-bottom:1px solid #e6e9ee;">
+                <div style="font-size:9px;font-weight:bold;color:#1a5f8a;margin-bottom:2px;"><?php echo htmlspecialchars($data_bk['label']); ?></div>
+                <?php if ($data_bk['jumlah'] > 0): ?>
+                    <div style="font-size:8.5px;color:#3d3d3d;line-height:1.5;">Pernah mendapatkan layanan <?php echo (int) $data_bk['jumlah']; ?> kali.</div>
+                    <?php if (!empty($data_bk['gejala_ringkas'])): ?>
+                    <div style="font-size:8.5px;color:#3d3d3d;line-height:1.5;"><strong>Gejala/permasalahan:</strong> <?php echo htmlspecialchars($data_bk['gejala_ringkas']); ?>.</div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <div style="font-size:8.5px;color:#9aa3af;line-height:1.5;">Belum ada riwayat.</div>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+</div>
 
 </div>
 </div>
