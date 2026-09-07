@@ -16,8 +16,6 @@ $DAFTAR_GURU_BK = [
 ];
 $base_url_folder = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/') . '/';
 
-// Tabel pengaturan sederhana (key-value) supaya Guru BK bisa mengubah link Google Drive
-// sendiri lewat halaman, tanpa perlu edit kode. Dibuat otomatis kalau belum ada.
 mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_pengaturan (
     id_pengaturan INT(11) NOT NULL AUTO_INCREMENT,
     nama_pengaturan VARCHAR(100) NOT NULL,
@@ -26,7 +24,6 @@ mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_pengaturan (
     UNIQUE KEY nama_pengaturan (nama_pengaturan)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// Tabel tindak lanjut / monitoring lanjutan per materi (kelanjutan bimbingan).
 mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_monitoring_lanjutan (
     id_lanjutan INT(11) NOT NULL AUTO_INCREMENT,
     id_materi INT(11) NOT NULL,
@@ -40,7 +37,6 @@ mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_monitoring_lanjutan (
     KEY id_materi (id_materi)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// Kolom fungsi_layanan ditambahkan otomatis kalau belum ada (aman dijalankan berkali-kali).
 $cekKolomFungsi = mysqli_query($koneksi, "SHOW COLUMNS FROM bk_materi LIKE 'fungsi_layanan'");
 if ($cekKolomFungsi && mysqli_num_rows($cekKolomFungsi) === 0) {
     mysqli_query($koneksi, "ALTER TABLE bk_materi ADD COLUMN fungsi_layanan VARCHAR(60) DEFAULT NULL AFTER deskripsi");
@@ -389,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode(['success' => false, 'message' => 'Materi tidak ditemukan.']);
             exit;
         }
-        // Hapus file fisik slide (gambar/ppt lokal) sebelum baris dihapus.
+        
         $qFile = mysqli_query($koneksi, "SELECT gambar, file_ppt FROM bk_slide WHERE id_materi = $idm");
         if ($qFile) {
             while ($rf = mysqli_fetch_assoc($qFile)) {
@@ -399,10 +395,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
         }
-        // FK bk_materi_sasaran, bk_slide (+ bk_lkpd_pertanyaan), bk_progress_slide,
-        // dan bk_monitoring_lanjutan sudah ON DELETE CASCADE mengikuti id_materi.
+
         mysqli_query($koneksi, "DELETE FROM bk_materi WHERE id_materi = $idm");
         echo json_encode(['success' => true]);
+        exit;
+    }
+
+    if ($action === 'geser_urutan_materi') {
+        $idm = (int) ($_POST['id_materi'] ?? 0);
+        $arah = $_POST['arah'] ?? '';
+        $qCur = mysqli_query($koneksi, "SELECT id_materi, urutan FROM bk_materi WHERE id_materi = $idm LIMIT 1");
+        $cur = $qCur ? mysqli_fetch_assoc($qCur) : null;
+        if (!$cur) {
+            echo json_encode(['success' => false, 'message' => 'Materi tidak ditemukan.']);
+            exit;
+        }
+        $urutanCur = (int) $cur['urutan'];
+        if ($arah === 'naik') {
+            $qTet = mysqli_query($koneksi, "SELECT id_materi, urutan FROM bk_materi WHERE urutan < $urutanCur ORDER BY urutan DESC, id_materi DESC LIMIT 1");
+        } else {
+            $qTet = mysqli_query($koneksi, "SELECT id_materi, urutan FROM bk_materi WHERE urutan > $urutanCur ORDER BY urutan ASC, id_materi ASC LIMIT 1");
+        }
+        $tetangga = $qTet ? mysqli_fetch_assoc($qTet) : null;
+        if (!$tetangga) {
+            echo json_encode(['success' => false, 'message' => 'Materi sudah berada di posisi paling ' . ($arah === 'naik' ? 'atas' : 'bawah') . '.']);
+            exit;
+        }
+        $idTetangga = (int) $tetangga['id_materi'];
+        $urutanTetangga = (int) $tetangga['urutan'];
+        mysqli_query($koneksi, "UPDATE bk_materi SET urutan = $urutanTetangga WHERE id_materi = $idm");
+        mysqli_query($koneksi, "UPDATE bk_materi SET urutan = $urutanCur WHERE id_materi = $idTetangga");
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    if ($action === 'duplikat_materi') {
+        $idm = (int) ($_POST['id_materi'] ?? 0);
+        $qm = mysqli_query($koneksi, "SELECT * FROM bk_materi WHERE id_materi = $idm LIMIT 1");
+        $materiAsli = $qm ? mysqli_fetch_assoc($qm) : null;
+        if (!$materiAsli) {
+            echo json_encode(['success' => false, 'message' => 'Materi tidak ditemukan.']);
+            exit;
+        }
+        $qMax = mysqli_query($koneksi, "SELECT MAX(urutan) AS mx FROM bk_materi");
+        $urutanBaru = $qMax ? ((int) mysqli_fetch_assoc($qMax)['mx']) + 1 : 1;
+        $judulBaruEsc = mysqli_real_escape_string($koneksi, $materiAsli['judul'] . ' (Salinan)');
+        $deskripsiEsc = mysqli_real_escape_string($koneksi, $materiAsli['deskripsi']);
+        $fungsiEsc = mysqli_real_escape_string($koneksi, $materiAsli['fungsi_layanan']);
+        $guruEsc = mysqli_real_escape_string($koneksi, $materiAsli['nama_guru_pembuat']);
+        mysqli_query($koneksi, "INSERT INTO bk_materi (judul, deskripsi, fungsi_layanan, urutan, nama_guru_pembuat, id_guru, status_aktif)
+            VALUES ('$judulBaruEsc', '$deskripsiEsc', '$fungsiEsc', $urutanBaru, '$guruEsc', $id_guru_login, 0)");
+        $idMateriBaru = mysqli_insert_id($koneksi);
+
+        $qSasaran = mysqli_query($koneksi, "SELECT kelas, jurusan FROM bk_materi_sasaran WHERE id_materi = $idm");
+        if ($qSasaran) {
+            while ($s = mysqli_fetch_assoc($qSasaran)) {
+                $klsEsc = mysqli_real_escape_string($koneksi, $s['kelas']);
+                $jurEsc = mysqli_real_escape_string($koneksi, $s['jurusan']);
+                mysqli_query($koneksi, "INSERT INTO bk_materi_sasaran (id_materi, kelas, jurusan) VALUES ($idMateriBaru, '$klsEsc', '$jurEsc')");
+            }
+        }
+
+        $qSlide = mysqli_query($koneksi, "SELECT * FROM bk_slide WHERE id_materi = $idm ORDER BY urutan ASC, id_slide ASC");
+        if ($qSlide) {
+            while ($sl = mysqli_fetch_assoc($qSlide)) {
+                $judulSlideEsc = mysqli_real_escape_string($koneksi, $sl['judul_slide']);
+                $kontenEsc = mysqli_real_escape_string($koneksi, $sl['konten_teks']);
+                $ytEsc = mysqli_real_escape_string($koneksi, $sl['link_youtube']);
+
+                $gambarBaru = $sl['gambar'];
+                if ($gambarBaru && strpos($gambarBaru, 'http') !== 0 && is_file(__DIR__ . '/' . $gambarBaru)) {
+                    $ext = pathinfo($gambarBaru, PATHINFO_EXTENSION);
+                    $gambarBaru = pathinfo($gambarBaru, PATHINFO_DIRNAME) . '/' . uniqid('salin_') . '.' . $ext;
+                    @copy(__DIR__ . '/' . $sl['gambar'], __DIR__ . '/' . $gambarBaru);
+                }
+                $pptBaru = $sl['file_ppt'];
+                if ($pptBaru && strpos($pptBaru, 'http') !== 0 && is_file(__DIR__ . '/' . $pptBaru)) {
+                    $ext = pathinfo($pptBaru, PATHINFO_EXTENSION);
+                    $pptBaru = pathinfo($pptBaru, PATHINFO_DIRNAME) . '/' . uniqid('salin_') . '.' . $ext;
+                    @copy(__DIR__ . '/' . $sl['file_ppt'], __DIR__ . '/' . $pptBaru);
+                }
+                $gambarEsc = mysqli_real_escape_string($koneksi, $gambarBaru);
+                $pptEsc = mysqli_real_escape_string($koneksi, $pptBaru);
+
+                mysqli_query($koneksi, "INSERT INTO bk_slide (id_materi, urutan, judul_slide, konten_teks, gambar, file_ppt, link_youtube, butuh_lkpd, status_aktif)
+                    VALUES ($idMateriBaru, {$sl['urutan']}, '$judulSlideEsc', '$kontenEsc', '$gambarEsc', '$pptEsc', '$ytEsc', {$sl['butuh_lkpd']}, {$sl['status_aktif']})");
+                $idSlideBaru = mysqli_insert_id($koneksi);
+
+                $qPertanyaan = mysqli_query($koneksi, "SELECT * FROM bk_lkpd_pertanyaan WHERE id_slide = {$sl['id_slide']} ORDER BY urutan ASC, id_pertanyaan ASC");
+                if ($qPertanyaan) {
+                    while ($p = mysqli_fetch_assoc($qPertanyaan)) {
+                        $teksPEsc = mysqli_real_escape_string($koneksi, $p['teks_pertanyaan']);
+                        $tipePEsc = mysqli_real_escape_string($koneksi, $p['tipe_jawaban']);
+                        $opsiEsc = $p['opsi_jawaban'] !== null ? "'" . mysqli_real_escape_string($koneksi, $p['opsi_jawaban']) . "'" : 'NULL';
+                        mysqli_query($koneksi, "INSERT INTO bk_lkpd_pertanyaan (id_slide, urutan, teks_pertanyaan, tipe_jawaban, opsi_jawaban)
+                            VALUES ($idSlideBaru, {$p['urutan']}, '$teksPEsc', '$tipePEsc', $opsiEsc)");
+                    }
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'id_materi_baru' => $idMateriBaru]);
         exit;
     }
 
@@ -500,7 +593,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 WHERE id_materi = $idMateriEdit");
             $idMateriBaru = $idMateriEdit;
 
-            // Hapus file fisik slide lama, lalu hapus baris slide & sasaran lama supaya bisa diganti utuh.
             $qFileLama = mysqli_query($koneksi, "SELECT gambar, file_ppt FROM bk_slide WHERE id_materi = $idMateriBaru");
             if ($qFileLama) {
                 while ($rfl = mysqli_fetch_assoc($qFileLama)) {
@@ -534,7 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $slideYoutubeArsip = $_POST['slide_youtube_arsip'] ?? [];
         $slideTeksArsip = $_POST['slide_teks_arsip'] ?? [];
         $slideLkpdArsip = $_POST['slide_lkpd_arsip'] ?? [];
-        // Dipakai saat mode edit: path file yang sudah ada sebelumnya dan tidak diganti Guru BK.
+        
         $slideGambarExisting = $_POST['slide_gambar_existing'] ?? [];
         $slidePptExisting = $_POST['slide_ppt_existing'] ?? [];
 
@@ -710,11 +802,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       <div class="mb-4 flex gap-2 border-b overflow-x-auto">
         <button type="button" onclick="pindahTab('simpanan')" id="tabBtnSimpanan"
           class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">
-          <i class="fas fa-archive mr-1"></i> Simpanan
+          <i class="fas fa-archive mr-1"></i> Simpanan <span class="hidden md:inline text-[11px] font-normal opacity-70">(Langkah 1: siapkan bahan)</span>
         </button>
         <button type="button" onclick="pindahTab('materi')" id="tabBtnMateri"
           class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">
-          <i class="fas fa-layer-group mr-1"></i> Buat Materi
+          <i class="fas fa-layer-group mr-1"></i> Buat Materi <span class="hidden md:inline text-[11px] font-normal opacity-70">(Langkah 2: susun & terbitkan)</span>
         </button>
       </div>
 
@@ -792,7 +884,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
           <table class="w-full border-collapse text-sm">
             <thead>
               <tr class="bg-gray-100 text-left text-gray-700">
-                <th class="px-3 py-2 border-b text-center">No.</th>
+                <th class="px-3 py-2 border-b text-center">Urutan</th>
                 <th class="px-3 py-2 border-b">Judul Materi</th>
                 <th class="px-3 py-2 border-b">Fungsi Layanan</th>
                 <th class="px-3 py-2 border-b">Sasaran</th>
@@ -897,6 +989,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
           <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold"><i class="fas fa-save mr-1"></i> Simpan</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="modalAksiMateri" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-[9998]">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
+        <h2 class="text-base font-bold text-gray-800"><i class="fas fa-ellipsis-vertical text-gray-500 mr-1"></i> Aksi Materi</h2>
+        <button type="button" onclick="tutupMenuAksiMateri()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-lg"></i></button>
+      </div>
+      <p class="px-5 pt-4 text-xs text-gray-500">Materi: <span class="font-semibold text-gray-700" id="aksiJudulMateri">-</span></p>
+      <div class="p-3" id="aksiDaftarMenu"></div>
     </div>
   </div>
 
@@ -1204,7 +1307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('aIdArsip').value = a.id_arsip;
     document.getElementById('aJudul').value = a.judul || '';
     document.getElementById('aTipeBahan').value = a.tipe_bahan;
-    document.getElementById('aTipeBahan').disabled = true; // jenis bahan tidak diubah saat edit, biar data slide yang memakainya tetap konsisten
+    document.getElementById('aTipeBahan').disabled = true; 
     document.getElementById('aCatatanJenis').classList.remove('hidden');
     document.getElementById('aKategori').value = a.kategori || '';
     document.getElementById('aLink').value = a.link || '';
@@ -1347,20 +1450,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       document.getElementById('paginasiMateri').innerHTML = '';
       return;
     }
-    // Urutkan berdasarkan urutan tampil (backend sudah ASC), lalu nomori sesuai posisi asli untuk kolom "No."
+    
     const totalHalaman = Math.max(1, Math.ceil(daftarMateri.length / BARIS_PER_HALAMAN));
     if (halamanMateri > totalHalaman) halamanMateri = totalHalaman;
     const mulai = (halamanMateri - 1) * BARIS_PER_HALAMAN;
     const dataHalaman = daftarMateri.slice(mulai, mulai + BARIS_PER_HALAMAN);
-    tbody.innerHTML = dataHalaman.map((m, i) => `
+    tbody.innerHTML = dataHalaman.map((m, i) => {
+      const posisi = mulai + i;
+      const bisaNaik = posisi > 0;
+      const bisaTurun = posisi < daftarMateri.length - 1;
+      const dibuatBaru = m.created_at && ((Date.now() - new Date(m.created_at.replace(' ', 'T')).getTime()) < 3 * 24 * 60 * 60 * 1000);
+      return `
       <tr class="border-b hover:bg-gray-50">
-        <td class="px-3 py-2 text-center font-semibold text-gray-500">${mulai + i + 1}</td>
-        <td class="px-3 py-2 font-medium">${escapeHtml(m.judul)}${m.jumlah_lanjutan > 0 ? ` <span class="inline-flex items-center gap-1 text-[11px] text-purple-600 font-normal"><i class="fas fa-route"></i>${m.jumlah_lanjutan} tindak lanjut</span>` : ''}</td>
+        <td class="px-3 py-2 text-center">
+          <div class="flex flex-col items-center gap-0.5">
+            <button type="button" onclick="geserUrutanMateri(${m.id_materi}, 'naik')" ${bisaNaik ? '' : 'disabled'} class="text-gray-400 hover:text-blue-600 disabled:opacity-20 disabled:hover:text-gray-400" title="Naikkan urutan"><i class="fas fa-caret-up"></i></button>
+            <span class="font-semibold text-gray-500 text-xs">${posisi + 1}</span>
+            <button type="button" onclick="geserUrutanMateri(${m.id_materi}, 'turun')" ${bisaTurun ? '' : 'disabled'} class="text-gray-400 hover:text-blue-600 disabled:opacity-20 disabled:hover:text-gray-400" title="Turunkan urutan"><i class="fas fa-caret-down"></i></button>
+          </div>
+        </td>
+        <td class="px-3 py-2 font-medium">${escapeHtml(m.judul)}${dibuatBaru ? ' <span class="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">BARU</span>' : ''}${m.jumlah_lanjutan > 0 ? ` <span class="inline-flex items-center gap-1 text-[11px] text-purple-600 font-normal"><i class="fas fa-route"></i>${m.jumlah_lanjutan} tindak lanjut</span>` : ''}</td>
         <td class="px-3 py-2">${m.fungsi_layanan ? `<span class="px-2 py-1 rounded-full text-xs font-semibold ${WARNA_FUNGSI[m.fungsi_layanan] || 'bg-gray-100 text-gray-600'}">${escapeHtml(m.fungsi_layanan)}</span>` : '<span class="text-gray-400 text-xs">-</span>'}</td>
         <td class="px-3 py-2">${m.sasaran.map(s => escapeHtml(s)).join(', ') || '-'}</td>
         <td class="px-3 py-2">${escapeHtml(m.nama_guru_pembuat || '-')}</td>
         <td class="px-3 py-2 text-center">${m.jumlah_slide}</td>
-        <td class="px-3 py-2 text-center">${m.jumlah_sasaran_siswa}</td>
+        <td class="px-3 py-2 text-center">
+          ${m.jumlah_sasaran_siswa > 0
+            ? `<a href="bimbinganklasikal_monitoring.php?id_materi=${m.id_materi}" class="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold">${m.jumlah_sasaran_siswa}</a>`
+            : m.jumlah_sasaran_siswa}
+        </td>
         <td class="px-3 py-2 text-center">
           <span class="px-2 py-1 rounded-full text-xs font-semibold ${m.status_aktif == 1 ? 'badge-status-aktif' : 'badge-status-nonaktif'}">
             ${m.status_aktif == 1 ? 'Aktif' : 'Nonaktif'}
@@ -1369,16 +1487,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <td class="px-3 py-2 text-center whitespace-nowrap">
           <button onclick="lihatMateri(${m.id_materi})" class="action-btn text-blue-600 hover:text-blue-800 mr-2" title="Lihat isi materi"><i class="fas fa-eye"></i></button>
           <button onclick="bukaModalEditMateri(${m.id_materi})" class="action-btn text-amber-600 hover:text-amber-800 mr-2" title="Edit materi ini"><i class="fas fa-pen"></i></button>
-          <button onclick="bukaModalLanjutan(${m.id_materi}, '${escapeHtml(m.judul).replace(/'/g, "&#39;")}')" class="action-btn text-purple-600 hover:text-purple-800 mr-2" title="Tindak lanjut / monitoring lanjutan"><i class="fas fa-route"></i></button>
-          <a href="bimbinganklasikal_monitoring.php?id_materi=${m.id_materi}" class="action-btn text-indigo-600 hover:text-indigo-800 mr-2" title="Lihat progress siswa"><i class="fas fa-chart-line"></i></a>
-          ${m.status_aktif == 1
-            ? `<button onclick="nonaktifkanMateri(${m.id_materi})" class="action-btn text-gray-500 hover:text-gray-700 mr-2" title="Nonaktifkan materi ini"><i class="fas fa-ban"></i></button>`
-            : `<button onclick="aktifkanMateri(${m.id_materi})" class="action-btn text-green-600 hover:text-green-800 mr-2" title="Aktifkan kembali materi ini"><i class="fas fa-check-circle"></i></button>`}
-          <button onclick="hapusMateri(${m.id_materi})" class="action-btn text-red-600 hover:text-red-800" title="Hapus materi ini secara permanen"><i class="fas fa-trash"></i></button>
+          <button onclick="bukaMenuAksiMateri(${m.id_materi}, ${JSON.stringify(m.judul).replace(/"/g, '&quot;')}, ${m.status_aktif})" class="action-btn text-gray-500 hover:text-gray-800" title="Aksi lainnya"><i class="fas fa-ellipsis-vertical"></i></button>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
     renderPaginasi('paginasiMateri', daftarMateri.length, halamanMateri, 'gantiHalamanMateri');
+  }
+
+  function bukaMenuAksiMateri(id, judul, statusAktif) {
+    document.getElementById('aksiJudulMateri').textContent = judul;
+    document.getElementById('aksiDaftarMenu').innerHTML = `
+      <button onclick="tutupMenuAksiMateri(); bukaModalLanjutan(${id}, ${JSON.stringify(judul)})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-route text-purple-600 w-5"></i> Tindak Lanjut / Monitoring</button>
+      <a href="bimbinganklasikal_monitoring.php?id_materi=${id}" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-chart-line text-indigo-600 w-5"></i> Lihat Progress Siswa</a>
+      <button onclick="tutupMenuAksiMateri(); duplikatMateri(${id})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-copy text-gray-500 w-5"></i> Duplikat Materi</button>
+      ${statusAktif == 1
+        ? `<button onclick="tutupMenuAksiMateri(); nonaktifkanMateri(${id})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-ban text-gray-500 w-5"></i> Nonaktifkan</button>`
+        : `<button onclick="tutupMenuAksiMateri(); aktifkanMateri(${id})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-check-circle text-green-600 w-5"></i> Aktifkan Kembali</button>`}
+      <div class="border-t my-1"></div>
+      <button onclick="tutupMenuAksiMateri(); hapusMateri(${id})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg"><i class="fas fa-trash w-5"></i> Hapus Permanen</button>
+    `;
+    document.getElementById('modalAksiMateri').classList.remove('hidden');
+  }
+
+  function tutupMenuAksiMateri() {
+    document.getElementById('modalAksiMateri').classList.add('hidden');
+  }
+
+  function geserUrutanMateri(id, arah) {
+    const fd = new FormData();
+    fd.append('action', 'geser_urutan_materi');
+    fd.append('id_materi', id);
+    fd.append('arah', arah);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => { if (data.success) muatDaftarMateri(); else alert(data.message || 'Gagal mengubah urutan.'); });
+  }
+
+  function duplikatMateri(id) {
+    if (!confirm('Duplikat materi ini? Salinan akan dibuat berstatus Nonaktif supaya Anda bisa menyunting dulu sebelum ditampilkan ke siswa.')) return;
+    const fd = new FormData();
+    fd.append('action', 'duplikat_materi');
+    fd.append('id_materi', id);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => { if (data.success) muatDaftarMateri(); else alert(data.message || 'Gagal menduplikat materi.'); });
   }
 
   function nonaktifkanMateri(id) {
@@ -1410,7 +1563,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       .then(data => { if (data.success) muatDaftarMateri(); else alert(data.message || 'Gagal menghapus materi.'); });
   }
 
-  // ===== Tindak Lanjut / Monitoring Lanjutan =====
   let daftarLanjutanSaatIni = [];
 
   function bukaModalLanjutan(idMateri, judulMateri) {
@@ -1564,8 +1716,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             wrap.innerHTML = `<p class="text-gray-400">Belum ada data kelas siswa.</p>`;
             return;
           }
-          // Kelompokkan per kelas supaya Guru BK bisa memilih "sasaran umum kelas X"
-          // (semua jurusan di kelas itu) dengan satu klik, tanpa mengubah cara data disimpan.
+
           const kelompokKelas = {};
           daftarKelasJurusan.forEach((kj) => {
             if (!kelompokKelas[kj.kelas]) kelompokKelas[kj.kelas] = [];
@@ -1610,7 +1761,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('daftarSlideBlock').innerHTML = '';
     hitungSlide = 0;
     tambahSlideBlock();
-    // Urutan tampil otomatis lanjut dari nomor terbesar yang sudah ada, mulai dari 1.
+    
     const urutanBerikutnya = daftarMateri.length > 0 ? Math.max(...daftarMateri.map(m => m.urutan)) + 1 : 1;
     document.getElementById('fUrutanMateri').value = urutanBerikutnya;
     document.getElementById('judulModalMateri').textContent = 'Tambah Materi Bimbingan Klasikal';
@@ -1687,7 +1838,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="md:col-span-2">
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-medium text-gray-600">Isi Teks</label>
-            <button type="button" onclick="bukaPickerSimpanan('teks', this.closest('.slide-block'), 'teks')" class="text-xs text-blue-600 hover:text-blue-800"><i class="fas fa-archive mr-1"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="bukaPickerSimpanan('teks', this.closest('.slide-block'), 'teks')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Teks dari Simpanan</button>
           </div>
           <textarea class="slide-input-teks w-full px-3 py-2 border rounded-lg text-sm" rows="3" oninput="this.closest('.slide-block').dataset.teksArsip=''; renderChipBahan(this.closest('.slide-block'),'teks');"></textarea>
           <div class="chip-bahan-teks"></div>
@@ -1695,7 +1846,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-medium text-gray-600">Gambar (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('gambar', this.closest('.slide-block'), 'gambar')" class="text-xs text-blue-600 hover:text-blue-800"><i class="fas fa-archive mr-1"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="bukaPickerSimpanan('gambar', this.closest('.slide-block'), 'gambar')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Gambar dari Simpanan</button>
           </div>
           <input type="file" class="slide-input-gambar w-full text-sm" accept="image/*" onchange="batalPilihanArsip(this, 'gambar', true)">
           <div class="chip-bahan-gambar"></div>
@@ -1703,7 +1854,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-medium text-gray-600">Link YouTube (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('youtube', this.closest('.slide-block'), 'youtube')" class="text-xs text-blue-600 hover:text-blue-800"><i class="fas fa-archive mr-1"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="bukaPickerSimpanan('youtube', this.closest('.slide-block'), 'youtube')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Video dari Simpanan</button>
           </div>
           <input type="text" class="slide-input-youtube w-full px-3 py-2 border rounded-lg text-sm" placeholder="https://youtube.com/watch?v=..." oninput="this.closest('.slide-block').dataset.youtubeArsip='';">
           <div class="chip-bahan-youtube"></div>
@@ -1711,7 +1862,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div class="md:col-span-2">
           <div class="flex items-center justify-between mb-1">
             <label class="block text-xs font-medium text-gray-600">File PPT (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('ppt', this.closest('.slide-block'), 'ppt')" class="text-xs text-blue-600 hover:text-blue-800"><i class="fas fa-archive mr-1"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="bukaPickerSimpanan('ppt', this.closest('.slide-block'), 'ppt')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih PPT dari Simpanan</button>
           </div>
           <input type="file" class="slide-input-ppt w-full text-sm" accept=".ppt,.pptx" onchange="batalPilihanArsip(this, 'ppt', true)">
           <div class="chip-bahan-ppt"></div>
@@ -1724,7 +1875,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       <div class="lkpd-builder hidden bg-white border rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-semibold text-gray-600">Pertanyaan</span>
-          <button type="button" onclick="bukaPickerSimpanan('lkpd', this.closest('.slide-block'), 'lkpd')" class="text-xs text-blue-600 hover:text-blue-800"><i class="fas fa-archive mr-1"></i>Impor dari Simpanan</button>
+          <button type="button" onclick="bukaPickerSimpanan('lkpd', this.closest('.slide-block'), 'lkpd')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Impor Pertanyaan LKPD dari Simpanan</button>
         </div>
         <div class="daftar-pertanyaan"></div>
         <button type="button" onclick="tambahPertanyaanLkpd(this)" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs mt-1">
@@ -1760,7 +1911,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   }
 
   function lepasFileExisting(btn, field) {
-    // Guru BK ingin mengganti file yang sudah ada -> hapus tanda "sudah ada" supaya form meminta unggah baru.
+    
     const slideBlock = btn.closest('.slide-block');
     delete slideBlock.dataset[field + 'Existing'];
     slideBlock.querySelector('.slide-input-' + field).disabled = false;

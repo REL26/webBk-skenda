@@ -16,16 +16,13 @@ $WARNA_FUNGSI_PHP = [
     'Pemeliharaan dan Pengembangan' => 'bg-purple-50 text-purple-700',
 ];
 
-/* ==========================================================================
-   AJAX ENDPOINTS
-   ========================================================================== */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
     $idm = (int) ($_POST['id_materi'] ?? 0);
 
     if ($action === 'list_progress') {
-        // Ambil pasangan kelas/jurusan sasaran materi ini.
+        
         $sasaran = [];
         $qs = mysqli_query($koneksi, "SELECT kelas, jurusan FROM bk_materi_sasaran WHERE id_materi = $idm");
         if ($qs) while ($s = mysqli_fetch_assoc($qs)) $sasaran[] = $s;
@@ -138,9 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     exit;
 }
 
-/* ==========================================================================
-   RENDER HALAMAN
-   ========================================================================== */
 $id_materi = (int) ($_GET['id_materi'] ?? 0);
 
 $materi = null;
@@ -238,7 +232,6 @@ if ($materi) {
     </div>
   </div>
 
-  <!-- Ringkasan statistik -->
   <div id="ringkasanStatMonitoring" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
     <div class="bg-white rounded-xl shadow-sm border p-4">
       <p class="text-xs text-gray-500 mb-1">Total Siswa Sasaran</p>
@@ -258,7 +251,6 @@ if ($materi) {
     </div>
   </div>
 
-  <!-- Filter -->
   <div class="bg-white rounded-xl shadow-md p-4 md:p-5 mb-4">
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-grow min-w-[200px]">
@@ -277,7 +269,6 @@ if ($materi) {
     </div>
   </div>
 
-  <!-- Tabel progress siswa -->
   <div class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow">
     <div class="overflow-x-auto">
       <table class="w-full border-collapse text-sm">
@@ -303,7 +294,6 @@ if ($materi) {
 
 </main>
 
-<!-- Modal Detail Siswa -->
 <div id="modalDetailSiswa" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-[9998]">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
     <div class="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">

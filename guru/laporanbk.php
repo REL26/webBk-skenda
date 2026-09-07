@@ -15,6 +15,20 @@ $DAFTAR_GURU_BK = [
     'Tiara Wulansari, S.Pd', 'Dhea Nur Aziza, S.Pd', 'Abdul Basith, S.Pd',
 ];
 
+  $GURU_ID_BY_NAMA = [];
+  $q_guru_filter = mysqli_query($koneksi, "SELECT id_guru, nama FROM guru");
+  if ($q_guru_filter) {
+    while ($guru_filter = mysqli_fetch_assoc($q_guru_filter)) {
+      $GURU_ID_BY_NAMA[trim((string) $guru_filter['nama'])] = (int) $guru_filter['id_guru'];
+    }
+  }
+
+  function getTeacherIdBK($namaGuru) {
+    global $GURU_ID_BY_NAMA;
+    $namaGuru = trim((string) $namaGuru);
+    return $GURU_ID_BY_NAMA[$namaGuru] ?? null;
+  }
+
 function hitungSemesterTahunAjaran($bulan, $tahun) {
     if ($bulan >= 7 && $bulan <= 12) {
         return ['semester' => 'Ganjil', 'tahun_pelajaran' => $tahun . '/' . ($tahun + 1)];
@@ -24,18 +38,13 @@ function hitungSemesterTahunAjaran($bulan, $tahun) {
 
 const BIDANG_LAPORAN_BK = ['Pribadi', 'Belajar', 'Sosial', 'Karier'];
 
-// Template deskripsi "Bentuk Kegiatan" Bagian III, dipetakan dari jenis layanan.
-// Sengaja berupa PEMETAAN TETAP (bukan field form baru) supaya guru tidak perlu
-// mengisi apa pun tambahan -- cukup buat laporan layanan seperti biasa, lalu
-// Bentuk Kegiatan otomatis terisi deskripsi aktivitas yang sesuai. Kalau nanti
-// ada jenis layanan baru atau template perlu direvisi, cukup tambah/ubah baris
-// di peta ini saja.
 const TEMPLATE_BENTUK_KEGIATAN_BK = [
     'Konseling Individu'   => 'Konseling tatap muka dan pendampingan siswa',
     'Konseling Kelompok'   => 'Diskusi kelompok dan pendampingan siswa',
     'Bimbingan Kelompok'   => 'Diskusi kelompok dan pendampingan siswa',
     'Home Visit'           => 'Kunjungan dan pendampingan siswa di rumah',
     'Panggilan Ortu'       => 'Pertemuan dan koordinasi bersama orang tua/wali',
+    'Konsultasi Siswa'     => 'Konsultasi tatap muka langsung bersama siswa',
 ];
 
 function templateBentukKegiatanBK($jenisLayanan) {
@@ -95,7 +104,19 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir) {
                         COALESCE(NULLIF(s.jurusan,''), NULLIF(ko.jurusan,''), '-') AS jurusan, 1 AS jml
                       FROM konsultasi_ortu ko
                       LEFT JOIN siswa s ON s.nis = ko.nis
-                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'",
+                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+                        AND ko.jenis_konsultasi = 'ortu'",
+            'groupby' => '',
+        ],
+        [
+            'label' => 'Konsultasi Siswa',
+            'sql' => "SELECT ko.tanggal_pemanggilan AS tgl, 'Konsultasi Siswa' AS jenis, ko.nama_guru_bk AS guru,
+                        COALESCE(NULLIF(s.kelas,''), NULLIF(ko.kelas,''), '-') AS kelas,
+                        COALESCE(NULLIF(s.jurusan,''), NULLIF(ko.jurusan,''), '-') AS jurusan, 1 AS jml
+                      FROM konsultasi_ortu ko
+                      LEFT JOIN siswa s ON s.nis = ko.nis
+                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+                        AND ko.jenis_konsultasi = 'siswa'",
             'groupby' => '',
         ],
     ];
@@ -138,17 +159,12 @@ function getRekapOtomatisBK($koneksi, $awal, $akhir) {
             'bentuk_kegiatan' => templateBentukKegiatanBK($g['jenis_layanan']),
             'keterangan'      => 'Terlaksana',
             'nama_guru'       => $g['guru'],
-        ];
-    }
+            'teacher_id'      => getTeacherIdBK($g['guru']) ?? null,
+          ];
+        }
     return $hasil;
 }
 
-// Menghasilkan SATU BARIS PER PERMASALAHAN (bukan gabungan per-bidang), supaya
-// tiap permasalahan bisa punya Jumlah Siswa & Tindak Awal sendiri, dan bisa
-// disaring per Guru BK di sisi tampilan tanpa perlu query ulang ke server.
-// TIDAK ada filter guru di sini secara sengaja -- filter Guru BK sekarang murni
-// tampilan (client-side), supaya data asli tidak pernah berubah/hilang hanya
-// karena guru mengganti-ganti pilihan filter.
 function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
     $modul = [
         [
@@ -178,11 +194,19 @@ function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
             'sql' => "SELECT ko.id_konsultasi AS id_sumber, ko.nama_guru_bk AS guru, ko.bidang_layanan AS bidang, ko.permasalahan AS teks
                       FROM konsultasi_ortu ko
                       WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+                        AND ko.jenis_konsultasi = 'ortu'
+                      ORDER BY ko.id_konsultasi ASC",
+        ],
+        [
+            'label' => 'Konsultasi Siswa',
+            'sql' => "SELECT ko.id_konsultasi AS id_sumber, ko.nama_guru_bk AS guru, ko.bidang_layanan AS bidang, ko.permasalahan AS teks
+                      FROM konsultasi_ortu ko
+                      WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+                        AND ko.jenis_konsultasi = 'siswa'
                       ORDER BY ko.id_konsultasi ASC",
         ],
     ];
 
-    // Kelompokkan per bidang dulu (urutan bidang tetap: Pribadi, Belajar, Sosial, Karier).
     $per_bidang = [];
     foreach (BIDANG_LAPORAN_BK as $b) { $per_bidang[$b] = []; }
 
@@ -197,8 +221,7 @@ function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
             if (empty($bidangNorm)) continue;
 
             $teksRaw = (string) ($r['teks'] ?? '');
-            // Kalau satu laporan memuat beberapa permasalahan/gejala (dipisah baris
-            // baru), pecah jadi baris Bagian IV yang terpisah -- sesuai poin 2.
+
             $barisTeks = preg_split('/\r\n|\r|\n/', $teksRaw);
             $barisTeks = array_values(array_filter(array_map('trim', $barisTeks), fn($x) => $x !== ''));
             if (empty($barisTeks)) continue;
@@ -209,13 +232,9 @@ function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
 
             foreach ($bidangNorm as $b) {
                 foreach ($barisTeks as $iBaris => $teksBaris) {
-                    // Kunci stabil per-bidang: modul + id baris sumber + indeks baris
-                    // teks + bidang. Dipakai Bagian IV (satu baris tampilan per bidang).
+
                     $kunciMentah = $m['label'] . '|' . $idSumber . '|' . $iBaris . '|' . $b;
-                    // Kunci "asal" TANPA bidang: mengidentifikasi satu kegiatan/laporan
-                    // + satu kalimat permasalahan yang sama, terlepas dari berapa
-                    // bidang yang dipilih guru untuknya. Dipakai Bagian V supaya satu
-                    // kegiatan yang sama tidak dobel hanya karena dipilih >1 bidang.
+
                     $kunciAsal = $m['label'] . '|' . $idSumber . '|' . $iBaris;
                     $per_bidang[$b][] = [
                         'sumber_key'        => 'masalah-' . md5($kunciMentah),
@@ -225,6 +244,7 @@ function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
                         'jml_siswa_masalah' => '',
                         'tindak_awal'       => '',
                         'nama_guru'         => $guru,
+                        'teacher_id'        => getTeacherIdBK($guru),
                         'jenis_sumber'      => $jenisSumber,
                     ];
                 }
@@ -241,6 +261,159 @@ function getMasalahOtomatisBK($koneksi, $awal, $akhir) {
     return $hasil;
 }
 
+/**
+ * Memecah isi kolom dokumentasi (text) milik home_visit / konsultasi_ortu
+ * menjadi array path foto. Mendukung format JSON array maupun daftar
+ * path yang dipisah koma / baris baru, supaya tidak perlu mengubah
+ * struktur tabel yang sudah ada.
+ */
+function parseDaftarFotoBK($raw) {
+    $raw = trim((string) $raw);
+    if ($raw === '') return [];
+
+    $decoded = json_decode($raw, true);
+    if (is_array($decoded)) {
+        $out = [];
+        foreach ($decoded as $item) {
+            if (is_string($item) && trim($item) !== '') {
+                $out[] = trim($item);
+            } elseif (is_array($item) && !empty($item['path'])) {
+                $out[] = trim($item['path']);
+            }
+        }
+        return $out;
+    }
+
+    $parts = preg_split('/[,\r\n]+/', $raw);
+    $out = [];
+    foreach ($parts as $p) {
+        $p = trim($p);
+        if ($p !== '') $out[] = $p;
+    }
+    return $out;
+}
+
+/**
+ * Mengumpulkan foto dokumentasi OTOMATIS dari layanan BK
+ * (Konseling Individu, Konseling/Bimbingan Kelompok, Home Visit,
+ * Konsultasi Orang Tua, Konsultasi Siswa) sesuai rentang tanggal
+ * laporan bulan berjalan. Guru pada tiap foto mengikuti guru yang
+ * menginput data layanan tersebut (bukan guru lain).
+ */
+function getFotoOtomatisBK($koneksi, $awal, $akhir) {
+    $hasil = [];
+
+    // 1) Konseling Individu -> tabel dokumentasi_konseling
+    $q = mysqli_query($koneksi, "
+        SELECT dk.id_dokumentasi, dk.file_path, ki.nama_guru AS guru, ki.tanggal_pelaksanaan AS tgl
+        FROM dokumentasi_konseling dk
+        JOIN konseling_individu ki ON ki.id_konseling = dk.id_konseling
+        WHERE ki.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
+        ORDER BY dk.id_dokumentasi ASC
+    ");
+    if ($q) {
+        while ($r = mysqli_fetch_assoc($q)) {
+            if (trim((string) $r['file_path']) === '') continue;
+            $hasil[] = [
+                'sumber_key' => 'auto-ki-' . $r['id_dokumentasi'],
+                'sumber'     => 'Konseling Individu',
+                'guru'       => trim((string) $r['guru']),
+                'teacher_id' => getTeacherIdBK($r['guru']),
+                'tanggal'    => $r['tgl'],
+                'path'       => $r['file_path'],
+            ];
+        }
+    } else {
+        error_log('Foto otomatis BK (konseling individu) gagal: ' . mysqli_error($koneksi));
+    }
+
+    // 2) Konseling / Bimbingan Kelompok -> tabel dokumentasi_kelompok
+    $q = mysqli_query($koneksi, "
+        SELECT dkk.id_dokumentasi, dkk.file_path, k.nama_guru AS guru, k.tanggal_pelaksanaan AS tgl
+        FROM dokumentasi_kelompok dkk
+        JOIN kelompok k ON k.id_kelompok = dkk.id_kelompok
+        WHERE k.tanggal_pelaksanaan BETWEEN '$awal' AND '$akhir'
+        ORDER BY dkk.id_dokumentasi ASC
+    ");
+    if ($q) {
+        while ($r = mysqli_fetch_assoc($q)) {
+            if (trim((string) $r['file_path']) === '') continue;
+            $hasil[] = [
+                'sumber_key' => 'auto-kel-' . $r['id_dokumentasi'],
+                'sumber'     => 'Konseling/Bimbingan Kelompok',
+                'guru'       => trim((string) $r['guru']),
+                'teacher_id' => getTeacherIdBK($r['guru']),
+                'tanggal'    => $r['tgl'],
+                'path'       => $r['file_path'],
+            ];
+        }
+    } else {
+        error_log('Foto otomatis BK (kelompok) gagal: ' . mysqli_error($koneksi));
+    }
+
+    // 3) Home Visit -> kolom text `dokumentasi` pada tabel home_visit
+    $q = mysqli_query($koneksi, "
+        SELECT hv.id_visit, hv.dokumentasi, hv.nama_petugas AS guru, hv.hari_tanggal AS tgl
+        FROM home_visit hv
+        WHERE hv.hari_tanggal BETWEEN '$awal' AND '$akhir'
+        ORDER BY hv.id_visit ASC
+    ");
+    if ($q) {
+        while ($r = mysqli_fetch_assoc($q)) {
+            $daftar = parseDaftarFotoBK($r['dokumentasi']);
+            foreach ($daftar as $i => $path) {
+                $hasil[] = [
+                    'sumber_key' => 'auto-hv-' . $r['id_visit'] . '-' . $i,
+                    'sumber'     => 'Home Visit',
+                    'guru'       => trim((string) $r['guru']),
+                    'teacher_id' => getTeacherIdBK($r['guru']),
+                    'tanggal'    => $r['tgl'],
+                    'path'       => $path,
+                ];
+            }
+        }
+    } else {
+        error_log('Foto otomatis BK (home visit) gagal: ' . mysqli_error($koneksi));
+    }
+
+    // 4) Konsultasi Orang Tua & Konsultasi Siswa -> kolom text `dokumentasi`
+    //    pada tabel konsultasi_ortu (dipakai bersama untuk kedua jenis layanan)
+    $q = mysqli_query($koneksi, "
+        SELECT ko.id_konsultasi, ko.dokumentasi, ko.nama_guru_bk AS guru, ko.tanggal_pemanggilan AS tgl
+        FROM konsultasi_ortu ko
+        WHERE ko.tanggal_pemanggilan BETWEEN '$awal' AND '$akhir'
+        ORDER BY ko.id_konsultasi ASC
+    ");
+    if ($q) {
+        while ($r = mysqli_fetch_assoc($q)) {
+            $daftar = parseDaftarFotoBK($r['dokumentasi']);
+            foreach ($daftar as $i => $path) {
+                $hasil[] = [
+                    'sumber_key' => 'auto-ko-' . $r['id_konsultasi'] . '-' . $i,
+                    'sumber'     => 'Konsultasi Ortu/Siswa',
+                    'guru'       => trim((string) $r['guru']),
+                    'teacher_id' => getTeacherIdBK($r['guru']),
+                    'tanggal'    => $r['tgl'],
+                    'path'       => $path,
+                ];
+            }
+        }
+    } else {
+        error_log('Foto otomatis BK (konsultasi) gagal: ' . mysqli_error($koneksi));
+    }
+
+    // Dedup berbasis path+sumber_key supaya foto yang sama tidak tampil dobel
+    $unik = [];
+    $dilihat = [];
+    foreach ($hasil as $f) {
+        $cek = $f['sumber_key'] . '|' . $f['path'];
+        if (isset($dilihat[$cek])) continue;
+        $dilihat[$cek] = true;
+        $unik[] = $f;
+    }
+
+    return $unik;
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -277,13 +450,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         }
         $awal  = sprintf('%04d-%02d-01', $tahun, $bulan);
         $akhir = date('Y-m-t', strtotime($awal));
-        // Catatan: sengaja TIDAK memfilter guru di sini. Data yang dikirim ke
-        // client SELALU lengkap (semua guru); Filter Guru BK di halaman hanya
-        // menyaring TAMPILAN di browser, supaya data asli tidak pernah berubah
-        // atau hilang akibat gonta-ganti filter.
+
         $rekap   = getRekapOtomatisBK($koneksi, $awal, $akhir);
         $masalah = getMasalahOtomatisBK($koneksi, $awal, $akhir);
-        echo json_encode(['success' => true, 'rekap' => $rekap, 'masalah' => $masalah]);
+        $foto    = getFotoOtomatisBK($koneksi, $awal, $akhir);
+        echo json_encode(['success' => true, 'rekap' => $rekap, 'masalah' => $masalah, 'foto' => $foto]);
         exit;
     }
 
@@ -443,6 +614,11 @@ if ($laporan_id > 0) {
     if (!$laporan) {
         $laporan_id = 0;
     }
+}
+
+$bulanDariUrl = '';
+if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $_GET['bulan'])) {
+    $bulanDariUrl = $_GET['bulan'];
 }
 ?>
 
@@ -670,14 +846,14 @@ if ($laporan_id > 0) {
               .report-section > .report-section-body {
                 padding: 1.25rem;
               }
-              
+
               .date-input-wrapper {
                 position: relative;
                 display: flex;
                 align-items: center;
                 width: 100%;
               }
-              
+
               .date-input-wrapper input[type="date"] {
                 width: 100%;
                 padding: 6px 8px;
@@ -688,42 +864,42 @@ if ($laporan_id > 0) {
                 cursor: pointer;
                 min-height: 34px;
               }
-              
+
               .date-input-wrapper input[type="date"]:hover {
                 background-color: rgba(0,0,0,0.03);
               }
-              
+
               .date-input-wrapper input[type="date"]:focus {
                 background-color: rgba(0,0,0,0.05);
               }
-              
+
               .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
                 cursor: pointer;
                 padding: 4px;
                 opacity: 0.6;
               }
-              
+
               .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator:hover {
                 opacity: 1;
               }
-              
+
               .table-scroll-wrapper {
                 overflow-x: auto;
                 width: 100%;
               }
-              
+
               .col-no {
                 width: 4%;
                 min-width: 35px;
                 max-width: 45px;
                 white-space: nowrap;
               }
-              
+
               .col-tanggal {
                 width: 14%;
                 min-width: 110px;
               }
-              
+
               table {
                 width: 100% !important;
                 table-layout: fixed !important;
@@ -755,6 +931,13 @@ if ($laporan_id > 0) {
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  html {
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   .no-print,
@@ -871,9 +1054,11 @@ if ($laporan_id > 0) {
     margin-bottom: 8pt !important;
     table-layout: fixed !important;
     page-break-inside: auto !important;
+    box-sizing: border-box !important;
   }
 
   th, td {
+    box-sizing: border-box !important;
     border: 1pt solid #000000 !important;
     padding: 4pt 5pt !important;
     vertical-align: middle !important;
@@ -899,18 +1084,11 @@ if ($laporan_id > 0) {
     page-break-inside: avoid !important;
   }
 
-  /* Kolom "Aksi" (selalu kolom terakhir tiap tabel laporan) tidak dicetak. */
   th:last-child,
   td:last-child {
     display: none !important;
   }
 
-  colgroup col:last-child {
-    visibility: collapse !important;
-  }
-
-  /* ===================== BAGIAN III - REKAP KEGIATAN (7 kolom cetak) =====================
-     No 4% | Jenis Layanan 13% | Sasaran 11% | Jumlah Siswa 8% | Waktu 10% | Bentuk Kegiatan 24% | Keterangan 30% */
   #rekapKegiatan {
     table-layout: fixed !important;
     width: 100% !important;
@@ -924,16 +1102,6 @@ if ($laporan_id > 0) {
   #rekapKegiatan th:nth-child(6), #rekapKegiatan td:nth-child(6) { width: 24% !important; text-align: left !important; }
   #rekapKegiatan th:nth-child(7), #rekapKegiatan td:nth-child(7) { width: 30% !important; text-align: left !important; }
 
-  /* ===================== BAGIAN IV - REKAP PERMASALAHAN (5 kolom cetak) =====================
-     No 5% | Bidang 12% | Permasalahan 40% | Jumlah Siswa 10% | Tindak Awal 33%
-     Kolom No & Bidang digabung (rowspan) per kelompok bidang -- lihat JS
-     terapkanRowspanBidangIV(); ukurannya tetap konsisten di layar maupun cetak.
-     PENTING: lebar sel BODY memakai selector class (.sel-no, .sel-bidang, dst),
-     BUKAN td:nth-child -- karena baris ke-2/ke-3 dst dalam satu kelompok bidang
-     TIDAK memiliki sel No/Bidang sama sekali di DOM (sungguhan dihapus, bukan
-     cuma disembunyikan, supaya rowspan bekerja benar). Kalau pakai nth-child,
-     baris pendek itu akan salah dapat gaya kolom No/Bidang -- itulah penyebab
-     tabel Bagian IV terlihat tidak rata saat dicetak/PDF sebelumnya. */
   #rekapMasalah {
     table-layout: fixed !important;
     width: 100% !important;
@@ -951,8 +1119,6 @@ if ($laporan_id > 0) {
   #rekapMasalah td.sel-jumlah      { width: 10% !important; text-align: center !important; vertical-align: top !important; }
   #rekapMasalah td.sel-tindak      { width: 33% !important; text-align: left !important; vertical-align: top !important; }
 
-  /* Isi cell (lewat .print-value-proxy) ikut posisi vertikal sel induknya +
-     tidak pernah keluar dari batas kolom, berapa pun panjang teksnya. */
   #rekapMasalah td.sel-permasalahan .print-value-proxy,
   #rekapMasalah td.sel-jumlah .print-value-proxy,
   #rekapMasalah td.sel-tindak .print-value-proxy {
@@ -971,8 +1137,6 @@ if ($laporan_id > 0) {
     overflow-wrap: break-word !important;
   }
 
-  /* ===================== BAGIAN V - TINDAK LANJUT (6 kolom cetak) =====================
-     No 4% | Permasalahan 28% | Layanan BK 16% | Tindak Lanjut 18% | Bulan 12% | Pihak Terkait 22% */
   #tindakLanjut {
     table-layout: fixed !important;
     width: 100% !important;
@@ -985,9 +1149,19 @@ if ($laporan_id > 0) {
   #tindakLanjut th:nth-child(5), #tindakLanjut td:nth-child(5) { width: 12% !important; text-align: center !important; }
   #tindakLanjut th:nth-child(6), #tindakLanjut td:nth-child(6) { width: 22% !important; text-align: left !important; }
 
-  /* Teks isi (via .print-value-proxy, dibuat saat 'beforeprint' di JS) SELALU
-     wrap ke baris berikutnya, tidak pernah terpotong -- berlaku merata di
-     Bagian III, IV, dan V. */
+  #rekapMasalah th,
+  #rekapMasalah td {
+    font-size: 9.5pt !important;
+    line-height: 1.25 !important;
+    padding: 3pt 4pt !important;
+  }
+
+  #rekapMasalah td.sel-permasalahan,
+  #rekapMasalah td.sel-tindak {
+    padding-top: 3pt !important;
+    padding-bottom: 3pt !important;
+  }
+
   #rekapKegiatan th,
   #rekapKegiatan td,
   #rekapMasalah th,
@@ -1024,9 +1198,6 @@ if ($laporan_id > 0) {
     color: transparent !important;
   }
 
-  /* Input/textarea/select asli disembunyikan saat cetak; teksnya sudah
-     dipindah ke .print-value-proxy oleh event 'beforeprint' di JS supaya
-     bisa wrap bebas tanpa batasan lebar input aslinya. */
   table input[type="text"],
   table input[type="number"],
   table input[type="date"],
@@ -1044,8 +1215,9 @@ if ($laporan_id > 0) {
 
   .penutup-ttd-wrap {
     display: block !important;
-    page-break-before: always !important;
-    break-before: page !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
+    margin-top: 8pt !important;
   }
 
   .penutup-ttd-wrap .penutup-judul {
@@ -1074,8 +1246,8 @@ if ($laporan_id > 0) {
   .signature-area {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 0 30pt !important;
-    margin-top: 16pt !important;
+    gap: 0 20pt !important;
+    margin-top: 8pt !important;
     page-break-before: avoid !important;
     break-before: avoid !important;
     page-break-inside: avoid !important;
@@ -1095,7 +1267,7 @@ if ($laporan_id > 0) {
 
   .sign-space {
     display: block !important;
-    height: 48pt !important;
+    height: 28pt !important;
     margin: 0 !important;
   }
 
@@ -1121,6 +1293,7 @@ if ($laporan_id > 0) {
   .report-section {
     border: none !important;
     border-radius: 0 !important;
+    margin-bottom: 12pt !important;
   }
 
   .report-section > summary {
@@ -1167,7 +1340,7 @@ if ($laporan_id > 0) {
 
   #dokumentasi-section {
     page-break-before: always !important;
-    break-before: always !important;
+    break-before: page !important;
     padding: 0 !important;
     margin: 0 !important;
     display: block !important;
@@ -1181,19 +1354,28 @@ if ($laporan_id > 0) {
     margin-top: 0 !important;
     margin-bottom: 12pt !important;
     letter-spacing: 0.3pt !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
+  /* Layout flex-wrap (bukan CSS grid) dipakai supaya browser dapat memecah
+     dokumentasi ke halaman berikutnya secara otomatis tanpa memotong foto
+     atau merusak tata letak, berapa pun jumlah fotonya (tidak dibatasi). */
   #dokumentasi {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    grid-auto-rows: 178pt !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
     gap: 6pt !important;
     width: 100% !important;
   }
 
   #dokumentasi > div {
     display: block !important;
+    position: relative !important;
     overflow: hidden !important;
+    width: calc(33.333% - 4pt) !important;
+    height: 178pt !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #dokumentasi img {
@@ -1202,10 +1384,6 @@ if ($laporan_id > 0) {
     height: 178pt !important;
     object-fit: cover !important;
     border: 1pt solid #888888 !important;
-  }
-
-  #dokumentasi > div:nth-child(n+13) {
-    display: none !important;
   }
 
   #dokumentasi button,
@@ -1228,13 +1406,14 @@ if ($laporan_id > 0) {
     overflow: visible !important;
     overflow-x: visible !important;
     overflow-y: visible !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   #rekapMasalah {
     overflow: visible !important;
   }
 
-  
   .print-hide {
     display: none !important;
   }
@@ -1320,25 +1499,37 @@ if ($laporan_id > 0) {
           <input type="hidden" id="idLaporan" value="<?php echo (int) $laporan_id; ?>">
           <input type="hidden" id="statusLaporan" value="<?php echo $laporan ? htmlspecialchars($laporan['status']) : 'draft'; ?>">
 
-          <div class="no-print mb-6 flex items-center justify-between flex-wrap gap-2">
+          <div class="no-print mb-3 flex items-center justify-between flex-wrap gap-2">
             <span id="badgeStatus" class="px-3 py-1 rounded-full text-sm font-semibold <?php echo ($laporan && $laporan['status'] === 'final') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'; ?>">
-              <?php echo ($laporan && $laporan['status'] === 'final') ? '🟢 Final' : '🟡 Belum Final'; ?>
+              <?php echo ($laporan && $laporan['status'] === 'final') ? '🟢 Final - Terkunci' : '🟡 Draft - Belum Dikunci'; ?>
             </span>
-            <a href="riwayat_laporanbk.php" class="text-sm text-blue-600 hover:underline">
+            <a href="riwayat_laporanbk.php" class="sm:hidden text-sm text-blue-600 hover:underline">
               <i class="fas fa-clock-rotate-left mr-1"></i> Lihat Riwayat Laporan
             </a>
           </div>
 
-          <div class="no-print mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Dokumen</label>
-              <input type="text" id="namaDokumen" placeholder="Terisi otomatis, bisa diedit"
-                class="w-full px-3 py-2 border rounded text-sm"
-                value="<?php echo $laporan ? htmlspecialchars($laporan['nama_dokumen']) : ''; ?>">
+          <div class="no-print mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <p class="text-sm font-bold text-blue-800 flex items-center gap-2">
+                <i class="fas fa-calendar-week"></i> Laporan untuk Bulan Mana?
+              </p>
+              <?php if ($laporan): ?>
+                <span class="text-xs text-gray-500">
+                  <i class="fas fa-lock mr-1"></i>Bulan tidak bisa diubah lagi untuk laporan yang sudah dibuat. Gunakan tombol panah untuk pindah ke laporan bulan lain.
+                </span>
+              <?php else: ?>
+                <span class="text-xs text-gray-500">
+                  <i class="fas fa-circle-info mr-1"></i>Pilih bulan, atau geser pakai tombol panah di samping.
+                </span>
+              <?php endif; ?>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Bulan Laporan</label>
-              <input type="month" id="bulanLaporan" class="w-full px-3 py-2 border rounded text-sm"
+            <div class="flex items-stretch gap-2 relative">
+              <button type="button" id="btnBulanSebelumnya" title="Bulan sebelumnya"
+                class="px-3 rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-100 transition font-semibold">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <input type="month" id="bulanLaporan"
+                class="flex-1 min-w-0 px-3 py-2.5 border-2 border-blue-300 rounded-lg text-sm font-semibold text-blue-900 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 <?php
                   $bulanValueAwal = '';
                   if ($laporan) {
@@ -1346,13 +1537,44 @@ if ($laporan_id > 0) {
                       $tp = explode('/', $laporan['tahun_pelajaran']);
                       $tahunAwal = ($b >= 7) ? (int) ($tp[0] ?? date('Y')) : (int) ($tp[1] ?? date('Y'));
                       $bulanValueAwal = sprintf('%04d-%02d', $tahunAwal, $b);
+                  } elseif ($bulanDariUrl) {
+                      $bulanValueAwal = $bulanDariUrl;
                   }
                 ?>
                 value="<?php echo $bulanValueAwal; ?>"
                 <?php echo $laporan ? 'readonly' : ''; ?>>
-              <p class="text-xs text-gray-500 mt-1 no-print" id="hintBulanLaporan">
-                <?php echo $laporan ? 'Bulan laporan tidak bisa diubah setelah dibuat.' : 'Semester &amp; tahun pelajaran otomatis mengikuti bulan ini.'; ?>
-              </p>
+              <button type="button" id="btnBulanBerikutnya" title="Bulan berikutnya"
+                class="px-3 rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-100 transition font-semibold">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+              <button type="button" id="btnBulanCepat" title="Lompat ke bulan tertentu"
+                class="px-3 rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-100 transition font-semibold">
+                <i class="fas fa-calendar-days"></i>
+              </button>
+              <div id="panelBulanCepat" class="hidden absolute top-full left-0 right-0 sm:right-auto sm:w-72 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <button type="button" id="btnTahunCepatMundur" class="w-7 h-7 rounded hover:bg-gray-100 text-gray-500"><i class="fas fa-chevron-left text-xs"></i></button>
+                  <span id="labelTahunCepat" class="text-sm font-bold text-gray-700"></span>
+                  <button type="button" id="btnTahunCepatMaju" class="w-7 h-7 rounded hover:bg-gray-100 text-gray-500"><i class="fas fa-chevron-right text-xs"></i></button>
+                </div>
+                <div id="gridBulanCepat" class="grid grid-cols-3 gap-1.5"></div>
+              </div>
+              <a href="riwayat_laporanbk.php" title="Lihat semua riwayat laporan"
+                class="hidden sm:inline-flex items-center gap-2 px-4 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition whitespace-nowrap">
+                <i class="fas fa-clock-rotate-left"></i> Riwayat
+              </a>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 no-print" id="hintBulanLaporan">
+              <?php echo $laporan ? 'Bulan tidak bisa diubah setelah laporan dibuat, tapi isinya tetap bisa diedit.' : 'Semester & tahun pelajaran mengikuti bulan yang dipilih.'; ?>
+            </p>
+          </div>
+
+          <div class="no-print mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Dokumen</label>
+              <input type="text" id="namaDokumen" placeholder="Terisi otomatis, bisa diedit"
+                class="w-full px-3 py-2 border rounded text-sm"
+                value="<?php echo $laporan ? htmlspecialchars($laporan['nama_dokumen']) : ''; ?>">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
@@ -1375,8 +1597,11 @@ if ($laporan_id > 0) {
               </label>
               <select id="filterGuruBK" class="input w-full px-3 py-2 border rounded text-sm">
                 <option value="">Semua Guru BK</option>
-                <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
-                <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+                <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt):
+                  $teacher_id_opt = getTeacherIdBK($nama_guru_opt);
+                  $filter_value_opt = $teacher_id_opt !== null ? (string) $teacher_id_opt : 'nama:' . $nama_guru_opt;
+                ?>
+                <option value="<?php echo htmlspecialchars($filter_value_opt); ?>" data-teacher-id="<?php echo $teacher_id_opt !== null ? $teacher_id_opt : ''; ?>" data-nama-guru="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
                 <?php endforeach; ?>
               </select>
               <p class="text-xs text-gray-500 mt-1">
@@ -1434,31 +1659,25 @@ if ($laporan_id > 0) {
               <i class="fas fa-chevron-down chevron no-print"></i>
             </summary>
             <div class="report-section-body">
-              <div class="no-print flex flex-wrap items-center gap-2 mb-3">
-                <span class="text-xs font-medium text-gray-600 mr-1">Tambah baris permasalahan ke bidang:</span>
-                <?php foreach (BIDANG_LAPORAN_BK as $b): ?>
-                <button type="button" onclick="tambahBarisMasalahManual('<?php echo htmlspecialchars($b, ENT_QUOTES); ?>')"
-                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300">
-                  <i class="fas fa-plus mr-1"></i><?php echo htmlspecialchars($b); ?>
-                </button>
-                <?php endforeach; ?>
+              <div class="no-print mb-4">
+                <p class="text-xs font-medium text-gray-600 mb-2">Tambah baris permasalahan ke bidang:</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <?php foreach (BIDANG_LAPORAN_BK as $b): ?>
+                  <button type="button" onclick="tambahBarisMasalahManual('<?php echo htmlspecialchars($b, ENT_QUOTES); ?>')"
+                    class="flex items-center justify-center gap-1.5 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 hover:border-blue-300 shadow-sm transition-colors">
+                    <i class="fas fa-plus text-[10px]"></i><span><?php echo htmlspecialchars($b); ?></span>
+                  </button>
+                  <?php endforeach; ?>
+                </div>
               </div>
               <div class="table-scroll-wrapper">
                 <table
                   id="rekapMasalah"
                   class="w-full border-collapse border border-gray-300"
                 >
-                  <colgroup>
-                    <col style="width: 4%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 39%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 28%;" />
-                    <col style="width: 7%;" />
-                  </colgroup>
                   <thead>
                     <tr class="bg-gray-200">
-                      <th class="border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
+                      <th class="col-no border border-gray-300 px-1 py-2 text-sm text-center whitespace-nowrap">No</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Bidang</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Permasalahan</th>
                       <th class="border border-gray-300 px-1 py-2 text-sm text-center">Jumlah<br />Siswa</th>
@@ -1469,12 +1688,6 @@ if ($laporan_id > 0) {
                   <tbody></tbody>
                 </table>
               </div>
-              <p class="text-xs text-gray-500 mt-2 no-print">
-                Permasalahan terisi otomatis dari laporan Home Visit, Konseling Individu/Kelompok,
-                dan Konsultasi Orang Tua bulan ini &mdash; tetap bisa diedit manual. Jumlah Siswa selalu diisi manual.
-                Nomor mengikuti 4 bidang (Pribadi, Belajar, Sosial, Karier); beberapa permasalahan pada
-                bidang yang sama akan berbagi nomor yang sama.
-              </p>
             </div>
           </details>
 
@@ -1632,68 +1845,121 @@ if ($laporan_id > 0) {
 </div>
           </div>
     </div>
-    
+
           <div id="dokumentasi-section" class="mb-8 mt-8">
             <h3 class="text-lg font-bold text-gray-800 flex items-center">
               <i class="no-print fas fa-images text-purple-600 mr-2"></i>
               DOKUMENTASI KEGIATAN
             </h3>
-            <p class="no-print text-red-700 text-sm ms-5 mb-1">Maksimal 12 foto dan maksimal berukuran 2 mb</p>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onchange="previewFoto(event)"
-              class="mb-4 text-sm border border-gray-300 rounded-lg px-3 py-2 w-full no-print"
-            />
-            
+            <p class="no-print text-gray-500 text-xs ms-5 mb-2">
+              Foto dari Konseling Individu, Konseling/Bimbingan Kelompok, Home Visit, Konsultasi Ortu, dan
+              Konsultasi Siswa pada bulan ini akan otomatis muncul di sini. Untuk foto tambahan, pilih Guru
+              terlebih dahulu lalu pilih foto (tidak ada batas jumlah, maksimal 2 MB per foto).
+            </p>
+            <div class="no-print flex flex-col sm:flex-row gap-2 mb-4">
+              <select id="pilihGuruManualFoto" class="input px-3 py-2 border rounded-lg text-sm sm:w-1/3">
+                <option value="">1. Pilih Guru</option>
+                <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt):
+                  $teacher_id_opt = getTeacherIdBK($nama_guru_opt);
+                ?>
+                <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>" data-id-guru="<?php echo $teacher_id_opt !== null ? $teacher_id_opt : ''; ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
+                <?php endforeach; ?>
+              </select>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onchange="previewFoto(event)"
+                class="text-sm border border-gray-300 rounded-lg px-3 py-2 w-full sm:flex-1"
+              />
+            </div>
+
             <div
               id="dokumentasi"
               class="grid grid-cols-2 md:grid-cols-3 gap-4"
             ></div>
           </div>
 
-          <div class="flex justify-center gap-4 no-print flex-wrap" id="actionButtons">
+          <div class="no-print mt-2 mb-4 text-center">
+            <h4 class="text-sm font-bold text-gray-500 uppercase tracking-wide">Langkah Selanjutnya</h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 no-print" id="actionButtons">
             <button
               id="btnSimpan"
               onclick="simpanDokumen()"
-              class="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition font-semibold"
-              title="Menyimpan perubahan, dokumen masih bisa diedit setelah ini"
+              class="flex flex-col items-center text-center gap-1 bg-emerald-600 text-white px-4 py-4 rounded-xl hover:bg-emerald-700 transition font-semibold shadow-sm"
+              title="Menyimpan perubahan, dokumen masih berstatus draft dan bisa diedit lagi kapan saja"
             >
-              <i class="fas fa-save mr-2"></i> Simpan Perubahan
+              <i class="fas fa-save text-xl mb-1"></i>
+              <span>Simpan Perubahan</span>
+              <span class="text-xs font-normal opacity-90">Tetap draft, bisa diedit lagi</span>
             </button>
             <button
               id="btnFinalisasi"
               onclick="finalisasiDokumen()"
-              class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
-              title="Mengunci dokumen agar tidak bisa diedit lagi, lalu bisa dicetak"
+              class="flex flex-col items-center text-center gap-1 bg-indigo-600 text-white px-4 py-4 rounded-xl hover:bg-indigo-700 transition font-semibold shadow-sm"
+              title="Mengunci dokumen supaya siap dicetak. Masih bisa dibuka lagi untuk diedit lewat tombol Buka Kunci"
             >
-              <i class="fas fa-flag-checkered mr-2"></i> Selesaikan & Kunci Laporan
+              <i class="fas fa-flag-checkered text-xl mb-1"></i>
+              <span>Selesaikan & Kunci</span>
+              <span class="text-xs font-normal opacity-90">Siap dicetak, masih bisa dibuka lagi</span>
             </button>
             <button
               id="btnBukaDraft"
               onclick="bukaSebagaiDraft()"
-              class="hidden bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition font-semibold"
+              class="hidden flex flex-col items-center text-center gap-1 bg-amber-600 text-white px-4 py-4 rounded-xl hover:bg-amber-700 transition font-semibold shadow-sm"
               title="Membuka kembali laporan yang sudah dikunci agar bisa diedit"
             >
-              <i class="fas fa-lock-open mr-2"></i> Buka Kunci untuk Edit Lagi
+              <i class="fas fa-lock-open text-xl mb-1"></i>
+              <span>Buka Kunci untuk Edit</span>
+              <span class="text-xs font-normal opacity-90">Kembali ke status draft</span>
             </button>
             <button
               id="btnCetak"
-              onclick="window.print()"
+              onclick="cetakLaporan()"
               disabled
-              class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+              class="flex flex-col items-center text-center gap-1 bg-blue-600 text-white px-4 py-4 rounded-xl hover:bg-blue-700 transition font-semibold shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
               title="Hanya bisa dicetak setelah laporan diselesaikan dan dikunci"
             >
-              <i class="fas fa-file-pdf mr-2"></i> Cetak / Simpan sebagai PDF
+              <i class="fas fa-file-pdf text-xl mb-1"></i>
+              <span>Cetak / Simpan PDF</span>
+              <span class="text-xs font-normal opacity-90">Aktif setelah dikunci</span>
             </button>
+          </div>
+          <div id="draftRecovery" class="hidden no-print mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <div class="font-semibold">Draft lokal ditemukan</div>
+            <div id="draftRecoveryText" class="mt-1"></div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button type="button" onclick="pulihkanDraftLokal()" class="rounded bg-amber-600 px-3 py-1.5 text-white hover:bg-amber-700">Pulihkan Draft</button>
+              <button type="button" onclick="gunakanDataServer()" class="rounded border border-amber-400 px-3 py-1.5 text-amber-900 hover:bg-amber-100">Gunakan Data Server</button>
+            </div>
+          </div>
+          <div id="draftStatus" class="no-print mt-2 text-center text-xs text-gray-500"></div>
+          <div class="no-print mt-3 text-center">
             <button
               id="btnResetForm"
               onclick="resetForm()"
-              class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition font-semibold"
-              title="Mengosongkan semua isian di form ini"
+              class="inline-flex items-center gap-2 text-gray-500 hover:text-red-600 text-sm font-medium transition"
+              title="Mengosongkan semua isian di form ini, tidak menghapus data yang sudah tersimpan sampai kamu menekan Simpan"
             >
-              <i class="fas fa-redo mr-2"></i> Kosongkan Semua Isian
+              <i class="fas fa-redo"></i> Kosongkan Semua Isian
+            </button>
+            <button
+              type="button"
+              id="btnSinkronkanData"
+              onclick="sinkronkanData()"
+              class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition"
+              title="Mengambil data otomatis terbaru tanpa memuat ulang halaman"
+            >
+              <i class="fas fa-sync-alt"></i> <span id="labelSinkronkanData">Sinkronkan Data</span>
+            </button>
+            <button
+              type="button"
+              onclick="hapusDraftLokal(true)"
+              class="inline-flex items-center gap-2 text-gray-500 hover:text-red-600 text-sm font-medium transition"
+              title="Menghapus draft lokal saja, tidak menghapus data database"
+            >
+              <i class="fas fa-trash-alt"></i> Hapus Draft Lokal
             </button>
           </div>
         </div>
@@ -1707,9 +1973,7 @@ if ($laporan_id > 0) {
             dokumentasi: <?php echo $laporan['dokumentasi_foto'] ? $laporan['dokumentasi_foto'] : '[]'; ?>
           };
           <?php
-            // Bulan & tahun awal (kalender) dari laporan yang sedang dibuka,
-            // dipakai untuk menarik ulang rekap kegiatan (Section III) secara live
-            // dari tabel sumber setiap kali laporan ini dibuka.
+
             $b = (int) $laporan['bulan'];
             $tpArr = explode('/', $laporan['tahun_pelajaran']);
             $tahunAwalRekap = ($b >= 7) ? (int) ($tpArr[0] ?? date('Y')) : (int) ($tpArr[1] ?? date('Y'));
@@ -1739,15 +2003,15 @@ if ($laporan_id > 0) {
             const table = document.getElementById("rekapKegiatan");
             const tbody = table.querySelector("tbody");
             const row = tbody.insertRow();
-            const rowNum = tbody.rows.length;
 
             row.className = "hover:bg-gray-50 transition-colors";
             row.dataset.sumberKey = '';
             row.dataset.manual = '1';
             row.dataset.namaGuru = '';
+            row.dataset.teacherId = '';
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
+            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="jenis_layanan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Jenis Layanan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
@@ -1769,11 +2033,12 @@ if ($laporan_id > 0) {
                 <textarea name="keterangan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Keterangan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
-                <button type="button" onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 transition">
+                <button type="button" onclick="hapusBarisDenganNomor(this)" class="text-red-500 hover:text-red-700 transition">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         `;
+            perbaruiNomorBaris(tbody);
             return row;
           }
 
@@ -1801,10 +2066,26 @@ if ($laporan_id > 0) {
           }
 
           function perbaruiNomorBaris(tbody) {
-            Array.from(tbody.rows).forEach((tr, idx) => {
+
+            let nomor = 0;
+            Array.from(tbody.rows).forEach((tr) => {
               const selNo = tr.cells[0];
-              if (selNo) selNo.textContent = idx + 1;
+              if (!selNo) return;
+              if (tr.classList.contains('baris-tersembunyi-filter')) {
+                selNo.textContent = '';
+                return;
+              }
+              nomor += 1;
+              selNo.textContent = nomor;
             });
+          }
+
+          function hapusBarisDenganNomor(btn) {
+            const tr = btn.closest('tr');
+            const tbody = tr ? tr.closest('tbody') : null;
+            if (!tr || !tbody) return;
+            tr.remove();
+            perbaruiNomorBaris(tbody);
           }
 
           function autoResizeTextarea(el) {
@@ -1894,30 +2175,22 @@ if ($laporan_id > 0) {
             return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
           }
 
-          // Satu baris = satu permasalahan. "No" dan "Bidang" ditampilkan lewat
-          // rowspan (lihat terapkanRowspanBidangIV) sehingga beberapa permasalahan
-          // pada bidang yang sama berbagi satu nomor, tanpa membuat nomor baru.
           function buatBarisMasalah(namaBidang, opts) {
             opts = opts || {};
             const table = document.getElementById("rekapMasalah");
             const tbody = table.querySelector("tbody");
             const row = document.createElement('tr');
 
-            // Baris "filler" (baris-kosong-tampilan-<bidang>) tidak dihitung sebagai
-            // baris data sungguhan saat menentukan posisi sisip -- dia murni penanda
-            // visual, selalu ditaruh paling akhir dalam grup bidangnya.
             const barisBidangSama = Array.from(tbody.querySelectorAll('tr'))
               .filter((tr) => tr.dataset.bidang === namaBidang && tr.dataset.filler !== '1');
 
             if (barisBidangSama.length > 0) {
-              // Sudah ada baris bidang ini -- taruh tepat setelah baris terakhirnya,
-              // supaya grup bidang tetap berurutan/tidak tercerai-berai.
+
               const last = barisBidangSama[barisBidangSama.length - 1];
               if (last.nextSibling) last.parentNode.insertBefore(row, last.nextSibling);
               else last.parentNode.appendChild(row);
             } else {
-              // Belum ada baris bidang ini -- sisipkan tepat sebelum bidang
-              // berikutnya (urutan tetap: Pribadi, Belajar, Sosial, Karier).
+
               const idxBidang = BIDANG_LAPORAN_BK.indexOf(namaBidang);
               let sisipSebelum = null;
               for (let i = idxBidang + 1; i < BIDANG_LAPORAN_BK.length && !sisipSebelum; i++) {
@@ -1935,27 +2208,24 @@ if ($laporan_id > 0) {
             row.className = "hover:bg-gray-50 transition-colors";
             row.dataset.bidang = namaBidang;
             row.dataset.sumberKey = opts.sumberKey || buatKunciManualUnik('manual');
-            // sumberAsal mengidentifikasi kegiatan/laporan+permasalahan yang sama
-            // TANPA memandang bidang -- dipakai untuk mencegah duplikasi di Bagian V
-            // ketika satu laporan dipilih ke lebih dari satu bidang. Baris manual
-            // (tanpa opts.sumberAsal) memakai sumberKey-nya sendiri sebagai fallback,
-            // supaya tetap unik/terpisah dari baris manual lain.
+
             row.dataset.sumberAsal = opts.sumberAsal || row.dataset.sumberKey;
             row.dataset.manual = opts.manual ? '1' : '0';
             row.dataset.namaGuru = opts.namaGuru || '';
+            row.dataset.teacherId = opts.teacherId || '';
             row.dataset.jenisSumber = opts.jenisSumber || '';
 
             row.innerHTML = `
             <td class="sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
             <td class="sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700"></td>
             <td class="sel-permasalahan border border-gray-300 px-1 py-1">
-                <textarea name="masalah[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Deskripsi masalah" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
+                <textarea name="masalah[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="-" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="sel-jumlah border border-gray-300 px-1 py-1 text-center">
-                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="0" oninput="if(this.value<0)this.value=0; tandaiManual(this)">
+                <input type="number" name="jml_siswa_masalah[]" min="0" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none text-center" placeholder="-" oninput="if(this.value<0)this.value=0; tandaiManual(this)">
             </td>
             <td class="sel-tindak border border-gray-300 px-1 py-1">
-                <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Tindak awal" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
+                <textarea name="tindak_awal[]" rows="1" class="w-full px-1 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="-" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
             <td class="sel-aksi border border-gray-300 px-1 py-1 text-center no-print">
                 <button type="button" onclick="hapusBarisMasalah(this)" class="text-red-500 hover:text-red-700 transition" title="Hapus baris permasalahan ini">
@@ -1966,41 +2236,36 @@ if ($laporan_id > 0) {
             return row;
           }
 
-          // Baris statis (tidak diedit, tidak ikut disimpan) yang MUNCUL HANYA
-          // ketika seluruh baris data sungguhan pada suatu bidang sedang
-          // disembunyikan oleh Filter Guru BK -- supaya kelompok bidang itu
-          // (No + nama Bidang) tetap terlihat, tidak lenyap dari tabel/PDF.
-          // Ini murni tampilan: filter tidak pernah mengubah data/struktur asli.
-          function buatBarisFillerBidang(namaBidang) {
-            const table = document.getElementById("rekapMasalah");
-            const tbody = table.querySelector("tbody");
-            const row = document.createElement('tr');
-            row.className = "bg-gray-50";
-            row.dataset.bidang = namaBidang;
-            row.dataset.filler = '1';
-            row.style.display = 'none';
-            row.innerHTML = `
-            <td class="sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
-            <td class="sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700"></td>
-            <td class="sel-permasalahan border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">&mdash;</td>
-            <td class="sel-jumlah border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">0</td>
-            <td class="sel-tindak border border-gray-300 px-1 py-2 text-center text-sm text-gray-400">&mdash;</td>
-            <td class="sel-aksi border border-gray-300 px-1 py-2 text-center no-print"></td>
-        `;
+         function buatBarisFillerBidang(namaBidang) {
+    const table = document.getElementById("rekapMasalah");
+    const tbody = table.querySelector("tbody");
+    const row = document.createElement('tr');
 
-            const barisBidangSama = Array.from(tbody.querySelectorAll('tr')).filter((tr) => tr.dataset.bidang === namaBidang);
-            if (barisBidangSama.length > 0) {
-              const last = barisBidangSama[barisBidangSama.length - 1];
-              if (last.nextSibling) last.parentNode.insertBefore(row, last.nextSibling);
-              else last.parentNode.appendChild(row);
-            } else {
-              tbody.appendChild(row);
-            }
-            return row;
-          }
+    row.className = "bg-gray-50";
+    row.dataset.bidang = namaBidang;
+    row.dataset.filler = '1';
+    row.style.display = 'none';
 
-          // Pastikan tiap bidang punya persis 1 baris filler (dibuat sekali,
-          // lalu tinggal ditampilkan/disembunyikan oleh terapkanRowspanBidangIV).
+    row.innerHTML = `
+        <td class="sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
+        <td class="sel-bidang border border-gray-300 px-1 py-2 text-sm font-medium text-gray-700"></td>
+        <td class="sel-permasalahan border border-gray-300 px-1 py-2 text-center text-sm text-gray-700 font-bold">-</td>
+        <td class="sel-jumlah border border-gray-300 px-1 py-2 text-center text-sm text-gray-700 font-bold">-</td>
+        <td class="sel-tindak border border-gray-300 px-1 py-2 text-center text-sm text-gray-700 font-bold">-</td>
+        <td class="sel-aksi border border-gray-300 px-1 py-2 text-center no-print"></td>
+    `;
+
+    const barisBidangSama = Array.from(tbody.querySelectorAll('tr')).filter((tr) => tr.dataset.bidang === namaBidang);
+    if (barisBidangSama.length > 0) {
+        const last = barisBidangSama[barisBidangSama.length - 1];
+        if (last.nextSibling) last.parentNode.insertBefore(row, last.nextSibling);
+        else last.parentNode.appendChild(row);
+    } else {
+        tbody.appendChild(row);
+    }
+    return row;
+}
+
           function pastikanFillerBidangIV() {
             const tbody = document.querySelector('#rekapMasalah tbody');
             if (!tbody) return;
@@ -2011,7 +2276,16 @@ if ($laporan_id > 0) {
           }
 
           function tambahBarisMasalahManual(namaBidang) {
-            const row = buatBarisMasalah(namaBidang, { manual: true });
+            const filter = document.getElementById('filterGuruBK');
+            const option = filter?.selectedOptions[0];
+            const nilaiFilter = filter?.value || '';
+            const namaGuru = option?.dataset.namaGuru || (nilaiFilter.startsWith('nama:') ? nilaiFilter.slice(5) : '');
+            const teacherId = option?.dataset.teacherId || (nilaiFilter.startsWith('nama:') ? '' : nilaiFilter);
+            const row = buatBarisMasalah(namaBidang, {
+              manual: true,
+              namaGuru: nilaiFilter ? namaGuru : '',
+              teacherId: nilaiFilter ? teacherId : '',
+            });
             terapkanRowspanBidangIV();
             terapkanFilterGuru();
             row.querySelector('[name="masalah[]"]')?.focus();
@@ -2026,7 +2300,7 @@ if ($laporan_id > 0) {
               .filter((r) => r.dataset.bidang === bidang && r.dataset.filler !== '1').length;
 
             if (jumlahSebidang <= 1) {
-              // Selalu sisakan minimal 1 baris per bidang supaya nomor/bidang tetap ada.
+
               const elMasalah = tr.querySelector('[name="masalah[]"]');
               const elJml = tr.querySelector('[name="jml_siswa_masalah[]"]');
               const elTindak = tr.querySelector('[name="tindak_awal[]"]');
@@ -2041,20 +2315,13 @@ if ($laporan_id > 0) {
             terapkanRowspanBidangIV();
           }
 
-          // Menghitung ulang penggabungan (rowspan) kolom No & Bidang berdasarkan
-          // baris yang SEDANG TAMPIL (mengikuti filter guru aktif). Kalau filter
-          // membuat semua baris data sungguhan pada suatu bidang tersembunyi,
-          // baris filler bidang itu yang ditampilkan sebagai gantinya -- supaya
-          // ke-4 bidang SELALU ada di tabel/PDF, apa pun hasil filternya.
           function terapkanRowspanBidangIV() {
             const tbody = document.querySelector('#rekapMasalah tbody');
             if (!tbody) return;
             pastikanFillerBidangIV();
 
-            const nomorBidang = {};
-            BIDANG_LAPORAN_BK.forEach((b, i) => { nomorBidang[b] = i + 1; });
-
             const semuaBaris = Array.from(tbody.rows);
+            let nomorBidang = 0;
             let i = 0;
             while (i < semuaBaris.length) {
               const bidang = semuaBaris[i].dataset.bidang;
@@ -2072,16 +2339,15 @@ if ($laporan_id > 0) {
                 grupFiller.style.display = 'none';
               }
 
+              if (grupTampil.length > 0) nomorBidang += 1;
+
               grup.forEach((tr) => {
                 let tdNo = tr.querySelector('.sel-no');
                 let tdBidang = tr.querySelector('.sel-bidang');
                 const isPertamaTampil = grupTampil.length > 0 && tr === grupTampil[0];
 
                 if (isPertamaTampil) {
-                  // Baris ini yang "memegang" gabungan No + Bidang untuk
-                  // kelompoknya -- pastikan sel-nya ADA sebagai elemen DOM
-                  // nyata (dibuat lagi kalau sebelumnya sempat dilepas karena
-                  // baris ini dulu bukan yang pertama tampil).
+
                   if (!tdNo) {
                     tdNo = document.createElement('td');
                     tdNo.className = 'sel-no border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700';
@@ -2096,16 +2362,10 @@ if ($laporan_id > 0) {
                   tdBidang.style.display = '';
                   tdNo.rowSpan = grupTampil.length;
                   tdBidang.rowSpan = grupTampil.length;
-                  tdNo.textContent = nomorBidang[bidang] || '';
+                  tdNo.textContent = nomorBidang;
                   tdBidang.textContent = bidang;
                 } else {
-                  // PENTING: sel No/Bidang pada baris SELAIN yang pertama harus
-                  // benar-benar DIHAPUS dari DOM (bukan cuma display:none).
-                  // Kalau hanya disembunyikan, browser tetap menghitungnya
-                  // sebagai "kolom hilang" pada baris itu, sehingga isi kolom
-                  // Permasalahan/Jumlah Siswa/Tindak Awal ikut bergeser ke kiri
-                  // dan tabel jadi tidak rata saat dicetak/PDF -- ini pemicu
-                  // masalah "tabel Bagian IV tidak rata" yang terlihat di PDF.
+
                   if (tdNo) tdNo.remove();
                   if (tdBidang) tdBidang.remove();
                 }
@@ -2115,9 +2375,6 @@ if ($laporan_id > 0) {
             }
           }
 
-          // Pastikan setiap 4 bidang selalu punya minimal 1 baris DATA sungguhan
-          // (kosong kalau memang belum ada permasalahan), supaya struktur "4
-          // kelompok nomor" pada Bagian IV selalu tersedia untuk diisi/disimpan.
           function pastikanSemuaBidangAdaBarisIV() {
             const tbody = document.querySelector('#rekapMasalah tbody');
             if (!tbody) return;
@@ -2132,15 +2389,15 @@ if ($laporan_id > 0) {
             const table = document.getElementById("tindakLanjut");
             const tbody = table.querySelector("tbody");
             const row = tbody.insertRow();
-            const rowNum = tbody.rows.length;
 
             row.className = "hover:bg-gray-50 transition-colors";
             row.dataset.sumberKey = '';
             row.dataset.manual = '1';
             row.dataset.namaGuru = '';
+            row.dataset.teacherId = '';
 
             row.innerHTML = `
-            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700">${rowNum}</td>
+            <td class="border border-gray-300 px-1 py-2 text-center text-sm font-medium text-gray-700"></td>
             <td class="border border-gray-300 px-1 py-1">
                 <textarea name="tl_permasalahan[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Permasalahan" oninput="autoResizeTextarea(this); tandaiManual(this)"></textarea>
             </td>
@@ -2171,29 +2428,69 @@ if ($laporan_id > 0) {
                 <textarea name="tl_pihak[]" rows="1" class="w-full px-2 py-1 border-0 focus:ring-0 text-sm bg-transparent outline-none resize-none overflow-hidden align-middle" placeholder="Pihak terkait" oninput="autoResizeTextarea(this)"></textarea>
             </td>
             <td class="border border-gray-300 px-1 py-1 text-center no-print">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700">
+                <button type="button" onclick="hapusBarisDenganNomor(this)" class="text-red-500 hover:text-red-700">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
         `;
+            perbaruiNomorBaris(tbody);
             return row;
           }
 
-          function renderFotoDokumentasi(box, src) {
+          // Kumpulan sumber_key foto OTOMATIS yang sedang tampil, untuk dedup & sinkronisasi
+          const fotoOtomatisAktif = new Set();
+          let seqFotoManual = 0;
+
+          /**
+           * meta = {
+           *   src: string (dataURL / path file),
+           *   tipe: 'manual' | 'auto',
+           *   guru: string,
+           *   idGuru: string|number|null,
+           *   sumberKey: string (unik, dipakai untuk dedup & filter),
+           *   sumber: string (label asal, mis. 'Konseling Individu')
+           * }
+           */
+          function renderFotoDokumentasi(box, meta) {
+            if (typeof meta === "string") {
+              // Kompatibilitas data lama: item berupa string src saja (dianggap manual)
+              meta = { src: meta, tipe: "manual", guru: "", idGuru: null, sumberKey: "manual-legacy-" + (++seqFotoManual), sumber: "Manual" };
+            }
+
             const wrapper = document.createElement("div");
             wrapper.className = "relative group";
+            wrapper.dataset.sumberKey = meta.sumberKey || "";
+            wrapper.dataset.tipe = meta.tipe || "manual";
+            wrapper.dataset.namaGuru = meta.guru || "";
+            wrapper.dataset.teacherId = meta.idGuru || "";
+            wrapper.dataset.idGuru = meta.idGuru || "";
+            wrapper.dataset.sumber = meta.sumber || "";
+            wrapper.dataset.src = meta.src;
 
             const img = document.createElement("img");
-            img.src = src;
+            img.src = meta.src;
             img.className =
               "w-full h-48 object-cover rounded-lg shadow-md hover:shadow-xl transition border border-gray-200";
+
+            const label = document.createElement("div");
+            label.className =
+              "no-print absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] px-2 py-1 rounded-b-lg truncate";
+            const badge = meta.tipe === "auto" ? "Otomatis" : "Manual";
+            label.textContent = badge + (meta.guru ? " • " + meta.guru : "");
+            label.title = (meta.sumber ? meta.sumber + " — " : "") + (meta.guru || "");
 
             const btnHapus = document.createElement("button");
             btnHapus.type = "button";
             btnHapus.innerHTML = '<i class="fas fa-times"></i>';
             btnHapus.className =
               "absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition no-print shadow-lg";
+            btnHapus.title = meta.tipe === "auto"
+              ? "Hapus dari laporan ini saja (dokumentasi asli pada layanan BK tidak akan terhapus)"
+              : "Hapus foto manual ini dari laporan";
             btnHapus.onclick = () => {
+              if (meta.tipe === "auto" && meta.sumberKey) {
+                fotoOtomatisAktif.delete(meta.sumberKey);
+              }
               wrapper.remove();
               if (box.querySelectorAll("img").length === 0) {
                 box.innerHTML =
@@ -2202,28 +2499,82 @@ if ($laporan_id > 0) {
             };
 
             wrapper.appendChild(img);
+            wrapper.appendChild(label);
             wrapper.appendChild(btnHapus);
             box.appendChild(wrapper);
+
+            if (meta.tipe === "auto" && meta.sumberKey) {
+              fotoOtomatisAktif.add(meta.sumberKey);
+            }
+
+            return wrapper;
+          }
+
+          /**
+           * Menggabungkan foto OTOMATIS hasil fetch ke dalam #dokumentasi tanpa
+           * menghapus foto MANUAL yang sudah ada, dan tanpa menampilkan foto
+           * yang sama dua kali (dedup berdasarkan sumber_key).
+           */
+          function mergeFotoOtomatis(fotoFresh) {
+            const box = document.getElementById("dokumentasi");
+            if (!box) return;
+            if (box.querySelector("p")) box.innerHTML = "";
+
+            const keySekarang = new Set(
+              Array.from(box.querySelectorAll('[data-tipe="auto"]')).map((el) => el.dataset.sumberKey)
+            );
+            const keyFresh = new Set();
+
+            (fotoFresh || []).forEach((f) => {
+              if (!f || !f.path || !f.sumber_key) return;
+              keyFresh.add(f.sumber_key);
+              if (keySekarang.has(f.sumber_key)) return; // sudah ada, jangan duplikat
+
+              renderFotoDokumentasi(box, {
+                src: f.path,
+                tipe: "auto",
+                guru: f.guru || "",
+                idGuru: f.teacher_id || null,
+                sumberKey: f.sumber_key,
+                sumber: f.sumber || "",
+              });
+            });
+
+            // Hapus foto otomatis yang sudah tidak ada lagi di sumber layanan BK
+            // (misalnya dokumentasi aslinya dihapus dari layanan terkait)
+            box.querySelectorAll('[data-tipe="auto"]').forEach((el) => {
+              if (!keyFresh.has(el.dataset.sumberKey)) {
+                fotoOtomatisAktif.delete(el.dataset.sumberKey);
+                el.remove();
+              }
+            });
+
+            if (box.querySelectorAll("img").length === 0) {
+              box.innerHTML =
+                '<p class="text-sm text-gray-500 col-span-full text-center py-8">Belum ada foto yang dipilih</p>';
+            }
+
+            terapkanFilterGuru();
           }
 
           function previewFoto(event) {
             const box = document.getElementById("dokumentasi");
+            const selGuru = document.getElementById("pilihGuruManualFoto");
+            const guruTerpilih = selGuru ? selGuru.value : "";
             const newFiles = Array.from(event.target.files);
             const maxSize = 2 * 1024 * 1024;
-            const maxPhotos = 12;
+
+            if (!guruTerpilih) {
+              alert("Pilih Guru terlebih dahulu sebelum menambahkan foto dokumentasi.");
+              event.target.value = "";
+              return;
+            }
 
             if (box.querySelector("p")) {
               box.innerHTML = "";
             }
 
             newFiles.forEach((file) => {
-              const currentPhotos = box.querySelectorAll("img").length;
-
-              if (currentPhotos >= maxPhotos) {
-                alert("Maksimal hanya boleh 12 foto!");
-                return;
-              }
-
               if (!file.type.startsWith("image/")) {
                 alert("File " + file.name + " bukan gambar!");
                 return;
@@ -2235,7 +2586,15 @@ if ($laporan_id > 0) {
               }
 
               const reader = new FileReader();
-              reader.onload = () => renderFotoDokumentasi(box, reader.result);
+              reader.onload = () =>
+                renderFotoDokumentasi(box, {
+                  src: reader.result,
+                  tipe: "manual",
+                  guru: guruTerpilih,
+                  idGuru: selGuru.selectedOptions[0] ? selGuru.selectedOptions[0].dataset.idGuru || null : null,
+                  sumberKey: "manual-" + Date.now() + "-" + (++seqFotoManual),
+                  sumber: "Manual",
+                });
               reader.readAsDataURL(file);
             });
 
@@ -2348,10 +2707,78 @@ if ($laporan_id > 0) {
             inputBulan.addEventListener('change', () => prosesPerubahanBulan(false));
           }
 
+          function geserBulan(delta) {
+            const inputBulan = document.getElementById('bulanLaporan');
+            const [thnStr, blnStr] = (inputBulan.value || '').split('-');
+            let thn = parseInt(thnStr, 10);
+            let bln = parseInt(blnStr, 10);
+            if (!thn || !bln) {
+              const sekarang = new Date();
+              thn = sekarang.getFullYear();
+              bln = sekarang.getMonth() + 1;
+            }
+            bln += delta;
+            if (bln < 1) { bln = 12; thn -= 1; }
+            if (bln > 12) { bln = 1; thn += 1; }
+            inputBulan.value = thn + '-' + String(bln).padStart(2, '0');
+            prosesPerubahanBulan(false);
+          }
+
+          document.getElementById('btnBulanSebelumnya')?.addEventListener('click', () => geserBulan(-1));
+          document.getElementById('btnBulanBerikutnya')?.addEventListener('click', () => geserBulan(1));
+
+          const namaBulanSingkat = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          let tahunPanelCepat = new Date().getFullYear();
+
+          function renderPanelBulanCepat() {
+            const inputBulan = document.getElementById('bulanLaporan');
+            const [thnAktifStr, blnAktifStr] = (inputBulan.value || '').split('-');
+            const thnAktif = parseInt(thnAktifStr, 10);
+            const blnAktif = parseInt(blnAktifStr, 10);
+
+            document.getElementById('labelTahunCepat').textContent = tahunPanelCepat;
+
+            const grid = document.getElementById('gridBulanCepat');
+            grid.innerHTML = '';
+            for (let b = 1; b <= 12; b++) {
+              const aktif = thnAktif === tahunPanelCepat && blnAktif === b;
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.textContent = namaBulanSingkat[b - 1];
+              btn.className = 'py-2 rounded-lg text-sm font-semibold transition ' +
+                (aktif ? 'bg-blue-600 text-white' : 'bg-gray-50 hover:bg-blue-100 text-gray-700');
+              btn.addEventListener('click', () => {
+                inputBulan.value = tahunPanelCepat + '-' + String(b).padStart(2, '0');
+                document.getElementById('panelBulanCepat').classList.add('hidden');
+                prosesPerubahanBulan(false);
+              });
+              grid.appendChild(btn);
+            }
+          }
+
+          document.getElementById('btnBulanCepat')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('panelBulanCepat');
+            const buka = panel.classList.contains('hidden');
+            if (buka) {
+              const [thnAktifStr] = (document.getElementById('bulanLaporan').value || '').split('-');
+              tahunPanelCepat = parseInt(thnAktifStr, 10) || new Date().getFullYear();
+              renderPanelBulanCepat();
+            }
+            panel.classList.toggle('hidden');
+          });
+
+          document.getElementById('btnTahunCepatMundur')?.addEventListener('click', () => { tahunPanelCepat--; renderPanelBulanCepat(); });
+          document.getElementById('btnTahunCepatMaju')?.addEventListener('click', () => { tahunPanelCepat++; renderPanelBulanCepat(); });
+
+          document.addEventListener('click', (e) => {
+            const panel = document.getElementById('panelBulanCepat');
+            if (!panel || panel.classList.contains('hidden')) return;
+            if (!panel.contains(e.target) && e.target.id !== 'btnBulanCepat') panel.classList.add('hidden');
+          });
+
           const KOLOM_REKAP = ['jenis_layanan', 'sasaran_kelas', 'jumlah_siswa', 'waktu', 'bentuk_kegiatan', 'keterangan'];
-          // Catatan: 'bidang' TIDAK lagi termasuk kolom form per-baris -- Bidang
-          // sekarang murni struktural (dataset.bidang + rowspan), bukan field
-          // yang diedit langsung per baris permasalahan.
+
           const KOLOM_MASALAH = ['masalah', 'jml_siswa_masalah', 'tindak_awal'];
           const KOLOM_TINDAK = ['tl_permasalahan', 'tl_layanan', 'tl_tindak_lanjut', 'tl_waktu', 'tl_pihak'];
 
@@ -2415,6 +2842,7 @@ if ($laporan_id > 0) {
 
               if (tr) {
                 tr.dataset.namaGuru = baris.nama_guru || '';
+                tr.dataset.teacherId = baris.teacher_id || '';
                 if (baris.jenis_sumber !== undefined) tr.dataset.jenisSumber = baris.jenis_sumber || '';
                 if (tr.dataset.manual === '1') return;
 
@@ -2429,12 +2857,7 @@ if ($laporan_id > 0) {
                     }
                     return;
                   }
-                  // Field seperti Bentuk Kegiatan: BOLEH diisikan otomatis
-                  // (mengejar/backfill) selama selnya MASIH KOSONG -- ini juga
-                  // mencakup baris lama yang sempat tersimpan kosong sebelum
-                  // template Bentuk Kegiatan ditambahkan. Begitu ada isinya
-                  // (otomatis atau ditulis manual oleh guru), tidak akan
-                  // ditimpa lagi oleh refresh data berikutnya.
+
                   if (isiJikaKosongFields.includes(nama)) {
                     if (!ambilNilaiElemen(el)) {
                       setNilaiElemen(el, baris[nama]);
@@ -2452,6 +2875,7 @@ if ($laporan_id > 0) {
                 tr.dataset.sumberKey = baris.sumber_key;
                 tr.dataset.manual = '0';
                 tr.dataset.namaGuru = baris.nama_guru || '';
+                tr.dataset.teacherId = baris.teacher_id || '';
                 tr.dataset.jenisSumber = baris.jenis_sumber || '';
                 isiBarisTerakhir(tbody, kolomList, baris);
                 if (keteranganField) {
@@ -2470,16 +2894,6 @@ if ($laporan_id > 0) {
             perbaruiNomorBaris(tbody);
           }
 
-          // Menyalin Bagian IV -> Bagian V. PENTING: satu laporan/kegiatan yang
-          // sama bisa muncul sebagai BEBERAPA baris di Bagian IV (satu per bidang
-          // yang dipilih guru untuknya), tapi tetap harus jadi SATU baris saja di
-          // Bagian V -- karena itu tetap satu kegiatan/permasalahan yang sama,
-          // bukan beberapa kegiatan. Dedup dilakukan lewat "sumber_asal" (identitas
-          // laporan+kalimat masalah TANPA bidang), bukan "sumber_key" milik IV
-          // (yang sengaja unik per-bidang supaya baris IV-nya terpisah per bidang).
-          // Kalau satu laporan memang punya beberapa KALIMAT masalah berbeda,
-          // masing-masing tetap dapat sumber_asal sendiri -> tetap jadi baris V
-          // terpisah (sesuai aturan "beberapa permasalahan = beberapa baris").
           function sinkronTindakDariMasalah() {
             const tbodyIV = document.querySelector('#rekapMasalah tbody');
             const tbodyV = document.querySelector('#tindakLanjut tbody');
@@ -2493,7 +2907,7 @@ if ($laporan_id > 0) {
             const sumberAsalSudahDiproses = new Set();
 
             Array.from(tbodyIV.querySelectorAll('tr')).forEach((trIV) => {
-              if (trIV.dataset.filler === '1') return; // baris filler tampilan, bukan data
+              if (trIV.dataset.filler === '1') return;
               const sumberKeyIV = trIV.dataset.sumberKey;
               if (!sumberKeyIV) return;
 
@@ -2501,8 +2915,6 @@ if ($laporan_id > 0) {
               const teksMasalah = elMasalahIV ? ambilNilaiElemen(elMasalahIV).trim() : '';
               if (!teksMasalah) return;
 
-              // Sudah ada baris V untuk kegiatan/permasalahan (sumber_asal) yang
-              // sama dari duplikasi bidang lain -- lewati, jangan buat baris kedua.
               const sumberAsal = trIV.dataset.sumberAsal || sumberKeyIV;
               if (sumberAsalSudahDiproses.has(sumberAsal)) return;
               sumberAsalSudahDiproses.add(sumberAsal);
@@ -2514,6 +2926,7 @@ if ($laporan_id > 0) {
               let trV = petaKey[sumberAsal];
               if (trV) {
                 trV.dataset.namaGuru = namaGuru;
+                trV.dataset.teacherId = trIV.dataset.teacherId || '';
                 if (trV.dataset.manual === '1') return;
 
                 const elP = trV.querySelector('[name="tl_permasalahan[]"]');
@@ -2526,6 +2939,7 @@ if ($laporan_id > 0) {
                 trV.dataset.sumberKey = sumberAsal;
                 trV.dataset.manual = '0';
                 trV.dataset.namaGuru = namaGuru;
+                trV.dataset.teacherId = trIV.dataset.teacherId || '';
 
                 const elP = trV.querySelector('[name="tl_permasalahan[]"]');
                 const elL = trV.querySelector('[name="tl_layanan[]"]');
@@ -2546,22 +2960,42 @@ if ($laporan_id > 0) {
           function terapkanFilterGuru() {
             const sel = document.getElementById('filterGuruBK');
             const nilai = sel ? sel.value : '';
+            const optionTerpilih = sel ? sel.selectedOptions[0] : null;
+            const filterTeacherId = optionTerpilih?.dataset.teacherId || (nilai.startsWith('nama:') ? '' : nilai);
+            const filterNamaGuru = optionTerpilih?.dataset.namaGuru || (nilai.startsWith('nama:') ? nilai.slice(5) : '');
+            const printGuruBK = document.getElementById('printGuruBK');
+            const pilihGuruBK = document.getElementById('pilihGuruBK');
+            const pilihGuruManualFoto = document.getElementById('pilihGuruManualFoto');
+            if (pilihGuruBK) pilihGuruBK.value = nilai ? filterNamaGuru : '';
+            if (pilihGuruManualFoto) pilihGuruManualFoto.value = nilai ? filterNamaGuru : '';
+            if (printGuruBK) printGuruBK.textContent = nilai ? filterNamaGuru : '';
             ['#rekapKegiatan tbody', '#rekapMasalah tbody', '#tindakLanjut tbody'].forEach((sel2) => {
               document.querySelectorAll(`${sel2} > tr`).forEach((tr) => {
+                if (tr.dataset.filler === '1') {
+                  tr.classList.remove('baris-tersembunyi-filter');
+                  return;
+                }
+                const teacherId = tr.dataset.teacherId || '';
                 const guru = tr.dataset.namaGuru || '';
-                const tampil = !nilai || !guru || guru === nilai;
+                const tampil = !nilai || (filterTeacherId && teacherId === filterTeacherId) || (!teacherId && filterNamaGuru && guru === filterNamaGuru);
                 tr.classList.toggle('baris-tersembunyi-filter', !tampil);
               });
             });
-            // Rowspan No/Bidang Bagian IV bergantung baris mana yang tampil,
-            // jadi harus dihitung ulang setiap kali filter berubah.
+
+            document.querySelectorAll('#dokumentasi > div[data-nama-guru], #dokumentasi > div[data-sumber-key]').forEach((div) => {
+              const teacherId = div.dataset.teacherId || '';
+              const guru = div.dataset.namaGuru || '';
+              const tampil = !nilai || (filterTeacherId && teacherId === filterTeacherId) || (!teacherId && filterNamaGuru && guru === filterNamaGuru);
+              div.classList.toggle('baris-tersembunyi-filter', !tampil);
+              div.classList.toggle('hidden', !tampil);
+            });
+
             terapkanRowspanBidangIV();
+
+            perbaruiNomorBaris(document.querySelector('#rekapKegiatan tbody'));
+            perbaruiNomorBaris(document.querySelector('#tindakLanjut tbody'));
           }
 
-          // Merge khusus Bagian IV: setiap permasalahan otomatis adalah baris
-          // tersendiri (bukan bucket gabungan), disisipkan pada posisi yang benar
-          // di dalam grup bidangnya. Baris manual (termasuk baris auto yang sudah
-          // diedit manual) tidak pernah ditimpa atau dihapus oleh data live.
           function mergeMasalahIV(dataFresh) {
             const tbody = document.querySelector('#rekapMasalah tbody');
             if (!tbody) return;
@@ -2580,6 +3014,7 @@ if ($laporan_id > 0) {
 
               if (trAda) {
                 trAda.dataset.namaGuru = baris.nama_guru || '';
+                trAda.dataset.teacherId = baris.teacher_id || '';
                 trAda.dataset.jenisSumber = baris.jenis_sumber || '';
                 trAda.dataset.sumberAsal = baris.sumber_asal || trAda.dataset.sumberKey;
                 if (trAda.dataset.manual === '1') return;
@@ -2598,6 +3033,7 @@ if ($laporan_id > 0) {
                   sumberAsal: baris.sumber_asal,
                   manual: false,
                   namaGuru: baris.nama_guru,
+                  teacherId: baris.teacher_id,
                   jenisSumber: baris.jenis_sumber,
                 });
                 const elMasalah = row.querySelector('[name="masalah[]"]');
@@ -2605,8 +3041,6 @@ if ($laporan_id > 0) {
               }
             });
 
-            // Hapus baris auto lama yang sudah tidak ada di data terbaru (mis. data
-            // sumbernya dihapus/diedit di modul asal) -- kecuali sudah diedit manual.
             Array.from(tbody.querySelectorAll('tr')).forEach((tr) => {
               if (tr.dataset.sumberKey && !keyFresh.has(tr.dataset.sumberKey) && tr.dataset.manual !== '1' && !tr.dataset.sumberKey.startsWith('manual-')) {
                 tr.remove();
@@ -2618,15 +3052,12 @@ if ($laporan_id > 0) {
           }
 
           let seqMuatDataOtomatis = 0;
+          let draftRecoveryChecked = false;
 
-          // Mengambil data otomatis Bagian III & IV SELALU LENGKAP (tanpa filter
-          // guru) dari server, lalu di-merge ke tabel. Filter Guru BK TIDAK memicu
-          // fungsi ini lagi -- lihat terapkanFilterGuru() yang murni menyaring
-          // tampilan di browser tanpa fetch ulang, supaya data tidak pernah
-          // ter-reset/hilang/tertukar akibat gonta-ganti filter.
           async function muatDataOtomatis(bulan, tahun) {
             const seqSaya = ++seqMuatDataOtomatis;
             const tbodyRekap = document.querySelector('#rekapKegiatan tbody');
+            let sinkronBerhasil = false;
 
             pastikanSemuaBidangAdaBarisIV();
 
@@ -2638,12 +3069,14 @@ if ($laporan_id > 0) {
               const hasil = await res.json();
               if (seqSaya !== seqMuatDataOtomatis) return;
               if (hasil.success) {
+                sinkronBerhasil = true;
                 mergeOtomatisKeTabel('#rekapKegiatan tbody', hasil.rekap || [], tambahRekap, KOLOM_REKAP, {
                   isiJikaKosongFields: ['bentuk_kegiatan'],
                   keteranganField: 'keterangan',
                   kunciKonten: true,
                 });
                 mergeMasalahIV(hasil.masalah || []);
+                mergeFotoOtomatis(hasil.foto || []);
               }
             } catch (e) {
               console.error(e);
@@ -2656,11 +3089,20 @@ if ($laporan_id > 0) {
             sinkronTindakDariMasalah();
 
             terapkanFilterGuru();
+            if (!draftRecoveryChecked) {
+              draftRecoveryChecked = true;
+              cekDraftLokal();
+            }
+            return sinkronBerhasil;
           }
 
           async function prosesPerubahanBulan(saatMuatAwal) {
             const info = terapkanInfoBulan(document.getElementById('bulanLaporan').value);
             if (!info) return;
+            draftRecoveryChecked = false;
+            sembunyikanRecoveryDraft();
+
+            const targetBulanStr = info.tahun + '-' + String(info.bulan).padStart(2, '0');
 
             try {
               const cekRes = await fetch('laporanbk.php', {
@@ -2676,6 +3118,19 @@ if ($laporan_id > 0) {
               console.error(e);
             }
 
+            if (!saatMuatAwal && window.DATA_LAPORAN_EXISTING) {
+              const urlPeriode = new URL(window.location.href);
+              urlPeriode.searchParams.set('bulan', targetBulanStr);
+              urlPeriode.searchParams.delete('id');
+              window.location.href = urlPeriode.pathname + urlPeriode.search;
+              return;
+            }
+
+            const urlPeriode = new URL(window.location.href);
+            urlPeriode.searchParams.set('bulan', targetBulanStr);
+            urlPeriode.searchParams.delete('id');
+            window.history.replaceState({}, '', urlPeriode);
+
             await muatDataOtomatis(info.bulan, info.tahun);
           }
 
@@ -2688,17 +3143,24 @@ if ($laporan_id > 0) {
 
           const elFilterGuruBK = document.getElementById('filterGuruBK');
           if (elFilterGuruBK) {
-            // PENTING: ganti filter TIDAK memicu fetch/merge ulang ke server sama
-            // sekali -- murni menyembunyikan/menampilkan baris yang sudah ada di
-            // tabel (lihat terapkanFilterGuru). Ini yang membuat filter aman
-            // diganti berkali-kali tanpa risiko data ter-reset, hilang, atau
-            // tertukar antar bagian (III, IV, V) maupun saat dicetak ke PDF.
+
             elFilterGuruBK.addEventListener('change', function () {
+              const url = new URL(window.location.href);
+              if (this.value) url.searchParams.set('guru_id', this.value);
+              else url.searchParams.delete('guru_id');
+              window.history.replaceState({}, '', url);
+              draftRecoveryChecked = false;
+              sembunyikanRecoveryDraft();
               terapkanFilterGuru();
+              cekDraftLokal();
             });
           }
 
           document.addEventListener("DOMContentLoaded", () => {
+            const filterGuruBK = document.getElementById('filterGuruBK');
+            const guruIdDariUrl = new URLSearchParams(window.location.search).get('guru_id');
+            if (filterGuruBK && guruIdDariUrl !== null) filterGuruBK.value = guruIdDariUrl;
+
             document
               .querySelectorAll(".animate-slide-in")
               .forEach((el, index) => {
@@ -2736,17 +3198,9 @@ if ($laporan_id > 0) {
               tr.dataset.sumberKey = baris.sumber_key || '';
               tr.dataset.manual = baris.sumber_key ? (baris.manual ? '1' : '0') : '1';
               tr.dataset.namaGuru = baris.nama_guru || '';
+              tr.dataset.teacherId = baris.teacher_id || '';
             });
 
-            // Bagian IV bisa berisi dua format data lama/baru:
-            // - BARU: satu baris tersimpan = satu permasalahan (sumber_key unik
-            //   per permasalahan, baik otomatis "masalah-..." maupun manual
-            //   "manual-...").
-            // - LAMA (sebelum fitur ini dipecah per-baris): satu baris tersimpan
-            //   = satu bidang ("sumber_key" berupa "bidang-xxx") berisi beberapa
-            //   permasalahan digabung dalam satu teks multi-baris. Ini otomatis
-            //   dipecah jadi baris-baris terpisah supaya tetap tampil benar,
-            //   dan ditandai manual (aman, tidak akan tertimpa data live).
             masalah.forEach((baris) => {
               const bidangLegacy = BIDANG_LAPORAN_BK.find((b) => baris.sumber_key === 'bidang-' + b.toLowerCase());
               const namaBidang = bidangLegacy || BIDANG_LAPORAN_BK.find((b) => b === baris.bidang) || BIDANG_LAPORAN_BK[0];
@@ -2768,11 +3222,10 @@ if ($laporan_id > 0) {
                 sumberAsal: baris.sumber_asal || baris.sumber_key,
                 manual: !!baris.manual,
                 namaGuru: baris.nama_guru || '',
+                teacherId: baris.teacher_id || '',
                 jenisSumber: baris.jenis_sumber || '',
               });
-              // Isi langsung lewat referensi baris `tr` (bukan isiBarisTerakhir),
-              // karena buatBarisMasalah menyisipkan baris secara posisional
-              // (sesuai urutan bidang), belum tentu jadi baris terakhir di tbody.
+
               KOLOM_MASALAH.forEach((nama) => {
                 const el = tr.querySelector(`[name="${nama}[]"]`);
                 if (el && baris[nama] !== undefined) {
@@ -2791,15 +3244,29 @@ if ($laporan_id > 0) {
               tr.dataset.sumberKey = baris.sumber_key || '';
               tr.dataset.manual = baris.sumber_key ? (baris.manual ? '1' : '0') : '1';
               tr.dataset.namaGuru = baris.nama_guru || '';
+              tr.dataset.teacherId = baris.teacher_id || '';
             });
           }
 
           function syncPrintText(selectEl, targetId) {
             const target = document.getElementById(targetId);
+            if (targetId === 'printGuruBK') {
+              const filterGuru = document.getElementById('filterGuruBK');
+              if (filterGuru && filterGuru.value) {
+                target.textContent = filterGuru.selectedOptions[0]?.dataset.namaGuru || '';
+                return;
+              }
+            }
             target.textContent = selectEl.value;
           }
 
+          function cetakLaporan() {
+            terapkanFilterGuru();
+            window.print();
+          }
+
           window.addEventListener('beforeprint', function () {
+            terapkanFilterGuru();
             document.querySelectorAll('table select').forEach(function (sel) {
               const span = document.createElement('span');
               span.className = 'print-value-proxy';
@@ -2814,6 +3281,7 @@ if ($laporan_id > 0) {
             });
 
             document.querySelectorAll('table input[type="date"]').forEach(function (inp) {
+
               const span = document.createElement('span');
               span.className = 'print-value-proxy';
 
@@ -2834,14 +3302,14 @@ if ($laporan_id > 0) {
               .forEach(function (inp) {
                 const span = document.createElement('span');
                 span.className = 'print-value-proxy';
-                span.textContent = inp.value || '';
+                span.textContent = inp.value || (inp.closest('#rekapMasalah') ? '-' : '');
                 inp.parentNode.insertBefore(span, inp.nextSibling);
               });
 
             document.querySelectorAll('table textarea').forEach(function (ta) {
               const span = document.createElement('span');
               span.className = 'print-value-proxy';
-              span.textContent = ta.value || '';
+              span.textContent = ta.value || (ta.closest('#rekapMasalah') ? '-' : '');
               ta.parentNode.insertBefore(span, ta.nextSibling);
             });
           });
@@ -2865,12 +3333,143 @@ if ($laporan_id > 0) {
             });
           });
 
+          let timerAutosaveDraft = null;
+          let draftLokalAktif = null;
+
+          function konteksDraftLokal() {
+            const periode = document.getElementById('bulanLaporan')?.value || '';
+            const filter = document.getElementById('filterGuruBK');
+            const option = filter?.selectedOptions[0];
+            const teacherId = option?.dataset.teacherId || (filter?.value?.startsWith('nama:') ? '' : filter?.value || '');
+            return { periode, teacher_id: teacherId || 'all', filter_guru: filter?.value || '' };
+          }
+
+          function kunciDraftLokal(konteks) {
+            return 'laporan_bk_draft_v1:' + (konteks.teacher_id || 'all') + ':' + (konteks.periode || 'tanpa-periode');
+          }
+
+          function ambilDataDraftLokal() {
+            const konteks = konteksDraftLokal();
+            return {
+              version: 1,
+              saved_at: new Date().toISOString(),
+              konteks,
+              data: {
+                rekap: kumpulkanBarisTabel('#rekapKegiatan tbody', KOLOM_REKAP),
+                masalah: kumpulkanBarisTabel('#rekapMasalah tbody', KOLOM_MASALAH),
+                tindak: kumpulkanBarisTabel('#tindakLanjut tbody', KOLOM_TINDAK),
+                dokumentasi: Array.from(document.querySelectorAll('#dokumentasi > div[data-sumber-key], #dokumentasi > div[data-tipe]')).map((div) => ({
+                  src: div.dataset.src || (div.querySelector('img') ? div.querySelector('img').src : ''),
+                  tipe: div.dataset.tipe || 'manual', guru: div.dataset.namaGuru || '',
+                  id_guru: div.dataset.idGuru || div.dataset.teacherId || null,
+                  sumber_key: div.dataset.sumberKey || '', sumber: div.dataset.sumber || '',
+                })),
+              },
+              fields: {
+                nama_dokumen: document.getElementById('namaDokumen')?.value || '',
+                koordinator_nip: document.getElementById('nipKoordinator')?.value || '',
+                nama_koordinator: document.getElementById('pilihKoordinator')?.value || '',
+                nama_guru_bk: document.getElementById('pilihGuruBK')?.value || '',
+                nip_guru_bk: document.getElementById('nipGuruBK')?.value || '',
+              },
+            };
+          }
+
+          function simpanDraftLokal() {
+            const draft = ambilDataDraftLokal();
+            if (!draft.konteks.periode) return;
+            try {
+              localStorage.setItem(kunciDraftLokal(draft.konteks), JSON.stringify(draft));
+              const status = document.getElementById('draftStatus');
+              if (status) status.textContent = 'Draft lokal tersimpan ' + new Date(draft.saved_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch (error) { console.warn('Draft lokal tidak dapat disimpan:', error); }
+          }
+
+          function jadwalkanAutosaveDraft() {
+            clearTimeout(timerAutosaveDraft);
+            timerAutosaveDraft = setTimeout(simpanDraftLokal, 600);
+          }
+
+          function sembunyikanRecoveryDraft() {
+            document.getElementById('draftRecovery')?.classList.add('hidden');
+            draftLokalAktif = null;
+          }
+
+          function cekDraftLokal() {
+            const konteks = konteksDraftLokal();
+            if (!konteks.periode) return;
+            try {
+              const draft = JSON.parse(localStorage.getItem(kunciDraftLokal(konteks)) || 'null');
+              if (!draft?.data) return;
+              draftLokalAktif = draft;
+              const teks = document.getElementById('draftRecoveryText');
+              if (teks) teks.textContent = 'Terakhir disimpan: ' + (draft.saved_at ? new Date(draft.saved_at).toLocaleString() : 'waktu tidak diketahui') + '. Pilih tindakan yang ingin digunakan.';
+              document.getElementById('draftRecovery')?.classList.remove('hidden');
+            } catch (error) { console.warn('Draft lokal tidak dapat dibaca:', error); }
+          }
+
+          function terapkanDraftLokal(draft) {
+            const data = draft.data || {};
+            ['rekapKegiatan', 'rekapMasalah', 'tindakLanjut'].forEach((tableId) => document.querySelector('#' + tableId + ' tbody')?.replaceChildren());
+            document.getElementById('namaDokumen').value = draft.fields?.nama_dokumen || '';
+            document.getElementById('nipKoordinator').value = draft.fields?.koordinator_nip || '';
+            document.getElementById('pilihKoordinator').value = draft.fields?.nama_koordinator || '';
+            document.getElementById('pilihGuruBK').value = draft.fields?.nama_guru_bk || '';
+            document.getElementById('nipGuruBK').value = draft.fields?.nip_guru_bk || '';
+            restoreSemuaTabel({ rekap: data.rekap || [], masalah: data.masalah || [], tindak: data.tindak || [] });
+            const box = document.getElementById('dokumentasi');
+            if (box) {
+              box.innerHTML = '';
+              (data.dokumentasi || []).forEach((item) => renderFotoDokumentasi(box, item));
+              if (!data.dokumentasi?.length) box.innerHTML = '<p class="text-sm text-gray-500 col-span-full text-center py-8">Belum ada foto yang dipilih</p>';
+            }
+            terapkanFilterGuru();
+          }
+
+          function pulihkanDraftLokal() {
+            if (!draftLokalAktif) return;
+            terapkanDraftLokal(draftLokalAktif);
+            sembunyikanRecoveryDraft();
+            document.getElementById('draftStatus').textContent = 'Draft lokal berhasil dipulihkan.';
+          }
+
+          function hapusDraftLokal(mintaKonfirmasi) {
+            const konteks = konteksDraftLokal();
+            if (mintaKonfirmasi && !confirm('Hapus draft lokal untuk periode dan guru yang sedang dipilih? Data database tidak akan terhapus.')) return;
+            try { localStorage.removeItem(kunciDraftLokal(konteks)); } catch (error) { console.warn(error); }
+            sembunyikanRecoveryDraft();
+            document.getElementById('draftStatus').textContent = 'Draft lokal dihapus. Data server tetap aman.';
+          }
+
+          function gunakanDataServer() { hapusDraftLokal(false); document.getElementById('draftStatus').textContent = 'Data server digunakan.'; }
+
+          async function sinkronkanData() {
+            const info = ambilBulanTahunAktif();
+            const status = document.getElementById('draftStatus');
+            const button = document.getElementById('btnSinkronkanData');
+            const label = document.getElementById('labelSinkronkanData');
+            const icon = button?.querySelector('i');
+            if (!info) return;
+            if (button) button.disabled = true;
+            if (label) label.textContent = 'Menyinkronkan...';
+            if (icon) icon.className = 'fas fa-spinner fa-spin';
+            if (status) status.textContent = 'Sedang mengambil data terbaru dari server...';
+            try {
+              const berhasil = await muatDataOtomatis(info.bulan, info.tahun);
+              if (status) status.textContent = berhasil ? 'Data berhasil disinkronkan pada ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Sinkronisasi gagal. Data tetap dipertahankan.';
+            } catch (error) {
+              if (status) status.textContent = 'Sinkronisasi gagal. Data yang sedang dikerjakan tetap dipertahankan.';
+            } finally {
+              if (button) button.disabled = false;
+              if (label) label.textContent = 'Sinkronkan Data';
+              if (icon) icon.className = 'fas fa-sync-alt';
+            }
+          }
+
           function kumpulkanBarisTabel(tbodySelector, kolom) {
             const hasil = [];
             document.querySelectorAll(`${tbodySelector} tr`).forEach((tr) => {
-              // Baris filler (lihat buatBarisFillerBidang) murni tampilan saat
-              // Filter Guru BK menyembunyikan seluruh data suatu bidang -- tidak
-              // pernah ikut disimpan sebagai data laporan.
+
               if (tr.dataset.filler === '1') return;
 
               const baris = {};
@@ -2887,11 +3486,10 @@ if ($laporan_id > 0) {
                 baris.sumber_asal = tr.dataset.sumberAsal || tr.dataset.sumberKey;
                 baris.manual = tr.dataset.manual === '1';
                 baris.nama_guru = tr.dataset.namaGuru || '';
+                baris.teacher_id = tr.dataset.teacherId || null;
                 if (tr.dataset.jenisSumber !== undefined) baris.jenis_sumber = tr.dataset.jenisSumber || '';
               }
-              // Bagian IV: bidang bersifat struktural (bukan field form), tapi
-              // tetap harus ikut tersimpan supaya baris bisa direstore ke grup
-              // bidang yang benar saat laporan dibuka lagi.
+
               if (tr.dataset.bidang) {
                 adaIsi = true;
                 baris.bidang = tr.dataset.bidang;
@@ -2914,8 +3512,15 @@ if ($laporan_id > 0) {
             fd.append('nama_guru_bk', document.getElementById('pilihGuruBK').value);
             fd.append('nip_guru_bk', document.getElementById('nipGuruBK').value);
 
-            const fotoSrcs = Array.from(document.querySelectorAll('#dokumentasi img')).map(img => img.src);
-            fd.append('dokumentasi_json', JSON.stringify(fotoSrcs));
+            const fotoData = Array.from(document.querySelectorAll('#dokumentasi > div[data-sumber-key], #dokumentasi > div[data-tipe]')).map((div) => ({
+              src: div.dataset.src || (div.querySelector('img') ? div.querySelector('img').src : ''),
+              tipe: div.dataset.tipe || 'manual',
+              guru: div.dataset.namaGuru || '',
+              id_guru: div.dataset.idGuru || null,
+              sumber_key: div.dataset.sumberKey || '',
+              sumber: div.dataset.sumber || '',
+            }));
+            fd.append('dokumentasi_json', JSON.stringify(fotoData));
 
             fd.append('rekap_json', JSON.stringify(kumpulkanBarisTabel('#rekapKegiatan tbody', KOLOM_REKAP)));
             fd.append('masalah_json', JSON.stringify(kumpulkanBarisTabel('#rekapMasalah tbody', KOLOM_MASALAH)));
@@ -2929,7 +3534,7 @@ if ($laporan_id > 0) {
             const badge = document.getElementById('badgeStatus');
             const isFinal = status === 'final';
 
-            badge.textContent = isFinal ? '🟢 Final' : '🟡 Belum Final';
+            badge.textContent = isFinal ? '🟢 Final - Terkunci' : '🟡 Draft - Belum Dikunci';
             badge.className = 'px-3 py-1 rounded-full text-sm font-semibold ' +
               (isFinal ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700');
 
@@ -2939,15 +3544,31 @@ if ($laporan_id > 0) {
             document.getElementById('btnResetForm').classList.toggle('hidden', isFinal);
             document.getElementById('btnCetak').disabled = !isFinal;
 
-            document.querySelectorAll('#main-content input, #main-content select, #main-content textarea').forEach(el => {
-              el.disabled = isFinal;
+            ['#rekapKegiatan', '#rekapMasalah', '#tindakLanjut'].forEach((tableSelector) => {
+              const table = document.querySelector(tableSelector);
+              if (!table) return;
+              const section = table.closest('.report-section');
+              table.querySelectorAll('input, select, textarea, button').forEach((el) => {
+                el.disabled = isFinal;
+              });
+              section?.querySelectorAll('button').forEach((button) => {
+                button.disabled = isFinal;
+                button.classList.toggle('pointer-events-none', isFinal);
+                button.classList.toggle('opacity-50', isFinal);
+              });
             });
           }
 
           function simpanDokumen() {
             const btn = document.getElementById('btnSimpan');
+            const icon = btn.querySelector('i');
+            const label = btn.querySelector('span:first-of-type');
+            const iconClassAsal = icon.className;
+            const labelTeksAsal = label.textContent;
+
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...';
+            icon.className = 'fas fa-spinner fa-spin text-xl mb-1';
+            label.textContent = 'Menyimpan...';
 
             const fd = kumpulkanDataForm();
             fd.append('action', 'simpan');
@@ -2960,15 +3581,23 @@ if ($laporan_id > 0) {
                   const url = new URL(window.location);
                   url.searchParams.set('id', data.id_laporan);
                   window.history.replaceState({}, '', url);
+                  hapusDraftLokal(false);
                   alert(data.message);
                 } else {
+                  const status = document.getElementById('draftStatus');
+                  if (status) status.textContent = 'Gagal menyimpan ke server. Draft Anda tetap tersimpan secara lokal.';
                   alert('Gagal: ' + data.message);
                 }
               })
-              .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
+              .catch(() => {
+                const status = document.getElementById('draftStatus');
+                if (status) status.textContent = 'Gagal menyimpan ke server. Draft Anda tetap tersimpan secara lokal.';
+                alert('Terjadi kesalahan koneksi saat menyimpan. Draft Anda tetap tersimpan secara lokal.');
+              })
               .finally(() => {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save mr-2"></i> Simpan Perubahan';
+                icon.className = iconClassAsal;
+                label.textContent = labelTeksAsal;
               });
           }
 
@@ -2978,7 +3607,7 @@ if ($laporan_id > 0) {
               alert('Simpan laporan ini terlebih dahulu sebelum menyelesaikannya.');
               return;
             }
-            if (!confirm('Setelah diselesaikan, laporan akan terkunci dan tidak bisa diedit lagi (hanya bisa dicetak). Lanjutkan?')) return;
+            if (!confirm('Setelah diselesaikan, laporan akan berstatus final dan hanya bisa dicetak. Anda tetap bisa membukanya kembali untuk diedit lewat tombol Buka Kunci. Lanjutkan?')) return;
 
             const fd = new FormData();
             fd.append('action', 'finalisasi');
@@ -3018,18 +3647,34 @@ if ($laporan_id > 0) {
             const fotoTersimpan = (window.DATA_LAPORAN_EXISTING && window.DATA_LAPORAN_EXISTING.dokumentasi) || [];
             if (boxDokumentasi && fotoTersimpan.length > 0) {
               boxDokumentasi.innerHTML = '';
-              fotoTersimpan.forEach(src => renderFotoDokumentasi(boxDokumentasi, src));
+              fotoTersimpan.forEach(item => renderFotoDokumentasi(boxDokumentasi, typeof item === 'string' ? item : {
+                src: item.src || item.path || '',
+                tipe: item.tipe || 'manual',
+                guru: item.guru || '',
+                idGuru: item.id_guru || item.teacher_id || null,
+                sumberKey: item.sumber_key || 'manual-legacy-' + (++seqFotoManual),
+                sumber: item.sumber || 'Manual',
+              }));
             }
 
             const pilihKoordinatorEl = document.getElementById('pilihKoordinator');
             const pilihGuruBKEl = document.getElementById('pilihGuruBK');
             if (pilihKoordinatorEl) syncPrintText(pilihKoordinatorEl, 'printKoordinator');
             if (pilihGuruBKEl) syncPrintText(pilihGuruBKEl, 'printGuruBK');
+            terapkanFilterGuru();
 
             const nipKoordinatorEl = document.getElementById('nipKoordinator');
             const nipGuruBKEl = document.getElementById('nipGuruBK');
             if (nipKoordinatorEl) document.getElementById('valNipKoordinator').textContent = nipKoordinatorEl.value;
             if (nipGuruBKEl) document.getElementById('valNipGuruBK').textContent = nipGuruBKEl.value;
+
+            document.addEventListener('input', (event) => {
+              if (event.target.closest('#main-content')) jadwalkanAutosaveDraft();
+            });
+            document.addEventListener('change', (event) => {
+              if (event.target.closest('#main-content')) jadwalkanAutosaveDraft();
+            });
+            window.addEventListener('beforeunload', simpanDraftLokal);
           });
         </script>
       </main>

@@ -9,13 +9,6 @@ if (!isset($_SESSION['id_siswa'])) {
 
 $id_siswa = (int) $_SESSION['id_siswa'];
 
-/*
- * PENTING: Sesuaikan path ini jika nama folder Guru BK di server Anda BUKAN "guru".
- * File gambar/PPT yang diunggah Guru BK disimpan relatif terhadap folder Guru BK
- * (mis. guru/uploads/bimbingan_klasikal/gambar/xxx.jpg), sedangkan halaman ini
- * berada di folder siswa. Variabel ini menjembatani path tersebut supaya file
- * bisa tetap tampil di sisi siswa tanpa memindahkan/duplikasi file apa pun.
- */
 $FOLDER_GURU_BK = '../guru/';
 
 $q_siswa = mysqli_query($koneksi, "SELECT id_siswa, nama, kelas, jurusan FROM siswa WHERE id_siswa = $id_siswa LIMIT 1");
@@ -28,12 +21,6 @@ $nama_siswa   = $siswa['nama'] ?? 'Siswa';
 $kelas_siswa  = trim($siswa['kelas'] ?? '');
 $jurusan_siswa = trim($siswa['jurusan'] ?? '');
 
-/* ==========================================================================
-   FUNGSI BANTUAN (dipakai backend AJAX)
-   ========================================================================== */
-
-// Ambil daftar id_materi yang menjadi sasaran siswa ini (berdasar kelas & jurusan siswa
-// yang login, dicocokkan dengan bk_materi_sasaran yang dipilih Guru BK).
 function ambil_daftar_materi_siswa($koneksi, $id_siswa, $kelas, $jurusan)
 {
     $kelasEsc   = mysqli_real_escape_string($koneksi, $kelas);
@@ -52,8 +39,6 @@ function ambil_daftar_materi_siswa($koneksi, $id_siswa, $kelas, $jurusan)
     return $data;
 }
 
-// Hitung status penyelesaian sebuah materi untuk siswa tertentu.
-// Mengembalikan: ['jumlah_slide' => int, 'jumlah_selesai' => int, 'selesai' => bool]
 function hitung_progress_materi($koneksi, $id_siswa, $id_materi)
 {
     $idm = (int) $id_materi;
@@ -68,19 +53,17 @@ function hitung_progress_materi($koneksi, $id_siswa, $id_materi)
                                      AND ps.status_selesai = 1 AND sl.status_aktif = 1");
     if ($q2) $jmlSelesai = (int) mysqli_fetch_assoc($q2)['jml'];
 
-    // Materi tanpa slide aktif dianggap otomatis "selesai" agar tidak memblokir urutan.
     $selesai = ($jmlSlide > 0) ? ($jmlSelesai >= $jmlSlide) : true;
 
     return ['jumlah_slide' => $jmlSlide, 'jumlah_selesai' => $jmlSelesai, 'selesai' => $selesai];
 }
 
-// Bangun daftar materi milik siswa lengkap dengan status kunci berurutan.
-// Mengembalikan array terurut, masing-masing punya key tambahan: 'status' (terkunci|tersedia|berlangsung|selesai)
 function bangun_daftar_materi_dengan_status($koneksi, $id_siswa, $kelas, $jurusan)
 {
     $daftarMateri = ambil_daftar_materi_siswa($koneksi, $id_siswa, $kelas, $jurusan);
     $hasil = [];
-    $materiSebelumnyaSelesai = true; // materi pertama selalu terbuka
+    $materiSebelumnyaSelesai = true;
+    $judulSebelumnya = null;
 
     foreach ($daftarMateri as $m) {
         $progress = hitung_progress_materi($koneksi, $id_siswa, $m['id_materi']);
@@ -99,14 +82,15 @@ function bangun_daftar_materi_dengan_status($koneksi, $id_siswa, $kelas, $jurusa
         $m['jumlah_slide']   = $progress['jumlah_slide'];
         $m['jumlah_selesai'] = $progress['jumlah_selesai'];
         $m['status']         = $status;
+        $m['judul_materi_sebelum'] = $terkunci ? $judulSebelumnya : null;
         $hasil[] = $m;
 
         $materiSebelumnyaSelesai = $progress['selesai'];
+        $judulSebelumnya = $m['judul'];
     }
     return $hasil;
 }
 
-// Cek apakah siswa berhak & sudah waktunya membuka materi ini (tidak terkunci).
 function materi_boleh_diakses($koneksi, $id_siswa, $kelas, $jurusan, $id_materi)
 {
     $daftar = bangun_daftar_materi_dengan_status($koneksi, $id_siswa, $kelas, $jurusan);
@@ -117,10 +101,6 @@ function materi_boleh_diakses($koneksi, $id_siswa, $kelas, $jurusan, $id_materi)
     }
     return false;
 }
-
-/* ==========================================================================
-   BACKEND AJAX (action-based, mengikuti pola halaman Guru BK)
-   ========================================================================== */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -138,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'jumlah_slide'    => (int) $m['jumlah_slide'],
                 'jumlah_selesai'  => (int) $m['jumlah_selesai'],
                 'status'          => $m['status'],
+                'judul_materi_sebelum' => $m['judul_materi_sebelum'],
             ];
         }, $daftar, array_keys($daftar));
 
@@ -163,12 +144,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         $slides = [];
         $qsl = mysqli_query($koneksi, "SELECT * FROM bk_slide WHERE id_materi = $idm AND status_aktif = 1 ORDER BY urutan ASC, id_slide ASC");
-        $slideSebelumnyaSelesai = true; // slide pertama selalu terbuka
+        $slideSebelumnyaSelesai = true; 
         if ($qsl) {
             while ($sl = mysqli_fetch_assoc($qsl)) {
                 $ids = (int) $sl['id_slide'];
 
-                // Status selesai slide ini untuk siswa yang login
                 $qp2 = mysqli_query($koneksi, "SELECT status_selesai FROM bk_progress_slide WHERE id_siswa = $id_siswa AND id_slide = $ids LIMIT 1");
                 $rowProgress = $qp2 ? mysqli_fetch_assoc($qp2) : null;
                 $slideSelesai = $rowProgress ? ((int) $rowProgress['status_selesai'] === 1) : false;
@@ -176,7 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $sl['status_selesai'] = $slideSelesai ? 1 : 0;
                 $sl['terkunci'] = $slideSebelumnyaSelesai ? 0 : 1;
 
-                // Pertanyaan LKPD + jawaban tersimpan sebelumnya (agar siswa bisa lanjut mengisi)
                 $pertanyaan = [];
                 if ((int) $sl['butuh_lkpd'] === 1) {
                     $qp = mysqli_query($koneksi, "SELECT * FROM bk_lkpd_pertanyaan WHERE id_slide = $ids ORDER BY urutan ASC, id_pertanyaan ASC");
@@ -221,8 +200,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // Validasi server-side: pastikan semua slide SEBELUM slide ini (dalam materi yang sama)
-        // sudah berstatus selesai, supaya siswa tidak bisa melompati urutan lewat request langsung.
         $urutanSlideIni = (int) $slide['urutan'];
         $qBelum = mysqli_query($koneksi, "SELECT sl.id_slide FROM bk_slide sl
             LEFT JOIN bk_progress_slide ps ON ps.id_slide = sl.id_slide AND ps.id_siswa = $id_siswa
@@ -234,7 +211,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        // Jika slide ini butuh LKPD, jawaban wajib diisi & disimpan sebelum ditandai selesai.
         if ((int) $slide['butuh_lkpd'] === 1) {
             $qp = mysqli_query($koneksi, "SELECT id_pertanyaan, tipe_jawaban FROM bk_lkpd_pertanyaan WHERE id_slide = $ids");
             $daftarPertanyaan = [];
@@ -416,7 +392,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8 md:py-10">
 
-        <!-- ================= DAFTAR MATERI ================= -->
         <div id="listMateriSection">
             <div id="ringkasanProgress" class="hidden bg-white border border-gray-200 rounded-2xl p-5 mb-6 shadow-sm">
                 <div class="flex items-center justify-between mb-2">
@@ -434,7 +409,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </div>
         </div>
 
-        <!-- ================= VIEWER MATERI (SLIDE) ================= -->
         <div id="viewerMateri">
             <button onclick="tutupViewerMateri()" class="inline-flex items-center gap-2 text-sm font-semibold primary-color hover:opacity-75 mb-4 transition">
                 <i class="fas fa-arrow-left"></i> Kembali ke Daftar Materi
@@ -447,13 +421,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3">
-                    <!-- Daftar slide (stepper) -->
+                    
                     <div class="md:col-span-1 border-b md:border-b-0 md:border-r border-gray-100 p-3 md:p-4 max-h-[70vh] overflow-y-auto">
                         <p class="text-xs font-bold uppercase text-gray-400 px-2 mb-2">Daftar Materi Slide</p>
                         <div id="daftarStepSlide" class="space-y-1.5"></div>
                     </div>
 
-                    <!-- Konten slide aktif -->
                     <div class="md:col-span-2 p-6 md:p-8 lg:p-9">
                         <div id="isiSlideAktif"></div>
                     </div>
@@ -546,6 +519,9 @@ function renderDaftarMateriSiswa(daftar) {
             </div>
             <h3 class="font-bold text-slate-800 text-lg leading-snug">${escapeHtml(m.judul)}</h3>
             <p class="text-sm text-slate-500 mt-1.5 line-clamp-2">${escapeHtml(m.deskripsi || 'Tidak ada deskripsi.')}</p>
+            ${m.status === 'terkunci' && m.judul_materi_sebelum
+                ? `<p class="text-xs text-amber-600 mt-2 flex items-start gap-1"><i class="fas fa-circle-info mt-0.5"></i><span>Selesaikan "${escapeHtml(m.judul_materi_sebelum)}" terlebih dahulu untuk membuka materi ini.</span></p>`
+                : ''}
 
             <div class="mt-4">
                 <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
@@ -581,7 +557,6 @@ function renderViewerMateri(materi) {
     document.getElementById('viewerDeskripsiMateri').textContent = materi.deskripsi || '';
     dataSlideAktif = materi.slides || [];
 
-    // Tentukan slide yang pertama kali ditampilkan: slide belum selesai pertama, atau slide terakhir jika semua selesai.
     let idxAwal = dataSlideAktif.findIndex(sl => sl.status_selesai != 1);
     if (idxAwal === -1) idxAwal = Math.max(0, dataSlideAktif.length - 1);
     slideAktifIndex = idxAwal;
@@ -634,7 +609,6 @@ function extractYoutubeId(url) {
     return match ? match[1] : null;
 }
 
-// Mengenali link Google Drive (file/d/ID/... , ?id=ID , /open?id=ID) untuk dijadikan pratinjau tersemat.
 function extractGoogleDriveId(url) {
     if (!url) return null;
     if (!/drive\.google\.com/.test(url)) return null;
@@ -644,7 +618,6 @@ function extractGoogleDriveId(url) {
     return m ? m[1] : null;
 }
 
-// Ambil ekstensi file dari path/URL (tanpa query string), huruf kecil.
 function ambilEkstensi(path) {
     if (!path) return '';
     const bersih = path.split('?')[0].split('#')[0];
@@ -652,7 +625,6 @@ function ambilEkstensi(path) {
     return parts.length > 1 ? parts.pop().toLowerCase() : '';
 }
 
-// Ubah path relatif jadi URL absolut (dibutuhkan layanan pratinjau eksternal seperti Office Online).
 function urlAbsolut(url) {
     try { return new URL(url, window.location.href).href; } catch (e) { return url; }
 }
@@ -673,7 +645,6 @@ const IKON_JENIS_FILE = {
     pptx: { icon: 'fa-file-powerpoint', warna: 'orange' },
 };
 
-// Kartu fallback rapi ketika file tidak bisa dipratinjau langsung (link eksternal tak dikenal, dsb).
 function kartuBukaFile(url, namaFile, keterangan) {
     const ext = ambilEkstensi(namaFile);
     const meta = IKON_JENIS_FILE[ext] || { icon: 'fa-file-arrow-down', warna: 'gray' };
@@ -686,44 +657,48 @@ function kartuBukaFile(url, namaFile, keterangan) {
     </a>`;
 }
 
-// Pratinjau langsung untuk file yang disimpan/di-share lewat Google Drive (gambar, PDF, video, dokumen Office).
 function embedGoogleDrive(driveId, urlAsli, labelJenis) {
-    return `<div class="doc-embed-wrap mb-2">
+    return `<div class="flex items-center justify-between gap-2 mb-2">
+        <span class="text-xs font-semibold text-gray-600"><i class="fas fa-eye mr-1"></i>Pratinjau ${escapeHtml(labelJenis)}</span>
+        <a href="${urlAsli}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg"><i class="fas fa-download"></i> Unduh</a>
+    </div>
+    <div class="doc-embed-wrap mb-2">
         <iframe src="https://drive.google.com/file/d/${driveId}/preview" allow="autoplay" loading="lazy" title="Pratinjau ${escapeHtml(labelJenis)}"></iframe>
     </div>
     <p class="text-xs text-gray-500 mb-5 flex flex-wrap items-center gap-1">
-        <i class="fas fa-circle-info"></i> Pratinjau memakai Google Drive. Jika tidak muncul, kemungkinan izin berbagi file belum "Siapa saja yang memiliki link".
-        <a href="${urlAsli}" target="_blank" rel="noopener" class="text-blue-600 hover:underline font-semibold">Buka di Google Drive &rarr;</a>
+        <i class="fas fa-circle-info"></i> Jika pratinjau tidak muncul, kemungkinan izin berbagi file belum "Siapa saja yang memiliki link".
     </p>`;
 }
 
-// PDF bisa dirender langsung oleh browser (paling stabil, tak tergantung layanan pihak ketiga).
 function embedPdf(url) {
-    return `<div class="doc-embed-wrap mb-2">
+    return `<div class="flex items-center justify-between gap-2 mb-2">
+        <span class="text-xs font-semibold text-gray-600"><i class="fas fa-eye mr-1"></i>Pratinjau PDF</span>
+        <a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-lg"><i class="fas fa-download"></i> Unduh</a>
+    </div>
+    <div class="doc-embed-wrap mb-2">
         <iframe src="${url}#toolbar=1" loading="lazy" title="Pratinjau PDF"></iframe>
     </div>
     <p class="text-xs text-gray-500 mb-5 flex flex-wrap items-center gap-1">
-        <i class="fas fa-circle-info"></i> Jika pratinjau PDF tidak muncul di perangkat/browser Anda,
-        <a href="${url}" target="_blank" rel="noopener" class="text-blue-600 hover:underline font-semibold">buka atau unduh filenya di sini &rarr;</a>
+        <i class="fas fa-circle-info"></i> Jika pratinjau PDF tidak muncul di perangkat/browser Anda, gunakan tombol Unduh di atas.
     </p>`;
 }
 
-// Dokumen Office (PPT/Word/Excel) ditampilkan lewat Microsoft Office Online Viewer.
-// Layanan ini butuh file bisa diakses lewat internet publik, jadi selalu sediakan tautan cadangan.
 function embedOffice(url, ext) {
     const meta = IKON_JENIS_FILE[ext] || { icon: 'fa-file', warna: 'gray' };
     const officeSrc = 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url);
-    return `<div class="doc-embed-wrap mb-2">
+    return `<div class="flex items-center justify-between gap-2 mb-2">
+        <span class="text-xs font-semibold text-gray-600"><i class="fas fa-eye mr-1"></i>Pratinjau ${ext.toUpperCase()}</span>
+        <a href="${url}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-${meta.warna}-700 text-xs font-semibold px-3 py-1.5 rounded-lg"><i class="fas fa-download"></i> Unduh</a>
+    </div>
+    <div class="doc-embed-wrap mb-2">
         <iframe src="${officeSrc}" loading="lazy" title="Pratinjau ${ext.toUpperCase()}"></iframe>
     </div>
     <p class="text-xs text-gray-500 mb-5 flex flex-wrap items-center gap-1">
         <i class="fas fa-circle-info"></i> Pratinjau ${ext.toUpperCase()} memakai layanan Microsoft Office Online, sehingga file harus dapat diakses lewat internet publik.
-        Jika pratinjau tidak muncul (misalnya website sedang diakses secara lokal/intranet),
-        <a href="${url}" target="_blank" rel="noopener" class="text-${meta.warna}-600 hover:underline font-semibold">buka atau unduh filenya di sini &rarr;</a>
+        Jika pratinjau tidak muncul (misalnya website sedang diakses secara lokal/intranet), gunakan tombol Unduh di atas.
     </p>`;
 }
 
-// Titik masuk utama untuk field dokumen/PPT slide: pilih cara tampil terbaik sesuai sumber & formatnya.
 function renderDokumenSlide(pathAsli) {
     const url = urlLengkap(pathAsli);
     const namaFile = pathAsli.split('/').pop().split('?')[0];
@@ -733,10 +708,10 @@ function renderDokumenSlide(pathAsli) {
     const ext = ambilEkstensi(pathAsli);
     if (ext === 'pdf') return embedPdf(url);
     if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext)) {
-        // Office Online butuh URL publik yang absolut.
+        
         return embedOffice(urlAbsolut(url), ext);
     }
-    // Ekstensi tak dikenal / tidak didukung pratinjau langsung → fallback kartu buka/unduh.
+    
     return kartuBukaFile(url, namaFile, 'Format file ini belum didukung untuk pratinjau langsung. Klik untuk membuka / mengunduh.');
 }
 
@@ -748,8 +723,6 @@ window.gambarSlideGagalDimuat = function (imgEl, urlAsli) {
     imgEl.replaceWith(pengganti.firstElementChild);
 };
 
-// Titik masuk untuk field gambar slide: link Google Drive dipratinjau via iframe,
-// sisanya dicoba tampil sebagai <img> langsung dengan fallback rapi bila gagal dimuat.
 function renderGambarSlide(pathAsli) {
     const driveId = extractGoogleDriveId(pathAsli);
     if (driveId) return embedGoogleDrive(driveId, urlLengkap(pathAsli), 'gambar');

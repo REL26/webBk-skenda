@@ -352,6 +352,31 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
             overflow: hidden;
         }
 
+        .print-bar-cell {
+            width: 100%;
+        }
+
+        .print-bar-cell-text {
+            display: block;
+            font-size: 0.72rem;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .print-bar-track {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border: 1px solid #d5d5d5;
+            border-radius: 3px;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .print-bar-fill {
+            height: 100%;
+        }
+
         footer {
             width: 100%;
             box-sizing: border-box;
@@ -956,7 +981,14 @@ background: linear-gradient(135deg, #0F3A3A 0%, #123E44 100%);
                             ?>
                                 <tr class="<?php echo $row_class; ?>">
                                     <td><?php echo $tipe; ?></td>
-                                    <td><?php echo $jumlah; ?> (<?php echo $tipe_persentase; ?>%)</td> 
+                                    <td>
+                                        <div class="print-bar-cell">
+                                            <span class="print-bar-cell-text"><?php echo $jumlah; ?> (<?php echo $tipe_persentase; ?>%)</span>
+                                            <div class="print-bar-track">
+                                                <div class="print-bar-fill" style="width: <?php echo $tipe_persentase; ?>%; background-color: <?php echo $gb_colors[$tipe] ?? '#9CA3AF'; ?>;"></div>
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

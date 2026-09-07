@@ -103,7 +103,7 @@ if (!isset($current_page)) {
 }
 
 $profiling_pages = ['hasil_tes.php', 'rekap_kelas.php'];
-$programbk_pages = ['administrasibk.php', 'bimbinganklasikal.php', 'konselingindividu.php', 'konselingkelompok.php', 'bimbingankelompok.php', 'laporanbk.php', 'konsultasiortu.php', 'homevisit.php'];
+$programbk_pages = ['administrasibk.php', 'bimbinganklasikal.php', 'konselingindividu.php', 'konselingkelompok.php', 'bimbingankelompok.php', 'laporanbk.php', 'konsultasi.php', 'konsultasiortu.php', 'homevisit.php'];
 
 if (!isset($is_profiling_active)) {
     $is_profiling_active = in_array($current_page, $profiling_pages, true);
@@ -201,8 +201,8 @@ if (!isset($is_programbk_active)) {
                 <a href="laporanbk.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'laporanbk.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
                     <i class="fas fa-file-invoice w-3.5 text-center mr-2"></i> Laporan BK
                 </a>
-                <a href="konsultasiortu.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'konsultasiortu.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
-                    <i class="fas fa-handshake w-3.5 text-center mr-2"></i> Konsultasi Ortu
+                <a href="konsultasi.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'konsultasi.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
+                    <i class="fas fa-handshake w-3.5 text-center mr-2"></i> Konsultasi
                 </a>
                 <a href="homevisit.php" onclick="closeMobileMenu()" class="flex items-center px-2.5 py-1.5 text-[11px] rounded-md transition <?php echo $current_page == 'homevisit.php' ? 'bg-teal-600 text-white font-semibold shadow-xs' : 'text-gray-600 hover:bg-gray-100'; ?>">
                     <i class="fas fa-house-user w-3.5 text-center mr-2"></i> Home Visit
@@ -294,8 +294,8 @@ if (!isset($is_programbk_active)) {
                     class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'laporanbk.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
                     <i class="fas fa-file-invoice mr-2.5 w-4 text-center"></i> Laporan BK
                 </a>
-                <a href="konsultasiortu.php"
-                    class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'konsultasiortu.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
+                <a href="konsultasi.php"
+                    class="flex items-center px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition <?php echo $current_page == 'konsultasi.php' ? 'bg-white/15 text-white font-medium' : ''; ?>">
                     <i class="fas fa-handshake mr-2.5 w-4 text-center"></i> Konsultasi
                 </a>
                 <a href="homevisit.php"

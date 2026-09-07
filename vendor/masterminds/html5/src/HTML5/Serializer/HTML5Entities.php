@@ -450,7 +450,7 @@ class HTML5Entities
         '‏' => '&rlm;',
         '‐' => '&hyphen;',
         '–' => '&ndash;',
-        '—' => '&mdash;',
+        '—' => '',
         '―' => '&horbar;',
         '‖' => '&Verbar;',
         '‘' => '&OpenCurlyQuote;',
