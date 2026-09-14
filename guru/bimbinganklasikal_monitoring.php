@@ -9,6 +9,29 @@ if (!isset($_SESSION['id_guru'])) {
 
 $id_guru_login = (int) $_SESSION['id_guru'];
 
+// Tabel tanggapan bintang (1-5) per jawaban LKPD siswa
+mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_tanggapan_lkpd (
+    id_tanggapan INT(11) NOT NULL AUTO_INCREMENT,
+    id_siswa INT(11) NOT NULL,
+    id_pertanyaan INT(11) NOT NULL,
+    id_materi INT(11) NOT NULL DEFAULT 0,
+    rating TINYINT(1) NOT NULL DEFAULT 0,
+    catatan TEXT NULL,
+    id_guru INT(11) DEFAULT NULL,
+    nama_guru VARCHAR(150) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_tanggapan),
+    UNIQUE KEY uniq_siswa_pertanyaan (id_siswa, id_pertanyaan),
+    KEY id_materi (id_materi),
+    KEY id_siswa (id_siswa)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// Pastikan kolom nama_guru ada (tabel lama)
+$qColNg = mysqli_query($koneksi, "SHOW COLUMNS FROM bk_tanggapan_lkpd LIKE 'nama_guru'");
+if (!$qColNg || mysqli_num_rows($qColNg) === 0) {
+    @mysqli_query($koneksi, "ALTER TABLE bk_tanggapan_lkpd ADD COLUMN nama_guru VARCHAR(150) DEFAULT NULL AFTER id_guru");
+}
+
 $WARNA_FUNGSI_PHP = [
     'Pemahaman' => 'bg-blue-50 text-blue-700',
     'Pencegahan (Preventif)' => 'bg-green-50 text-green-700',
@@ -104,10 +127,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             $jawaban = '';
                             $qj = mysqli_query($koneksi, "SELECT jawaban FROM bk_jawaban_lkpd WHERE id_siswa = $id_siswa AND id_pertanyaan = $idp LIMIT 1");
                             if ($qj && ($rj = mysqli_fetch_assoc($qj))) $jawaban = $rj['jawaban'];
+                            $rating = 0;
+                            $catatan = '';
+                            $nama_guru_tanggapan = '';
+                            $qt = mysqli_query($koneksi, "SELECT t.rating, t.catatan, t.id_guru, t.nama_guru, g.nama AS nama_guru_tbl
+                                FROM bk_tanggapan_lkpd t
+                                LEFT JOIN guru g ON g.id_guru = t.id_guru
+                                WHERE t.id_siswa = $id_siswa AND t.id_pertanyaan = $idp LIMIT 1");
+                            if ($qt && ($rt = mysqli_fetch_assoc($qt))) {
+                                $rating = (int) $rt['rating'];
+                                $catatan = $rt['catatan'] ?? '';
+                                $nama_guru_tanggapan = trim((string) ($rt['nama_guru'] ?? ''));
+                                if ($nama_guru_tanggapan === '') {
+                                    $nama_guru_tanggapan = trim((string) ($rt['nama_guru_tbl'] ?? ''));
+                                }
+                            }
                             $pertanyaan[] = [
+                                'id_pertanyaan' => $idp,
                                 'teks_pertanyaan' => $p['teks_pertanyaan'],
                                 'tipe_jawaban' => $p['tipe_jawaban'],
                                 'jawaban' => $jawaban,
+                                'rating' => $rating,
+                                'catatan' => $catatan,
+                                'nama_guru' => $nama_guru_tanggapan,
                             ];
                         }
                     }
@@ -128,6 +170,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $siswa = $qs ? mysqli_fetch_assoc($qs) : null;
 
         echo json_encode(['success' => true, 'siswa' => $siswa, 'slides' => $slides]);
+        exit;
+    }
+
+    if ($action === 'simpan_tanggapan') {
+        $id_siswa = (int) ($_POST['id_siswa'] ?? 0);
+        $id_pertanyaan = (int) ($_POST['id_pertanyaan'] ?? 0);
+        $idm = (int) ($_POST['id_materi'] ?? 0);
+        $rating = (int) ($_POST['rating'] ?? 0);
+        $catatan = trim((string) ($_POST['catatan'] ?? ''));
+        $nama_guru = trim((string) ($_POST['nama_guru'] ?? ''));
+        if ($id_siswa <= 0 || $id_pertanyaan <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Data tidak lengkap.']);
+            exit;
+        }
+        if ($rating < 1 || $rating > 5) {
+            echo json_encode(['success' => false, 'message' => 'Rating harus 1 sampai 5.']);
+            exit;
+        }
+        if ($nama_guru === '') {
+            echo json_encode(['success' => false, 'message' => 'Pilih nama guru terlebih dahulu.']);
+            exit;
+        }
+        $catEsc = mysqli_real_escape_string($koneksi, $catatan);
+        $namaEsc = mysqli_real_escape_string($koneksi, $nama_guru);
+        $qCek = mysqli_query($koneksi, "SELECT id_tanggapan FROM bk_tanggapan_lkpd WHERE id_siswa = $id_siswa AND id_pertanyaan = $id_pertanyaan LIMIT 1");
+        if ($qCek && mysqli_fetch_assoc($qCek)) {
+            $ok = mysqli_query($koneksi, "UPDATE bk_tanggapan_lkpd SET rating = $rating, catatan = '$catEsc', id_guru = $id_guru_login, nama_guru = '$namaEsc', id_materi = $idm WHERE id_siswa = $id_siswa AND id_pertanyaan = $id_pertanyaan");
+        } else {
+            $ok = mysqli_query($koneksi, "INSERT INTO bk_tanggapan_lkpd (id_siswa, id_pertanyaan, id_materi, rating, catatan, id_guru, nama_guru) VALUES ($id_siswa, $id_pertanyaan, $idm, $rating, '$catEsc', $id_guru_login, '$namaEsc')");
+        }
+        if (!$ok) {
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan tanggapan: ' . mysqli_error($koneksi)]);
+            exit;
+        }
+        echo json_encode(['success' => true, 'rating' => $rating, 'catatan' => $catatan, 'nama_guru' => $nama_guru]);
         exit;
     }
 
@@ -181,6 +258,15 @@ if ($materi) {
     .progress-track { background: #e5e7eb; border-radius: 9999px; overflow: hidden; height: .5rem; }
     .progress-fill { height: 100%; border-radius: 9999px; transition: width .3s ease; }
     .action-btn { padding: .35rem; font-size: .95rem; }
+    .star-rating-wrap { display: inline-flex; align-items: center; gap: .15rem; }
+    .star-rating-wrap .star-btn { color: #d1d5db; transition: color .12s ease; cursor: pointer; }
+    .star-rating-wrap .star-btn.is-on,
+    .star-rating-wrap:hover .star-btn.is-preview {
+      color: #fbbf24;
+    }
+    /* Saat hover: bintang sampai posisi hover menyala; yang setelahnya tetap abu */
+    .star-rating-wrap:hover .star-btn { color: #d1d5db; }
+    .star-rating-wrap:hover .star-btn.is-preview { color: #fbbf24; }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
@@ -255,17 +341,20 @@ if ($materi) {
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-grow min-w-[200px]">
         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-        <input type="text" id="cariSiswa" placeholder="Cari nama atau NIS siswa..." class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm" oninput="renderTabelProgress()">
+        <input type="text" id="cariSiswa" placeholder="Cari nama atau NIS siswa..." class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm" oninput="onFilterProgressBerubah()">
       </div>
-      <select id="filterStatusProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="renderTabelProgress()">
+      <select id="filterStatusProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="onFilterProgressBerubah()">
         <option value="">Semua Status</option>
         <option value="selesai">Sudah Selesai</option>
         <option value="berjalan">Sedang Mengerjakan</option>
         <option value="belum_mulai">Belum Mulai</option>
       </select>
-      <select id="filterKelasProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="renderTabelProgress()">
+      <select id="filterKelasProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="onFilterProgressBerubah()">
         <option value="">Semua Kelas</option>
       </select>
+      <button type="button" onclick="resetFilterProgress()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 whitespace-nowrap" title="Reset semua filter">
+        <i class="fas fa-rotate-left mr-1"></i> Reset Filter
+      </button>
     </div>
   </div>
 
@@ -295,13 +384,22 @@ if ($materi) {
 </main>
 
 <div id="modalDetailSiswa" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-[9998]">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
-    <div class="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-4 border-b shrink-0 bg-white z-10">
       <h2 class="text-base font-bold text-gray-800"><i class="fas fa-user-graduate text-indigo-600 mr-1"></i> <span id="judulModalDetailSiswa">Detail Progress Siswa</span></h2>
       <button type="button" onclick="tutupModalDetailSiswa()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-lg"></i></button>
     </div>
-    <div class="p-5" id="isiModalDetailSiswa">
+    <div class="p-5 overflow-y-auto flex-grow" id="isiModalDetailSiswa">
       <p class="text-center text-gray-400 py-6">Memuat data...</p>
+    </div>
+    <div class="px-5 py-3 border-t bg-gray-50 shrink-0 flex items-center justify-between gap-3 flex-wrap">
+      <p class="text-xs text-gray-400" id="pesanSimpanTanggapan"></p>
+      <div class="flex items-center gap-2 ml-auto">
+        <button type="button" onclick="tutupModalDetailSiswa()" class="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-white">Tutup</button>
+        <button type="button" id="btnSimpanTanggapan" onclick="simpanSemuaTanggapan()" class="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">
+          <i class="fas fa-save mr-1"></i> Simpan
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -310,6 +408,18 @@ if ($materi) {
   const ID_MATERI = <?php echo (int) $id_materi; ?>;
   const JUMLAH_SLIDE_MATERI = <?php echo (int) $jumlah_slide_materi; ?>;
   const BARIS_PER_HALAMAN_PROGRESS = 15;
+  const DAFTAR_GURU_TANGGAPAN = [
+    'Pahrurazi, S.Pd',
+    'Dian Riyani, S.Pd',
+    'Putri Hidayatie, S.Pd',
+    'Rini Rodhiati, S.Pd',
+    'Gusti Muhammad Fajri Ramadhan, S.Pd',
+    'Desy Arianti, S.Pd',
+    "Khalisatun Ni'mah, S.Pd",
+    'Tiara Wulansari, S.Pd',
+    'Dhea Nur Aziza, S.Pd',
+    'Abdul Basith, S.Pd'
+  ];
   let halamanProgress = 1;
   let daftarProgressSiswa = [];
 
@@ -321,10 +431,11 @@ if ($materi) {
 
   function formatWaktu(waktu) {
     if (!waktu) return '<span class="text-gray-400">Belum ada aktivitas</span>';
-    const d = new Date(waktu.replace(' ', 'T'));
-    if (isNaN(d.getTime())) return '-';
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) +
-      ', ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    // Tampilkan angka jam dari DB apa adanya
+    const m = String(waktu).trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if (!m) return escapeHtml(String(waktu));
+    const bulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return parseInt(m[3], 10) + ' ' + (bulan[parseInt(m[2], 10)] || m[2]) + ' ' + m[1] + ', ' + m[4] + ':' + m[5] + ' WITA';
   }
 
   const LABEL_STATUS = {
@@ -333,8 +444,73 @@ if ($materi) {
     belum_mulai: { teks: 'Belum Mulai', kelas: 'badge-status-belum', warna_progress: '#9ca3af' },
   };
 
+  function kunciFilterProgress() {
+    return 'bk_mon_filter_' + ID_MATERI;
+  }
+
+  function simpanFilterProgressKeUrl() {
+    if (!ID_MATERI) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('id_materi', String(ID_MATERI));
+    const q = (document.getElementById('cariSiswa')?.value || '').trim();
+    const st = document.getElementById('filterStatusProgress')?.value || '';
+    const kl = document.getElementById('filterKelasProgress')?.value || '';
+    if (q) params.set('q', q); else params.delete('q');
+    if (st) params.set('status', st); else params.delete('status');
+    if (kl) params.set('kelas', kl); else params.delete('kelas');
+    const url = window.location.pathname + '?' + params.toString();
+    history.replaceState(null, document.title, url);
+    try {
+      localStorage.setItem(kunciFilterProgress(), JSON.stringify({ q, status: st, kelas: kl }));
+    } catch (e) {}
+  }
+
+  function muatFilterProgressTersimpan() {
+    const params = new URLSearchParams(window.location.search);
+    let q = params.get('q') || '';
+    let st = params.get('status') || '';
+    let kl = params.get('kelas') || '';
+    // Fallback localStorage jika URL kosong
+    if (!q && !st && !kl) {
+      try {
+        const raw = localStorage.getItem(kunciFilterProgress());
+        if (raw) {
+          const o = JSON.parse(raw) || {};
+          q = o.q || '';
+          st = o.status || '';
+          kl = o.kelas || '';
+        }
+      } catch (e) {}
+    }
+    const elQ = document.getElementById('cariSiswa');
+    const elSt = document.getElementById('filterStatusProgress');
+    const elKl = document.getElementById('filterKelasProgress');
+    if (elQ) elQ.value = q;
+    if (elSt) elSt.value = st;
+    // kelas di-set setelah opsi diisi di isiFilterKelas
+    return { q, status: st, kelas: kl };
+  }
+
+  function onFilterProgressBerubah() {
+    simpanFilterProgressKeUrl();
+    renderTabelProgress();
+  }
+
+  function resetFilterProgress() {
+    const elQ = document.getElementById('cariSiswa');
+    const elSt = document.getElementById('filterStatusProgress');
+    const elKl = document.getElementById('filterKelasProgress');
+    if (elQ) elQ.value = '';
+    if (elSt) elSt.value = '';
+    if (elKl) elKl.value = '';
+    try { localStorage.removeItem(kunciFilterProgress()); } catch (e) {}
+    simpanFilterProgressKeUrl();
+    renderTabelProgress();
+  }
+
   function muatDataProgress() {
     if (!ID_MATERI) return;
+    const filterAwal = muatFilterProgressTersimpan();
     const fd = new FormData();
     fd.append('action', 'list_progress');
     fd.append('id_materi', ID_MATERI);
@@ -343,17 +519,26 @@ if ($materi) {
       .then(data => {
         if (!data.success) return;
         daftarProgressSiswa = data.data;
-        isiFilterKelas();
+        isiFilterKelas(filterAwal.kelas || '');
         renderStatistikProgress();
+        // Pastikan nilai filter masih terpasang setelah opsi kelas diisi
+        const elQ = document.getElementById('cariSiswa');
+        const elSt = document.getElementById('filterStatusProgress');
+        if (elQ && filterAwal.q) elQ.value = filterAwal.q;
+        if (elSt && filterAwal.status) elSt.value = filterAwal.status;
         renderTabelProgress();
+        simpanFilterProgressKeUrl();
       });
   }
 
-  function isiFilterKelas() {
+  function isiFilterKelas(kelasTerpilih) {
     const select = document.getElementById('filterKelasProgress');
     const kelasUnik = [...new Set(daftarProgressSiswa.map(s => `${s.kelas} ${s.jurusan}`))].sort();
     select.innerHTML = '<option value="">Semua Kelas</option>' +
       kelasUnik.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(k)}</option>`).join('');
+    if (kelasTerpilih && kelasUnik.includes(kelasTerpilih)) {
+      select.value = kelasTerpilih;
+    }
   }
 
   function renderStatistikProgress() {
@@ -461,9 +646,14 @@ if ($materi) {
     gambarUlangTabelProgress();
   }
 
+  let idSiswaDetailAktif = 0;
+
   function bukaModalDetailSiswa(id_siswa, nama) {
+    idSiswaDetailAktif = id_siswa;
     document.getElementById('judulModalDetailSiswa').textContent = 'Detail Progress - ' + nama;
     document.getElementById('isiModalDetailSiswa').innerHTML = '<p class="text-center text-gray-400 py-6">Memuat data...</p>';
+    const pesan = document.getElementById('pesanSimpanTanggapan');
+    if (pesan) pesan.textContent = '';
     document.getElementById('modalDetailSiswa').classList.remove('hidden');
 
     const fd = new FormData();
@@ -481,6 +671,177 @@ if ($materi) {
       });
   }
 
+  function htmlBintangPilih(idPertanyaan, ratingAktif, namaGuru) {
+    const rating = ratingAktif || 0;
+    const selected = namaGuru || '';
+    let h = '<div class="mt-2" data-id-pertanyaan="' + idPertanyaan + '" data-rating-aktif="' + rating + '">';
+    h += '<div class="flex items-center gap-2 flex-wrap">';
+    h += '<span class="text-xs text-gray-500">Tanggapan:</span>';
+    h += '<span class="star-rating-wrap" onmouseleave="starHoverLeave(this)">';
+    for (let i = 1; i <= 5; i++) {
+      const on = i <= rating ? ' is-on' : '';
+      h += `<button type="button" class="star-btn text-lg leading-none focus:outline-none${on}" data-rating="${i}" onmouseenter="starHoverEnter(this, ${i})" onclick="simpanTanggapanBintang(${idPertanyaan}, ${i})" title="${i} bintang"><i class="fas fa-star"></i></button>`;
+    }
+    h += '</span>';
+    // Dropdown pilih guru
+    h += `<select id="selGuru_${idPertanyaan}" class="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white max-w-[220px]" title="Pilih guru pemberi tanggapan">`;
+    h += '<option value="">— Pilih guru —</option>';
+    DAFTAR_GURU_TANGGAPAN.forEach(n => {
+      const sel = (selected === n) ? ' selected' : '';
+      h += '<option value="' + escapeHtml(n) + '"' + sel + '>' + escapeHtml(n) + '</option>';
+    });
+    // Jika nama tersimpan tidak ada di list, tetap tampilkan
+    if (selected && !DAFTAR_GURU_TANGGAPAN.includes(selected)) {
+      h += '<option value="' + escapeHtml(selected) + '" selected>' + escapeHtml(selected) + '</option>';
+    }
+    h += '</select>';
+    h += `<span class="text-xs text-gray-400 star-status" id="starStatus_${idPertanyaan}">${rating ? rating + '/5' : ''}</span>`;
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function starHoverEnter(btn, n) {
+    const wrap = btn.closest('.star-rating-wrap');
+    if (!wrap) return;
+    wrap.querySelectorAll('.star-btn').forEach(b => {
+      const r = parseInt(b.dataset.rating, 10);
+      b.classList.toggle('is-preview', r <= n);
+    });
+  }
+
+  function starHoverLeave(wrap) {
+    if (!wrap) return;
+    wrap.querySelectorAll('.star-btn').forEach(b => b.classList.remove('is-preview'));
+  }
+
+  function terapkanBintangUI(idPertanyaan, rating, namaGuru) {
+    const box = document.querySelector('[data-id-pertanyaan="' + idPertanyaan + '"]');
+    if (!box) return;
+    box.setAttribute('data-rating-aktif', String(rating));
+    const wrap = box.querySelector('.star-rating-wrap');
+    if (wrap) {
+      wrap.querySelectorAll('.star-btn').forEach(btn => {
+        const r = parseInt(btn.dataset.rating, 10);
+        btn.classList.toggle('is-on', r <= rating);
+        btn.classList.remove('is-preview');
+      });
+    }
+    const statusEl = document.getElementById('starStatus_' + idPertanyaan);
+    if (statusEl) statusEl.textContent = rating + '/5 tersimpan';
+    const sel = document.getElementById('selGuru_' + idPertanyaan);
+    if (sel && namaGuru) {
+      // Pastikan opsi ada
+      let found = false;
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === namaGuru) { found = true; break; }
+      }
+      if (!found) {
+        const opt = document.createElement('option');
+        opt.value = namaGuru;
+        opt.textContent = namaGuru;
+        sel.appendChild(opt);
+      }
+      sel.value = namaGuru;
+    }
+  }
+
+  // Klik bintang hanya menandai UI; penyimpanan lewat tombol Simpan di bawah modal
+  function simpanTanggapanBintang(idPertanyaan, rating) {
+    if (!idPertanyaan || rating < 1 || rating > 5) return;
+    const box = document.querySelector('[data-id-pertanyaan="' + idPertanyaan + '"]');
+    if (box) box.setAttribute('data-rating-aktif', String(rating));
+    const wrap = box ? box.querySelector('.star-rating-wrap') : null;
+    if (wrap) {
+      wrap.querySelectorAll('.star-btn').forEach(btn => {
+        const r = parseInt(btn.dataset.rating, 10);
+        btn.classList.toggle('is-on', r <= rating);
+        btn.classList.remove('is-preview');
+      });
+    }
+    const statusEl = document.getElementById('starStatus_' + idPertanyaan);
+    if (statusEl) statusEl.textContent = rating + '/5';
+    const pesan = document.getElementById('pesanSimpanTanggapan');
+    if (pesan) pesan.textContent = 'Ada perubahan belum disimpan.';
+  }
+
+  function simpanSatuTanggapan(idPertanyaan, rating, namaGuru) {
+    const fd = new FormData();
+    fd.append('action', 'simpan_tanggapan');
+    fd.append('id_materi', ID_MATERI);
+    fd.append('id_siswa', idSiswaDetailAktif);
+    fd.append('id_pertanyaan', idPertanyaan);
+    fd.append('rating', rating);
+    fd.append('nama_guru', namaGuru);
+    return fetch(window.location.pathname, { method: 'POST', body: fd }).then(res => res.json());
+  }
+
+  async function simpanSemuaTanggapan() {
+    if (!idSiswaDetailAktif) return;
+    const boxes = document.querySelectorAll('#isiModalDetailSiswa [data-id-pertanyaan]');
+    const antrian = [];
+    const kurangGuru = [];
+
+    boxes.forEach(box => {
+      const idP = parseInt(box.getAttribute('data-id-pertanyaan'), 10);
+      const rating = parseInt(box.getAttribute('data-rating-aktif') || '0', 10);
+      if (!idP || rating < 1) return;
+      const sel = document.getElementById('selGuru_' + idP);
+      const namaGuru = (sel && sel.value) ? sel.value.trim() : '';
+      if (!namaGuru) {
+        kurangGuru.push(idP);
+        const statusEl = document.getElementById('starStatus_' + idP);
+        if (statusEl) statusEl.textContent = 'Pilih nama guru';
+        return;
+      }
+      antrian.push({ idP, rating, namaGuru });
+    });
+
+    const pesan = document.getElementById('pesanSimpanTanggapan');
+    const btn = document.getElementById('btnSimpanTanggapan');
+
+    if (kurangGuru.length > 0) {
+      if (pesan) pesan.textContent = 'Pilih nama guru untuk semua soal yang diberi bintang.';
+      return;
+    }
+    if (antrian.length === 0) {
+      if (pesan) pesan.textContent = 'Belum ada rating yang dipilih.';
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
+    }
+    if (pesan) pesan.textContent = 'Menyimpan ' + antrian.length + ' tanggapan...';
+
+    let ok = 0, gagal = 0;
+    for (const item of antrian) {
+      try {
+        const data = await simpanSatuTanggapan(item.idP, item.rating, item.namaGuru);
+        if (data && data.success) {
+          ok++;
+          terapkanBintangUI(item.idP, item.rating, item.namaGuru);
+        } else {
+          gagal++;
+          const statusEl = document.getElementById('starStatus_' + item.idP);
+          if (statusEl) statusEl.textContent = (data && data.message) ? data.message : 'Gagal';
+        }
+      } catch (e) {
+        gagal++;
+      }
+    }
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
+    }
+    if (pesan) {
+      if (gagal === 0) pesan.textContent = 'Berhasil menyimpan ' + ok + ' tanggapan.';
+      else pesan.textContent = 'Tersimpan ' + ok + ', gagal ' + gagal + '.';
+    }
+  }
+
   function renderIsiModalDetailSiswa(slides) {
     if (!slides || slides.length === 0) {
       document.getElementById('isiModalDetailSiswa').innerHTML = '<p class="text-center text-gray-400 py-6">Materi ini belum memiliki slide aktif.</p>';
@@ -494,6 +855,7 @@ if ($materi) {
           <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <p class="text-xs font-semibold text-gray-700 mb-1">${pi + 1}. ${escapeHtml(p.teks_pertanyaan)}</p>
             <p class="text-sm text-gray-600 whitespace-pre-wrap break-words">${p.jawaban ? escapeHtml(p.jawaban) : '<span class="text-gray-400 italic">Belum dijawab</span>'}</p>
+            ${p.jawaban && p.id_pertanyaan ? htmlBintangPilih(p.id_pertanyaan, p.rating || 0, p.nama_guru || '') : ''}
           </div>`).join('') + `</div>`;
       }
 

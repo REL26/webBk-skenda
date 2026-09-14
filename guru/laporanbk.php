@@ -15,18 +15,30 @@ $DAFTAR_GURU_BK = [
     'Tiara Wulansari, S.Pd', 'Dhea Nur Aziza, S.Pd', 'Abdul Basith, S.Pd',
 ];
 
+  /**
+   * Menormalkan nama guru sebelum dibandingkan/dipetakan, supaya beda spasi,
+   * huruf besar/kecil, atau varian tanda kutip (' vs ’) tidak membuat
+   * pencocokan nama guru <-> teacher_id gagal diam-diam (penyebab foto/rekap
+   * salah guru atau tidak ter-tag sama sekali).
+   */
+  function normalisasiKunciNamaGuru($s) {
+    $s = trim((string) $s);
+    $s = preg_replace('/\s+/', ' ', $s);
+    $s = str_replace(["’", "‘", "`"], "'", $s);
+    return mb_strtolower($s, 'UTF-8');
+  }
+
   $GURU_ID_BY_NAMA = [];
   $q_guru_filter = mysqli_query($koneksi, "SELECT id_guru, nama FROM guru");
   if ($q_guru_filter) {
     while ($guru_filter = mysqli_fetch_assoc($q_guru_filter)) {
-      $GURU_ID_BY_NAMA[trim((string) $guru_filter['nama'])] = (int) $guru_filter['id_guru'];
+      $GURU_ID_BY_NAMA[normalisasiKunciNamaGuru($guru_filter['nama'])] = (int) $guru_filter['id_guru'];
     }
   }
 
   function getTeacherIdBK($namaGuru) {
     global $GURU_ID_BY_NAMA;
-    $namaGuru = trim((string) $namaGuru);
-    return $GURU_ID_BY_NAMA[$namaGuru] ?? null;
+    return $GURU_ID_BY_NAMA[normalisasiKunciNamaGuru($namaGuru)] ?? null;
   }
 
 function hitungSemesterTahunAjaran($bulan, $tahun) {
@@ -909,7 +921,7 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
 
   @page {
     size: A4 portrait;
-    margin: 1.5cm 1.8cm;
+    margin: 1cm 1.2cm;
   }
 
   html, body,
@@ -931,13 +943,6 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
-    min-height: 0 !important;
-    height: auto !important;
-  }
-
-  html {
-    min-height: 0 !important;
-    height: auto !important;
   }
 
   .no-print,
@@ -985,22 +990,20 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     padding: 0 !important;
   }
 
-  .mb-8 {
-    margin-bottom: 10pt !important;
-  }
-
   h3 {
     font-size: 11pt !important;
     font-weight: bold !important;
-    margin-top: 14pt !important;
-    margin-bottom: 5pt !important;
+    margin-top: 6pt !important;
+    margin-bottom: 2pt !important;
     text-transform: uppercase !important;
     letter-spacing: 0.2pt !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   p {
-    line-height: 1.6 !important;
-    margin-bottom: 4pt !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2.5pt !important;
     text-align: left !important;
   }
 
@@ -1009,25 +1012,26 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   }
 
   ol, ul {
-    padding-left: 16pt !important;
-    margin-bottom: 6pt !important;
+    padding-left: 14pt !important;
+    margin-top: 2pt !important;
+    margin-bottom: 3pt !important;
   }
 
   li {
-    line-height: 1.6 !important;
-    margin-bottom: 2pt !important;
+    line-height: 1.3 !important;
+    margin-bottom: 1.5pt !important;
   }
 
   .judul {
     display: block !important;
-    margin-bottom: 12pt !important;
+    margin-bottom: 4pt !important;
   }
 
   .judul h3:first-child {
     font-size: 13pt !important;
     text-align: center !important;
     margin-top: 0 !important;
-    margin-bottom: 10pt !important;
+    margin-bottom: 4pt !important;
     letter-spacing: 0.5pt !important;
     font-weight: bold !important;
   }
@@ -1035,12 +1039,12 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   .judul > h3:not(:first-child) {
     font-size: 11pt !important;
     text-align: left !important;
-    margin-top: 10pt !important;
-    margin-bottom: 4pt !important;
+    margin-top: 5pt !important;
+    margin-bottom: 2pt !important;
   }
 
   .judul p {
-    line-height: 1.7 !important;
+    line-height: 1.3 !important;
   }
 
   .overflow-x-auto {
@@ -1051,22 +1055,34 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   table {
     width: 100% !important;
     border-collapse: collapse !important;
-    margin-bottom: 8pt !important;
+    margin-top: 0 !important;
+    margin-bottom: 4pt !important;
     table-layout: fixed !important;
     page-break-inside: auto !important;
+    break-inside: auto !important;
     box-sizing: border-box !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
   }
 
   th, td {
     box-sizing: border-box !important;
     border: 1pt solid #000000 !important;
-    padding: 4pt 5pt !important;
+    padding: 2.5pt 3.5pt !important;
     vertical-align: middle !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     word-break: break-word !important;
-    line-height: 1.35 !important;
+    line-height: 1.2 !important;
   }
 
   th {
@@ -1074,14 +1090,15 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     text-align: center !important;
     vertical-align: middle !important;
     background-color: #e8e8e8 !important;
-    line-height: 1.25 !important;
-    padding: 5pt 3pt !important;
+    line-height: 1.2 !important;
+    padding: 3pt 2.5pt !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   tr {
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   th:last-child,
@@ -1092,6 +1109,13 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   #rekapKegiatan {
     table-layout: fixed !important;
     width: 100% !important;
+  }
+
+  /* Semua sel tabel rekap disamakan agar konten selalu rata tengah secara
+     vertikal (nyaman dilihat), sementara rata kiri/kanan horizontal tetap
+     mengikuti jenis datanya per kolom di bawah ini. */
+  #rekapKegiatan td, #rekapMasalah td, #tindakLanjut td {
+    vertical-align: middle !important;
   }
 
   #rekapKegiatan th:nth-child(1), #rekapKegiatan td:nth-child(1) { width: 4%  !important; text-align: center !important; white-space: nowrap !important; }
@@ -1149,19 +1173,6 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   #tindakLanjut th:nth-child(5), #tindakLanjut td:nth-child(5) { width: 12% !important; text-align: center !important; }
   #tindakLanjut th:nth-child(6), #tindakLanjut td:nth-child(6) { width: 22% !important; text-align: left !important; }
 
-  #rekapMasalah th,
-  #rekapMasalah td {
-    font-size: 9.5pt !important;
-    line-height: 1.25 !important;
-    padding: 3pt 4pt !important;
-  }
-
-  #rekapMasalah td.sel-permasalahan,
-  #rekapMasalah td.sel-tindak {
-    padding-top: 3pt !important;
-    padding-bottom: 3pt !important;
-  }
-
   #rekapKegiatan th,
   #rekapKegiatan td,
   #rekapMasalah th,
@@ -1172,6 +1183,20 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     word-break: break-word !important;
+  }
+
+  #rekapKegiatan th,
+  #rekapMasalah th,
+  #tindakLanjut th {
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+
+  #rekapKegiatan th:nth-child(n),
+  #rekapMasalah th:nth-child(n),
+  #tindakLanjut th:nth-child(n) {
+    text-align: center !important;
+    vertical-align: middle !important;
   }
 
   input[type="text"],
@@ -1209,7 +1234,7 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   .print-info-table,
   .print-info-table td {
     border: none !important;
-    padding: 1.5pt 0 !important;
+    padding: 1pt 0 !important;
     font-size: 10pt !important;
   }
 
@@ -1217,37 +1242,43 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     display: block !important;
     page-break-before: auto !important;
     break-before: auto !important;
-    margin-top: 8pt !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   .penutup-ttd-wrap .penutup-judul {
     page-break-before: avoid !important;
     break-before: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 4pt !important;
   }
 
   .penutup-heading {
     font-size: 11pt !important;
     text-align: left !important;
     text-transform: uppercase !important;
-    margin-top: 14pt !important;
-    margin-bottom: 3pt !important;
+    margin-top: 0 !important;
+    margin-bottom: 2pt !important;
     letter-spacing: 0.2pt !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   .penutup-judul p {
     margin-top: 0 !important;
-  }
-
-  [style*="page-break-after"] {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
+    margin-bottom: 3pt !important;
   }
 
   .signature-area {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 0 20pt !important;
-    margin-top: 8pt !important;
+    gap: 0 24pt !important;
+    margin-top: 16pt !important;
     page-break-before: avoid !important;
     break-before: avoid !important;
     page-break-inside: avoid !important;
@@ -1260,14 +1291,14 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   }
 
   .signature-area p {
-    line-height: 1.5 !important;
+    line-height: 1.3 !important;
     margin-bottom: 2pt !important;
     text-align: center !important;
   }
 
   .sign-space {
     display: block !important;
-    height: 28pt !important;
+    height: 38pt !important;
     margin: 0 !important;
   }
 
@@ -1286,44 +1317,55 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   }
 
   .sign-header {
-    min-height: 34pt !important;
+    min-height: 26pt !important;
     justify-content: flex-end !important;
   }
 
-  .report-section {
+  details.report-section {
+    display: block !important;
     border: none !important;
     border-radius: 0 !important;
-    margin-bottom: 12pt !important;
+    margin: 0 0 5pt 0 !important;
+    padding: 0 !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  .report-section > summary {
+  details.report-section > summary {
     display: block !important;
     list-style: none !important;
     padding: 0 !important;
-    margin-bottom: 6pt !important;
+    margin: 0 0 2pt 0 !important;
     background: transparent !important;
     cursor: default !important;
   }
 
-  .report-section > summary::-webkit-details-marker,
-  .report-section > summary::marker {
+  details.report-section > summary::-webkit-details-marker,
+  details.report-section > summary::marker {
     display: none !important;
   }
 
-  .report-section > summary .section-title {
+  details.report-section > summary .section-title {
     display: flex !important;
     align-items: center !important;
-    font-size: 12pt !important;
+    font-size: 11pt !important;
     font-weight: bold !important;
     text-transform: uppercase !important;
-    margin: 0 !important;
+    margin: 5pt 0 2pt 0 !important;
     page-break-after: avoid !important;
     break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  .report-section > .report-section-body {
+  details.report-section > .report-section-body {
     display: block !important;
     padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
   .hidden {
@@ -1342,20 +1384,19 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     page-break-before: always !important;
     break-before: page !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin-top: 8pt !important;
+    margin-bottom: 0 !important;
     display: block !important;
   }
 
   #dokumentasi-section > h3 {
     display: block !important;
-    font-size: 12pt !important;
+    font-size: 11pt !important;
     text-align: center !important;
     text-transform: uppercase !important;
     margin-top: 0 !important;
-    margin-bottom: 12pt !important;
+    margin-bottom: 6pt !important;
     letter-spacing: 0.3pt !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
   }
 
   /* Layout flex-wrap (bukan CSS grid) dipakai supaya browser dapat memecah
@@ -1384,6 +1425,16 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
     height: 178pt !important;
     object-fit: cover !important;
     border: 1pt solid #888888 !important;
+  }
+
+  /* PENTING: selector ber-ID "#dokumentasi > div" di atas punya spesifisitas
+     lebih tinggi dari class ".hidden", jadi walau sama-sama !important, foto
+     yang disembunyikan oleh filter guru tetap ditampilkan saat dicetak/PDF.
+     Aturan berikut menaikkan spesifisitas supaya foto yang difilter benar-benar
+     tersembunyi di hasil cetak/PDF, sesuai guru yang dipilih. */
+  #dokumentasi > div.hidden,
+  #dokumentasi > div.baris-tersembunyi-filter {
+    display: none !important;
   }
 
   #dokumentasi button,
@@ -1423,6 +1474,27 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
   }
 
   #rekapKegiatan td:nth-child(3) {
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+
+  .judul > h3:not(:first-child) {
+    margin-top: 8pt !important;
+    margin-bottom: 3pt !important;
+  }
+
+  details.report-section {
+    margin-top: 7pt !important;
+    margin-bottom: 7pt !important;
+  }
+
+  .penutup-ttd-wrap {
+    margin-top: 8pt !important;
+  }
+
+  table th,
+  table td,
+  table td .print-value-proxy {
     text-align: center !important;
     vertical-align: middle !important;
   }
@@ -2957,11 +3029,35 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
             perbaruiNomorBaris(tbodyV);
           }
 
+          /**
+           * Menormalkan nama guru (trim, rapikan spasi, samakan varian tanda
+           * kutip, case-insensitive) sebelum dibandingkan. Ini jaga-jaga
+           * kalau teacher_id tidak ketemu (mis. guru belum terdaftar di
+           * tabel guru), supaya pencocokan berbasis nama tidak gagal hanya
+           * karena beda spasi/huruf besar-kecil/tanda kutip pintar.
+           */
+          function samaNamaGuru(a, b) {
+            const normal = (s) => String(s || '')
+              .trim()
+              .replace(/\s+/g, ' ')
+              .replace(/[’‘`]/g, "'")
+              .toLowerCase();
+            const na = normal(a);
+            const nb = normal(b);
+            return na !== '' && na === nb;
+          }
+
+          function samaTeacherId(a, b) {
+            const idA = String(a ?? '').trim();
+            const idB = String(b ?? '').trim();
+            return idA !== '' && idA === idB;
+          }
+
           function terapkanFilterGuru() {
             const sel = document.getElementById('filterGuruBK');
             const nilai = sel ? sel.value : '';
             const optionTerpilih = sel ? sel.selectedOptions[0] : null;
-            const filterTeacherId = optionTerpilih?.dataset.teacherId || (nilai.startsWith('nama:') ? '' : nilai);
+            const filterTeacherId = String(optionTerpilih?.dataset.teacherId || (nilai.startsWith('nama:') ? '' : nilai)).trim();
             const filterNamaGuru = optionTerpilih?.dataset.namaGuru || (nilai.startsWith('nama:') ? nilai.slice(5) : '');
             const printGuruBK = document.getElementById('printGuruBK');
             const pilihGuruBK = document.getElementById('pilihGuruBK');
@@ -2975,17 +3071,17 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
                   tr.classList.remove('baris-tersembunyi-filter');
                   return;
                 }
-                const teacherId = tr.dataset.teacherId || '';
+                const teacherId = String(tr.dataset.teacherId || '').trim();
                 const guru = tr.dataset.namaGuru || '';
-                const tampil = !nilai || (filterTeacherId && teacherId === filterTeacherId) || (!teacherId && filterNamaGuru && guru === filterNamaGuru);
+                const tampil = !nilai || samaTeacherId(teacherId, filterTeacherId) || samaNamaGuru(guru, filterNamaGuru);
                 tr.classList.toggle('baris-tersembunyi-filter', !tampil);
               });
             });
 
             document.querySelectorAll('#dokumentasi > div[data-nama-guru], #dokumentasi > div[data-sumber-key]').forEach((div) => {
-              const teacherId = div.dataset.teacherId || '';
+              const teacherId = String(div.dataset.teacherId || '').trim();
               const guru = div.dataset.namaGuru || '';
-              const tampil = !nilai || (filterTeacherId && teacherId === filterTeacherId) || (!teacherId && filterNamaGuru && guru === filterNamaGuru);
+              const tampil = !nilai || samaTeacherId(teacherId, filterTeacherId) || samaNamaGuru(guru, filterNamaGuru);
               div.classList.toggle('baris-tersembunyi-filter', !tampil);
               div.classList.toggle('hidden', !tampil);
             });
@@ -3420,7 +3516,14 @@ if (!$laporan && isset($_GET['bulan']) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/'
             const box = document.getElementById('dokumentasi');
             if (box) {
               box.innerHTML = '';
-              (data.dokumentasi || []).forEach((item) => renderFotoDokumentasi(box, item));
+              (data.dokumentasi || []).forEach((item) => renderFotoDokumentasi(box, typeof item === 'string' ? item : {
+                src: item.src || item.path || '',
+                tipe: item.tipe || 'manual',
+                guru: item.guru || '',
+                idGuru: item.id_guru || item.teacher_id || null,
+                sumberKey: item.sumber_key || 'manual-legacy-' + (++seqFotoManual),
+                sumber: item.sumber || 'Manual',
+              }));
               if (!data.dokumentasi?.length) box.innerHTML = '<p class="text-sm text-gray-500 col-span-full text-center py-8">Belum ada foto yang dipilih</p>';
             }
             terapkanFilterGuru();

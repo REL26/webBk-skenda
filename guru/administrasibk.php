@@ -18,8 +18,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 
     if ($action === 'cari_siswa') {
         $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
-        $q = mysqli_query($koneksi, "SELECT nama, kelas, jurusan FROM siswa WHERE nis = '$nis' LIMIT 1");
+        $q = mysqli_query($koneksi, "SELECT nama, kelas, jurusan, tempat_lahir, tanggal_lahir FROM siswa WHERE nis = '$nis' LIMIT 1");
         $row = $q ? mysqli_fetch_assoc($q) : null;
+        if ($row) {
+            $ttl = '';
+            if (!empty($row['tempat_lahir'])) $ttl .= $row['tempat_lahir'];
+            if (!empty($row['tanggal_lahir'])) {
+                $ttl .= ($ttl !== '' ? ', ' : '') . date('d-m-Y', strtotime($row['tanggal_lahir']));
+            }
+            $row['ttl'] = $ttl;
+        }
         echo json_encode(['success' => (bool) $row, 'data' => $row]);
         exit;
     }
@@ -161,6 +169,149 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    // ===== PENGUNDURAN DIRI =====
+    if ($action === 'list_pd') {
+        $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword'] ?? '');
+        $where = "WHERE id_guru = $id_guru_login";
+        if ($keyword !== '') {
+            $where .= " AND (nama_siswa LIKE '%$keyword%' OR nama_wali LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%')";
+        }
+        $q = mysqli_query($koneksi, "SELECT * FROM surat_pengunduran_diri $where ORDER BY id_pd ASC");
+        $data = [];
+        while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
+
+    if ($action === 'simpan_pd') {
+        $id = (int) ($_POST['id_pd'] ?? 0);
+        $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
+        $nama_siswa = mysqli_real_escape_string($koneksi, $_POST['nama_siswa'] ?? '');
+        $ttl_siswa = mysqli_real_escape_string($koneksi, $_POST['ttl_siswa'] ?? '');
+        $kelas = mysqli_real_escape_string($koneksi, $_POST['kelas'] ?? '');
+        $jurusan = mysqli_real_escape_string($koneksi, $_POST['jurusan'] ?? '');
+        $nama_wali = mysqli_real_escape_string($koneksi, $_POST['nama_wali'] ?? '');
+        $alamat_wali = mysqli_real_escape_string($koneksi, $_POST['alamat_wali'] ?? '');
+        $alasan = mysqli_real_escape_string($koneksi, $_POST['alasan'] ?? '');
+        $tanggal_ttd = mysqli_real_escape_string($koneksi, $_POST['tanggal_ttd'] ?? '');
+
+        if ($nama_siswa === '') {
+            echo json_encode(['success' => false, 'message' => 'Nama siswa wajib diisi.']);
+            exit;
+        }
+
+        if ($id > 0) {
+            $cek = mysqli_query($koneksi, "SELECT id_guru FROM surat_pengunduran_diri WHERE id_pd = $id");
+            $row = $cek ? mysqli_fetch_assoc($cek) : null;
+            if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+                echo json_encode(['success' => false, 'message' => 'Data tidak ditemukan atau bukan milik Anda.']);
+                exit;
+            }
+            $query = "UPDATE surat_pengunduran_diri SET nis='$nis', nama_siswa='$nama_siswa', ttl_siswa='$ttl_siswa',
+                        kelas='$kelas', jurusan='$jurusan', nama_wali='$nama_wali', alamat_wali='$alamat_wali',
+                        alasan='$alasan', tanggal_ttd='$tanggal_ttd'
+                      WHERE id_pd = $id";
+        } else {
+            $query = "INSERT INTO surat_pengunduran_diri (nis, nama_siswa, ttl_siswa, kelas, jurusan, nama_wali, alamat_wali, alasan, tanggal_ttd, id_guru)
+                      VALUES ('$nis','$nama_siswa','$ttl_siswa','$kelas','$jurusan','$nama_wali','$alamat_wali','$alasan','$tanggal_ttd',$id_guru_login)";
+        }
+
+        if (mysqli_query($koneksi, $query)) {
+            echo json_encode(['success' => true, 'message' => 'Surat pengunduran diri berhasil disimpan.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
+    if ($action === 'hapus_pd') {
+        $id = (int) ($_POST['id_pd'] ?? 0);
+        $cek = mysqli_query($koneksi, "SELECT id_guru FROM surat_pengunduran_diri WHERE id_pd = $id");
+        $row = $cek ? mysqli_fetch_assoc($cek) : null;
+        if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+            echo json_encode(['success' => false, 'message' => 'Data tidak ditemukan atau bukan milik Anda.']);
+            exit;
+        }
+        if (mysqli_query($koneksi, "DELETE FROM surat_pengunduran_diri WHERE id_pd = $id")) {
+            echo json_encode(['success' => true, 'message' => 'Data berhasil dihapus.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal menghapus: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
+    // ===== PINDAH SEKOLAH =====
+    if ($action === 'list_ps') {
+        $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword'] ?? '');
+        $where = "WHERE id_guru = $id_guru_login";
+        if ($keyword !== '') {
+            $where .= " AND (nama_siswa LIKE '%$keyword%' OR nama_wali LIKE '%$keyword%' OR kelas LIKE '%$keyword%' OR jurusan LIKE '%$keyword%' OR sekolah_tujuan LIKE '%$keyword%')";
+        }
+        $q = mysqli_query($koneksi, "SELECT * FROM surat_pindah_sekolah $where ORDER BY id_pindah ASC");
+        $data = [];
+        while ($r = mysqli_fetch_assoc($q)) $data[] = $r;
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
+
+    if ($action === 'simpan_ps') {
+        $id = (int) ($_POST['id_pindah'] ?? 0);
+        $nis = mysqli_real_escape_string($koneksi, $_POST['nis'] ?? '');
+        $nama_siswa = mysqli_real_escape_string($koneksi, $_POST['nama_siswa'] ?? '');
+        $ttl_siswa = mysqli_real_escape_string($koneksi, $_POST['ttl_siswa'] ?? '');
+        $kelas = mysqli_real_escape_string($koneksi, $_POST['kelas'] ?? '');
+        $jurusan = mysqli_real_escape_string($koneksi, $_POST['jurusan'] ?? '');
+        $nama_wali = mysqli_real_escape_string($koneksi, $_POST['nama_wali'] ?? '');
+        $alamat_wali = mysqli_real_escape_string($koneksi, $_POST['alamat_wali'] ?? '');
+        $alasan = mysqli_real_escape_string($koneksi, $_POST['alasan'] ?? '');
+        $sekolah_tujuan = mysqli_real_escape_string($koneksi, $_POST['sekolah_tujuan'] ?? '');
+        $tanggal_ttd = mysqli_real_escape_string($koneksi, $_POST['tanggal_ttd'] ?? '');
+
+        if ($nama_siswa === '') {
+            echo json_encode(['success' => false, 'message' => 'Nama siswa wajib diisi.']);
+            exit;
+        }
+
+        if ($id > 0) {
+            $cek = mysqli_query($koneksi, "SELECT id_guru FROM surat_pindah_sekolah WHERE id_pindah = $id");
+            $row = $cek ? mysqli_fetch_assoc($cek) : null;
+            if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+                echo json_encode(['success' => false, 'message' => 'Data tidak ditemukan atau bukan milik Anda.']);
+                exit;
+            }
+            $query = "UPDATE surat_pindah_sekolah SET nis='$nis', nama_siswa='$nama_siswa', ttl_siswa='$ttl_siswa',
+                        kelas='$kelas', jurusan='$jurusan', nama_wali='$nama_wali', alamat_wali='$alamat_wali',
+                        alasan='$alasan', sekolah_tujuan='$sekolah_tujuan', tanggal_ttd='$tanggal_ttd'
+                      WHERE id_pindah = $id";
+        } else {
+            $query = "INSERT INTO surat_pindah_sekolah (nis, nama_siswa, ttl_siswa, kelas, jurusan, nama_wali, alamat_wali, alasan, sekolah_tujuan, tanggal_ttd, id_guru)
+                      VALUES ('$nis','$nama_siswa','$ttl_siswa','$kelas','$jurusan','$nama_wali','$alamat_wali','$alasan','$sekolah_tujuan','$tanggal_ttd',$id_guru_login)";
+        }
+
+        if (mysqli_query($koneksi, $query)) {
+            echo json_encode(['success' => true, 'message' => 'Surat pindah sekolah berhasil disimpan.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
+    if ($action === 'hapus_ps') {
+        $id = (int) ($_POST['id_pindah'] ?? 0);
+        $cek = mysqli_query($koneksi, "SELECT id_guru FROM surat_pindah_sekolah WHERE id_pindah = $id");
+        $row = $cek ? mysqli_fetch_assoc($cek) : null;
+        if (!$row || (int)$row['id_guru'] !== $id_guru_login) {
+            echo json_encode(['success' => false, 'message' => 'Data tidak ditemukan atau bukan milik Anda.']);
+            exit;
+        }
+        if (mysqli_query($koneksi, "DELETE FROM surat_pindah_sekolah WHERE id_pindah = $id")) {
+            echo json_encode(['success' => true, 'message' => 'Data berhasil dihapus.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Gagal menghapus: ' . mysqli_error($koneksi)]);
+        }
+        exit;
+    }
+
     echo json_encode(['success' => false, 'message' => 'Aksi tidak dikenali.']);
     exit;
 }
@@ -216,10 +367,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       .sp-2 { background: #fed7aa; color: #9a3412; }
       .sp-3 { background: #fecaca; color: #991b1b; }
 
-      #printAreaRujukan, #printAreaSP { display: none; }
-      body.mode-cetak > *:not(#printAreaRujukan):not(#printAreaSP) { display: none !important; }
+      #printAreaRujukan, #printAreaSP, #printAreaPD, #printAreaPS { display: none; }
+      body.mode-cetak > *:not(#printAreaRujukan):not(#printAreaSP):not(#printAreaPD):not(#printAreaPS) { display: none !important; }
       body.mode-cetak.cetak-rujukan #printAreaRujukan { display: block !important; }
       body.mode-cetak.cetak-sp #printAreaSP { display: block !important; }
+      body.mode-cetak.cetak-pd #printAreaPD { display: block !important; }
+      body.mode-cetak.cetak-ps #printAreaPS { display: block !important; }
 
       @media print {
         @page { size: A4; margin: 20mm 18mm; }
@@ -274,6 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   <div class="no-print flex gap-2 mb-4 p-1.5 bg-gray-100 rounded-xl w-fit">
     <button id="tabBtnRujukan" class="tab-btn" onclick="gantiTab('rujukan')"><i class="fas fa-file-signature mr-1"></i> Lembar Rujukan</button>
     <button id="tabBtnSP" class="tab-btn" onclick="gantiTab('sp')"><i class="fas fa-triangle-exclamation mr-1"></i> Surat Peringatan</button>
+    <button id="tabBtnPD" class="tab-btn" onclick="gantiTab('pd')"><i class="fas fa-door-open mr-1"></i> Pengunduran Diri</button>
+    <button id="tabBtnPS" class="tab-btn" onclick="gantiTab('ps')"><i class="fas fa-right-from-bracket mr-1"></i> Pindah Sekolah</button>
   </div>
 
   <div id="panelRujukan" class="no-print bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow" style="display:none;">
@@ -331,30 +486,81 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
       </table>
     </div>
   </div>
+
+  <div id="panelPD" class="no-print bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow" style="display:none;">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="relative w-full md:w-80">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="text" id="cariPD" placeholder="Cari nama siswa, wali, kelas, atau jurusan..."
+          class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      </div>
+      <button onclick="bukaModalTambahPD()" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Tambah surat pengunduran diri baru">
+        <i class="fas fa-plus mr-1"></i> Tambah Surat Pengunduran Diri
+      </button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="bg-gray-100 text-left text-gray-700">
+            <th class="px-3 py-2 border-b">No</th>
+            <th class="px-3 py-2 border-b">Nama Siswa</th>
+            <th class="px-3 py-2 border-b">Kelas/Jurusan</th>
+            <th class="px-3 py-2 border-b">Nama Wali</th>
+            <th class="px-3 py-2 border-b">Tanggal</th>
+            <th class="px-3 py-2 border-b text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="isiTabelPD"><tr><td colspan="6" class="text-center py-6 text-gray-400">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="panelPS" class="no-print bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow" style="display:none;">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <div class="relative w-full md:w-80">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="text" id="cariPS" placeholder="Cari nama siswa, wali, kelas, atau sekolah tujuan..."
+          class="w-full pl-9 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+      </div>
+      <button onclick="bukaModalTambahPS()" class="btn-action bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm" title="Tambah surat pindah sekolah baru">
+        <i class="fas fa-plus mr-1"></i> Tambah Surat Pindah Sekolah
+      </button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="bg-gray-100 text-left text-gray-700">
+            <th class="px-3 py-2 border-b">No</th>
+            <th class="px-3 py-2 border-b">Nama Siswa</th>
+            <th class="px-3 py-2 border-b">Kelas/Jurusan</th>
+            <th class="px-3 py-2 border-b">Nama Wali</th>
+            <th class="px-3 py-2 border-b">Sekolah Tujuan</th>
+            <th class="px-3 py-2 border-b">Tanggal</th>
+            <th class="px-3 py-2 border-b text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="isiTabelPS"><tr><td colspan="7" class="text-center py-6 text-gray-400">Memuat data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </main>
 <script>
 (function () {
   try {
     var t = localStorage.getItem('admBk_tab') || 'rujukan';
-    var pr = document.getElementById('panelRujukan');
-    var ps = document.getElementById('panelSP');
-    var br = document.getElementById('tabBtnRujukan');
-    var bs = document.getElementById('tabBtnSP');
-    if (pr && ps && br && bs) {
-      if (t === 'sp') {
-        pr.style.display = 'none';
-        ps.style.display = 'block';
-        br.classList.remove('active');
-        bs.classList.add('active');
-      } else {
-        pr.style.display = 'block';
-        ps.style.display = 'none';
-        br.classList.add('active');
-        bs.classList.remove('active');
-      }
+    var panel = { rujukan: document.getElementById('panelRujukan'), sp: document.getElementById('panelSP'), pd: document.getElementById('panelPD'), ps: document.getElementById('panelPS') };
+    var btn = { rujukan: document.getElementById('tabBtnRujukan'), sp: document.getElementById('tabBtnSP'), pd: document.getElementById('tabBtnPD'), ps: document.getElementById('tabBtnPS') };
+    var semuaAda = panel.rujukan && panel.sp && panel.pd && panel.ps && btn.rujukan && btn.sp && btn.pd && btn.ps;
+    if (semuaAda) {
+      Object.keys(panel).forEach(function (k) {
+        panel[k].style.display = (k === t) ? 'block' : 'none';
+        btn[k].classList.toggle('active', k === t);
+      });
     }
     var kr = localStorage.getItem('admBk_cariRujukan');
     var ks = localStorage.getItem('admBk_cariSP');
+    var kpd = localStorage.getItem('admBk_cariPD');
+    var kps = localStorage.getItem('admBk_cariPS');
     if (kr !== null) {
       var ir = document.getElementById('cariRujukan');
       if (ir) ir.value = kr;
@@ -362,6 +568,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if (ks !== null) {
       var is = document.getElementById('cariSP');
       if (is) is.value = ks;
+    }
+    if (kpd !== null) {
+      var ipd = document.getElementById('cariPD');
+      if (ipd) ipd.value = kpd;
+    }
+    if (kps !== null) {
+      var ips = document.getElementById('cariPS');
+      if (ips) ips.value = kps;
     }
   } catch (e) {}
 })();
@@ -496,6 +710,160 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     </div>
   </div>
 
+  <div id="modalPD" class="modal no-print fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
+        <h2 id="judulModalPD" class="text-lg font-bold text-gray-800">Tambah Surat Pengunduran Diri</h2>
+        <button onclick="tutupModalPD()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="pdId">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Cari data siswa berdasarkan NIS</label>
+          <div class="flex gap-2">
+            <input type="text" id="pdNis" placeholder="Ketik NIS lalu klik Cari, data siswa terisi otomatis" class="flex-grow px-3 py-2 border rounded text-sm">
+            <button type="button" onclick="cariSiswaPD()" class="bg-gray-600 text-white px-4 py-2 rounded text-sm"><i class="fas fa-search"></i> Cari</button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Boleh dikosongkan lalu isi data siswa secara manual di bawah.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-400 -mb-2">Data Siswa</div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa *</label>
+            <input type="text" id="pdNamaSiswa" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tempat/Tanggal Lahir</label>
+            <input type="text" id="pdTtlSiswa" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+            <input type="text" id="pdKelas" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+            <input type="text" id="pdJurusan" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+          <div class="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-400 -mb-2">Data Orang Tua/Wali</div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Orang Tua/Wali *</label>
+            <input type="text" id="pdNamaWali" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah</label>
+            <input type="text" id="pdAlamatWali" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pengunduran Diri</label>
+          <textarea id="pdAlasan" rows="3" class="w-full px-3 py-2 border rounded text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Surat</label>
+          <input type="date" id="pdTanggal" class="w-full px-3 py-2 border rounded text-sm">
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
+        <button onclick="tutupModalPD()" class="px-4 py-2 rounded-lg border text-sm">Batal</button>
+        <button onclick="simpanPD()" id="btnSimpanPD" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold"><i class="fas fa-save mr-1"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDetailPD" class="modal no-print fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <h2 class="text-lg font-bold text-gray-800">Detail Surat Pengunduran Diri</h2>
+        <button onclick="document.getElementById('modalDetailPD').classList.remove('open')" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6 text-sm space-y-2 break-words" id="isiDetailPD"></div>
+      <div class="px-6 py-4 border-t flex justify-end gap-2">
+        <button onclick="cetakPD()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"><i class="fas fa-file-pdf mr-1"></i> Cetak PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalPS" class="modal no-print fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
+        <h2 id="judulModalPS" class="text-lg font-bold text-gray-800">Tambah Surat Pindah Sekolah</h2>
+        <button onclick="tutupModalPS()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="psId">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Cari data siswa berdasarkan NIS</label>
+          <div class="flex gap-2">
+            <input type="text" id="psNis" placeholder="Ketik NIS lalu klik Cari, data siswa terisi otomatis" class="flex-grow px-3 py-2 border rounded text-sm">
+            <button type="button" onclick="cariSiswaPS()" class="bg-gray-600 text-white px-4 py-2 rounded text-sm"><i class="fas fa-search"></i> Cari</button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Boleh dikosongkan lalu isi data siswa secara manual di bawah.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-400 -mb-2">Data Siswa</div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Siswa *</label>
+            <input type="text" id="psNamaSiswa" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tempat/Tanggal Lahir</label>
+            <input type="text" id="psTtlSiswa" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+            <input type="text" id="psKelas" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jurusan</label>
+            <input type="text" id="psJurusan" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+          <div class="md:col-span-2 text-xs font-semibold uppercase tracking-wide text-gray-400 -mb-2">Data Orang Tua/Wali</div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Orang Tua/Wali *</label>
+            <input type="text" id="psNamaWali" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Alamat Rumah</label>
+            <input type="text" id="psAlamatWali" class="w-full px-3 py-2 border rounded text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pindah Sekolah</label>
+          <textarea id="psAlasan" rows="3" class="w-full px-3 py-2 border rounded text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Pindah Sekolah Ke *</label>
+          <input type="text" id="psSekolahTujuan" placeholder="Nama sekolah tujuan" class="w-full px-3 py-2 border rounded text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Surat</label>
+          <input type="date" id="psTanggal" class="w-full px-3 py-2 border rounded text-sm">
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
+        <button onclick="tutupModalPS()" class="px-4 py-2 rounded-lg border text-sm">Batal</button>
+        <button onclick="simpanPS()" id="btnSimpanPS" class="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold"><i class="fas fa-save mr-1"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDetailPS" class="modal no-print fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <h2 class="text-lg font-bold text-gray-800">Detail Surat Pindah Sekolah</h2>
+        <button onclick="document.getElementById('modalDetailPS').classList.remove('open')" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
+      </div>
+      <div class="p-6 text-sm space-y-2 break-words" id="isiDetailPS"></div>
+      <div class="px-6 py-4 border-t flex justify-end gap-2">
+        <button onclick="cetakPS()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"><i class="fas fa-file-pdf mr-1"></i> Cetak PDF</button>
+      </div>
+    </div>
+  </div>
+
   <div id="printAreaRujukan">
     <div class="kertas">
       <div class="judul-polos">LEMBAR RUJUKAN</div>
@@ -574,6 +942,79 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     </div>
   </div>
 
+  <div id="printAreaPD">
+    <div class="kertas">
+      <table style="width:100%; margin-bottom:14px;"><tr>
+        <td style="vertical-align:top;">Perihal : Pengunduran Diri</td>
+        <td id="pdPvTanggal" style="vertical-align:top; text-align:right;">Tanggal , ..........................</td>
+      </tr></table>
+      <p>Yth.</p>
+      <p style="font-weight:bold; margin-bottom:10px;">Kepala SMK Negeri 2 Banjarmasin</p>
+      <p>Di &ndash;</p>
+      <p style="margin-bottom:14px;">Tempat</p>
+      <p style="margin-bottom:6px;">Yang bertanda tangan di bawah ini :</p>
+      <table class="form-rj" style="width:100%; margin-bottom:6px;">
+        <tr><td style="width:150px;">nama</td><td style="width:15px;">:</td><td id="pdPvNamaWali"></td></tr>
+        <tr><td>alamat rumah</td><td>:</td><td id="pdPvAlamatWali"></td></tr>
+      </table>
+      <p style="margin-bottom:6px;">selaku orang tua/wali siswa dari</p>
+      <table class="form-rj" style="width:100%; margin-bottom:10px;">
+        <tr><td style="width:150px;">nama</td><td style="width:15px;">:</td><td id="pdPvNamaSiswa"></td></tr>
+        <tr><td>tempat/tanggal lahir</td><td>:</td><td id="pdPvTtlSiswa"></td></tr>
+        <tr><td>Nomor Induk Siswa</td><td>:</td><td id="pdPvNis"></td></tr>
+        <tr><td>Kelas/Jurusan</td><td>:</td><td id="pdPvKelasJurusan"></td></tr>
+      </table>
+      <p style="text-align:justify;">dengan ini mengajukan permohonan pengunduran diri dari SMK Negeri 2 Banjarmasin Provinsi Kalimantan Selatan karena</p>
+      <div id="pdPvAlasan" style="margin:4px 0 20px;"></div>
+      <p style="text-align:justify; margin-bottom:24px;">Demikian surat permohonan disampaikan agar menjadi pemakluman dan atas terkabulnya permohonan ini dihaturkan banyak terima kasih.</p>
+      <div class="pd-ttd">
+        <p>Hormat kami,</p>
+        <p>Orang Tua Siswa/Wali Siswa,</p>
+        <div class="pd-ruang-materai"></div>
+        <p class="pd-label-materai">Materai 10.000</p>
+        <div class="garis-ttd-inline"></div>
+        <p id="pdPvNamaWaliTtd">&nbsp;</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="printAreaPS">
+    <div class="kertas">
+      <table style="width:100%; margin-bottom:14px;"><tr>
+        <td style="vertical-align:top;">Perihal : Pengunduran Diri ( Pindah Sekolah )</td>
+        <td id="psPvTanggal" style="vertical-align:top; text-align:right;">Tanggal , ..........................</td>
+      </tr></table>
+      <p>Yth.</p>
+      <p style="font-weight:bold; margin-bottom:10px;">Kepala SMK Negeri 2 Banjarmasin</p>
+      <p>Di &ndash;</p>
+      <p style="margin-bottom:14px;">Tempat</p>
+      <p style="margin-bottom:6px;">Yang bertanda tangan di bawah ini :</p>
+      <table class="form-rj" style="width:100%; margin-bottom:6px;">
+        <tr><td style="width:150px;">nama</td><td style="width:15px;">:</td><td id="psPvNamaWali"></td></tr>
+        <tr><td>alamat rumah</td><td>:</td><td id="psPvAlamatWali"></td></tr>
+      </table>
+      <p style="margin-bottom:6px;">selaku orang tua/wali siswa dari</p>
+      <table class="form-rj" style="width:100%; margin-bottom:10px;">
+        <tr><td style="width:150px;">nama</td><td style="width:15px;">:</td><td id="psPvNamaSiswa"></td></tr>
+        <tr><td>tempat/tanggal lahir</td><td>:</td><td id="psPvTtlSiswa"></td></tr>
+        <tr><td>Nomor Induk Siswa</td><td>:</td><td id="psPvNis"></td></tr>
+        <tr><td>Kelas/Jurusan</td><td>:</td><td id="psPvKelasJurusan"></td></tr>
+      </table>
+      <p style="text-align:justify;">dengan ini mengajukan permohonan pengunduran diri dari SMK Negeri 2 Banjarmasin Provinsi Kalimantan Selatan karena</p>
+      <div id="psPvAlasan" style="margin:4px 0 14px;"></div>
+      <p style="margin-bottom:14px;">pindah sekolah ke <span id="psPvSekolahTujuan"></span></p>
+      <p style="text-align:justify; margin-bottom:24px;">Demikian surat permohonan disampaikan agar menjadi pemakluman dan atas terkabulnya permohonan ini dihaturkan banyak terima kasih.</p>
+      <div class="pd-ttd">
+        <p>Hormat kami,</p>
+        <p>Orang Tua Siswa/Wali Siswa,</p>
+        <div class="pd-ruang-materai"></div>
+        <p class="pd-label-materai">Materai 10.000</p>
+        <div class="garis-ttd-inline"></div>
+        <p id="psPvNamaWaliTtd">&nbsp;</p>
+      </div>
+    </div>
+  </div>
+
 <script>
   const BASE_URL = "<?php echo htmlspecialchars($base_url_folder, ENT_QUOTES); ?>";
   let dataRujukan = [];
@@ -585,23 +1026,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
   const STORAGE_KEY_TAB = 'admBk_tab';
   const STORAGE_KEY_CARI_RJ = 'admBk_cariRujukan';
   const STORAGE_KEY_CARI_SP = 'admBk_cariSP';
+  const STORAGE_KEY_CARI_PD = 'admBk_cariPD';
+  const STORAGE_KEY_CARI_PS = 'admBk_cariPS';
+  let dataPD = [];
+  let dataPS = [];
+  let idDetailPD = null;
+  let idDetailPS = null;
 
   function simpanStateUI() {
     try {
       localStorage.setItem(STORAGE_KEY_TAB, tabAktif);
       localStorage.setItem(STORAGE_KEY_CARI_RJ, document.getElementById('cariRujukan').value || '');
       localStorage.setItem(STORAGE_KEY_CARI_SP, document.getElementById('cariSP').value || '');
+      localStorage.setItem(STORAGE_KEY_CARI_PD, document.getElementById('cariPD').value || '');
+      localStorage.setItem(STORAGE_KEY_CARI_PS, document.getElementById('cariPS').value || '');
     } catch (e) {}
   }
 
   function muatStateUI() {
     try {
       const t = localStorage.getItem(STORAGE_KEY_TAB);
-      if (t === 'rujukan' || t === 'sp') tabAktif = t;
+      if (['rujukan', 'sp', 'pd', 'ps'].includes(t)) tabAktif = t;
       const kr = localStorage.getItem(STORAGE_KEY_CARI_RJ);
       const ks = localStorage.getItem(STORAGE_KEY_CARI_SP);
+      const kpd = localStorage.getItem(STORAGE_KEY_CARI_PD);
+      const kps = localStorage.getItem(STORAGE_KEY_CARI_PS);
       if (kr !== null) document.getElementById('cariRujukan').value = kr;
       if (ks !== null) document.getElementById('cariSP').value = ks;
+      if (kpd !== null) document.getElementById('cariPD').value = kpd;
+      if (kps !== null) document.getElementById('cariPS').value = kps;
     } catch (e) {}
   }
 
@@ -609,8 +1062,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     tabAktif = tab;
     document.getElementById('panelRujukan').style.display = tab === 'rujukan' ? 'block' : 'none';
     document.getElementById('panelSP').style.display = tab === 'sp' ? 'block' : 'none';
+    document.getElementById('panelPD').style.display = tab === 'pd' ? 'block' : 'none';
+    document.getElementById('panelPS').style.display = tab === 'ps' ? 'block' : 'none';
     document.getElementById('tabBtnRujukan').classList.toggle('active', tab === 'rujukan');
     document.getElementById('tabBtnSP').classList.toggle('active', tab === 'sp');
+    document.getElementById('tabBtnPD').classList.toggle('active', tab === 'pd');
+    document.getElementById('tabBtnPS').classList.toggle('active', tab === 'ps');
     simpanStateUI();
   }
 
@@ -1100,11 +1557,430 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     cetakElemenViaIframe('printAreaSP', '@page { size: A4; margin: 12mm 14mm; }', PRINT_CSS_SP);
   }
 
+  // ================= MODUL PENGUNDURAN DIRI =================
+  const PRINT_CSS_PD = `
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.4; color: #000; }
+    .kertas { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.4; color: #000; }
+    table.form-rj { table-layout: fixed; width: 100%; }
+    table.form-rj td { padding: 2px 4px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; }
+    p.isi-titik { min-height: 18px; margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
+    .pd-ttd { text-align: left; margin-top: 20px; width: 260px; }
+    .pd-ttd p { margin: 0 0 2px; }
+    .pd-ttd .pd-ruang-materai { height: 60px; }
+    .pd-ttd .pd-label-materai { font-style: italic; margin: 0 0 2px; }
+    .pd-ttd .garis-ttd-inline { display: inline-block; min-width: 220px; height: 14px; margin-top: 2px; }
+  `;
+
+  function muatPD(keyword = '') {
+    const fd = new FormData();
+    fd.append('action', 'list_pd');
+    fd.append('keyword', keyword);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => { if (data.success) { dataPD = data.data; renderTabelPD(); } });
+  }
+
+  function renderTabelPD() {
+    const tbody = document.getElementById('isiTabelPD');
+    if (dataPD.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6">
+        <div class="empty-state">
+          <i class="fas fa-door-open"></i>
+          <p class="empty-title">Belum ada Surat Pengunduran Diri</p>
+          <p class="empty-desc">Klik tombol "Tambah Surat Pengunduran Diri" untuk mulai mencatat.</p>
+        </div>
+      </td></tr>`;
+      return;
+    }
+    tbody.innerHTML = dataPD.map((d, i) => `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="px-3 py-2">${i + 1}</td>
+        <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
+        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}${d.jurusan ? ' / ' + escapeHtml(d.jurusan) : ''}</td>
+        <td class="px-3 py-2">${escapeHtml(d.nama_wali || '-')}</td>
+        <td class="px-3 py-2">${formatTgl(d.tanggal_ttd)}</td>
+        <td class="px-3 py-2 text-center whitespace-nowrap">
+          <button onclick="lihatDetailPD(${d.id_pd})" class="action-btn action-btn-view mr-1" title="Lihat detail & cetak PDF"><i class="fas fa-eye"></i></button>
+          <button onclick="bukaModalEditPD(${d.id_pd})" class="action-btn action-btn-edit mr-1" title="Edit"><i class="fas fa-pen"></i></button>
+          <button onclick="hapusPD(${d.id_pd})" class="action-btn action-btn-delete" title="Hapus"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('cariPD').addEventListener('input', function () {
+    simpanStateUI();
+    muatPD(this.value);
+  });
+
+  function kosongkanFormPD() {
+    document.getElementById('pdId').value = '';
+    ['pdNis','pdNamaWali','pdAlamatWali','pdNamaSiswa','pdTtlSiswa','pdKelas','pdJurusan','pdAlasan','pdTanggal'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  function bukaModalTambahPD() {
+    kosongkanFormPD();
+    document.getElementById('judulModalPD').textContent = 'Tambah Surat Pengunduran Diri';
+    document.getElementById('modalPD').classList.add('open');
+  }
+
+  function bukaModalEditPD(id) {
+    const d = dataPD.find(x => x.id_pd == id);
+    if (!d) return;
+    kosongkanFormPD();
+    document.getElementById('judulModalPD').textContent = 'Edit Surat Pengunduran Diri';
+    document.getElementById('pdId').value = d.id_pd;
+    document.getElementById('pdNis').value = d.nis || '';
+    document.getElementById('pdNamaWali').value = d.nama_wali || '';
+    document.getElementById('pdAlamatWali').value = d.alamat_wali || '';
+    document.getElementById('pdNamaSiswa').value = d.nama_siswa || '';
+    document.getElementById('pdTtlSiswa').value = d.ttl_siswa || '';
+    document.getElementById('pdKelas').value = d.kelas || '';
+    document.getElementById('pdJurusan').value = d.jurusan || '';
+    document.getElementById('pdAlasan').value = d.alasan || '';
+    document.getElementById('pdTanggal').value = d.tanggal_ttd || '';
+    document.getElementById('modalPD').classList.add('open');
+  }
+
+  function tutupModalPD() { document.getElementById('modalPD').classList.remove('open'); }
+
+  function cariSiswaPD() {
+    const nis = document.getElementById('pdNis').value.trim();
+    if (!nis) { alert('Isi NIS dulu ya, baru klik Cari.'); return; }
+    const fd = new FormData();
+    fd.append('action', 'cari_siswa');
+    fd.append('nis', nis);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          document.getElementById('pdNamaSiswa').value = data.data.nama || '';
+          document.getElementById('pdKelas').value = data.data.kelas || '';
+          document.getElementById('pdJurusan').value = data.data.jurusan || '';
+          if (data.data.ttl) document.getElementById('pdTtlSiswa').value = data.data.ttl;
+        } else {
+          alert('NIS tidak ditemukan. Silakan isi data secara manual.');
+        }
+      });
+  }
+
+  function simpanPD() {
+    const nama = document.getElementById('pdNamaSiswa').value.trim();
+    if (!nama) { alert('Nama Siswa wajib diisi.'); return; }
+    const btn = document.getElementById('btnSimpanPD');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
+    const fd = new FormData();
+    fd.append('action', 'simpan_pd');
+    fd.append('id_pd', document.getElementById('pdId').value || 0);
+    fd.append('nis', document.getElementById('pdNis').value);
+    fd.append('nama_wali', document.getElementById('pdNamaWali').value);
+    fd.append('alamat_wali', document.getElementById('pdAlamatWali').value);
+    fd.append('nama_siswa', nama);
+    fd.append('ttl_siswa', document.getElementById('pdTtlSiswa').value);
+    fd.append('kelas', document.getElementById('pdKelas').value);
+    fd.append('jurusan', document.getElementById('pdJurusan').value);
+    fd.append('alasan', document.getElementById('pdAlasan').value);
+    fd.append('tanggal_ttd', document.getElementById('pdTanggal').value);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          tutupModalPD();
+          gantiTab('pd');
+          muatPD(document.getElementById('cariPD').value);
+        }
+      })
+      .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
+      });
+  }
+
+  function hapusPD(id) {
+    if (!confirm('Yakin ingin menghapus surat ini?')) return;
+    const fd = new FormData();
+    fd.append('action', 'hapus_pd');
+    fd.append('id_pd', id);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          gantiTab('pd');
+          muatPD(document.getElementById('cariPD').value);
+        }
+      });
+  }
+
+  function lihatDetailPD(id) {
+    idDetailPD = id;
+    const d = dataPD.find(x => x.id_pd == id);
+    if (!d) return;
+    const kelasJurusan = (d.kelas || '') + (d.jurusan ? ' / ' + d.jurusan : '');
+    const item = (label, value, full) => `
+      <div class="${full ? 'col-span-2' : ''}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">${label}</p>
+        <p class="text-sm text-gray-800 leading-relaxed">${value || '<span class="text-gray-300">-</span>'}</p>
+      </div>`;
+    document.getElementById('isiDetailPD').innerHTML = `
+      <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+        ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
+        ${item('Tanggal Surat', formatTgl(d.tanggal_ttd))}
+        ${item('Kelas/Jurusan', escapeHtml(kelasJurusan || '-'))}
+        ${item('Nama Wali', escapeHtml(d.nama_wali || '-'))}
+        ${item('Alamat Wali', escapeHtml(d.alamat_wali || '-'), true)}
+      </div>
+      <div class="space-y-4 pt-4">
+        ${item('Alasan', escapeHtml(d.alasan || '-').replace(/\n/g,'<br>'), true)}
+      </div>
+    `;
+    document.getElementById('modalDetailPD').classList.add('open');
+  }
+
+  function kapitalSetiapKata(str) {
+    if (!str) return '';
+    return str.toString().trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function kapitalKalimat(str) {
+    if (!str) return '';
+    const t = str.toString().trim();
+    if (!t) return '';
+    return t.replace(/([.!?]\s*|^)([a-z])/g, (m, sep, huruf) => sep + huruf.toUpperCase());
+  }
+
+  function isiTeksTitikKapital(elId, teks) {
+    const el = document.getElementById(elId);
+    const baris = (teks || '').split('\n').filter(b => b.trim() !== '');
+    if (baris.length === 0) baris.push('-');
+    el.innerHTML = baris.map(b => `<p class="isi-titik">${escapeHtml(kapitalKalimat(b))}</p>`).join('');
+  }
+
+  function kapitalKelasJurusan(kelas, jurusan) {
+    const k = (kelas || '-').toString().trim().replace(/\s*\/\s*/g, ' ').toUpperCase();
+    const j = jurusan ? ' ' + kapitalSetiapKata(jurusan).replace(/\s*\/\s*/g, ' ') : '';
+    return (k + j).replace(/\s+/g, ' ').trim();
+  }
+
+  function cetakPD() {
+    const d = dataPD.find(x => x.id_pd == idDetailPD);
+    if (!d) return;
+    document.getElementById('modalDetailPD').classList.remove('open');
+    document.getElementById('pdPvTanggal').textContent = 'Tanggal , ' + formatTgl(d.tanggal_ttd || new Date().toISOString().slice(0,10));
+    document.getElementById('pdPvNamaWali').textContent = kapitalSetiapKata(d.nama_wali) || '-';
+    document.getElementById('pdPvAlamatWali').textContent = kapitalKalimat(d.alamat_wali) || '-';
+    document.getElementById('pdPvNamaSiswa').textContent = kapitalSetiapKata(d.nama_siswa) || '-';
+    document.getElementById('pdPvTtlSiswa').textContent = kapitalKalimat(d.ttl_siswa) || '-';
+    document.getElementById('pdPvNis').textContent = d.nis || '-';
+    document.getElementById('pdPvKelasJurusan').textContent = kapitalKelasJurusan(d.kelas, d.jurusan);
+    isiTeksTitikKapital('pdPvAlasan', d.alasan);
+    document.getElementById('pdPvNamaWaliTtd').textContent = kapitalSetiapKata(d.nama_wali);
+    cetakElemenViaIframe('printAreaPD', '@page { size: A4; margin: 20mm 18mm; }', PRINT_CSS_PD);
+  }
+
+  // ================= MODUL PINDAH SEKOLAH =================
+  function muatPS(keyword = '') {
+    const fd = new FormData();
+    fd.append('action', 'list_ps');
+    fd.append('keyword', keyword);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => { if (data.success) { dataPS = data.data; renderTabelPS(); } });
+  }
+
+  function renderTabelPS() {
+    const tbody = document.getElementById('isiTabelPS');
+    if (dataPS.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7">
+        <div class="empty-state">
+          <i class="fas fa-right-from-bracket"></i>
+          <p class="empty-title">Belum ada Surat Pindah Sekolah</p>
+          <p class="empty-desc">Klik tombol "Tambah Surat Pindah Sekolah" untuk mulai mencatat.</p>
+        </div>
+      </td></tr>`;
+      return;
+    }
+    tbody.innerHTML = dataPS.map((d, i) => `
+      <tr class="border-b hover:bg-gray-50">
+        <td class="px-3 py-2">${i + 1}</td>
+        <td class="px-3 py-2 font-medium">${escapeHtml(d.nama_siswa)}</td>
+        <td class="px-3 py-2">${escapeHtml(d.kelas || '-')}${d.jurusan ? ' / ' + escapeHtml(d.jurusan) : ''}</td>
+        <td class="px-3 py-2">${escapeHtml(d.nama_wali || '-')}</td>
+        <td class="px-3 py-2">${escapeHtml(d.sekolah_tujuan || '-')}</td>
+        <td class="px-3 py-2">${formatTgl(d.tanggal_ttd)}</td>
+        <td class="px-3 py-2 text-center whitespace-nowrap">
+          <button onclick="lihatDetailPS(${d.id_pindah})" class="action-btn action-btn-view mr-1" title="Lihat detail & cetak PDF"><i class="fas fa-eye"></i></button>
+          <button onclick="bukaModalEditPS(${d.id_pindah})" class="action-btn action-btn-edit mr-1" title="Edit"><i class="fas fa-pen"></i></button>
+          <button onclick="hapusPS(${d.id_pindah})" class="action-btn action-btn-delete" title="Hapus"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('cariPS').addEventListener('input', function () {
+    simpanStateUI();
+    muatPS(this.value);
+  });
+
+  function kosongkanFormPS() {
+    document.getElementById('psId').value = '';
+    ['psNis','psNamaWali','psAlamatWali','psNamaSiswa','psTtlSiswa','psKelas','psJurusan','psAlasan','psSekolahTujuan','psTanggal'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  function bukaModalTambahPS() {
+    kosongkanFormPS();
+    document.getElementById('judulModalPS').textContent = 'Tambah Surat Pindah Sekolah';
+    document.getElementById('modalPS').classList.add('open');
+  }
+
+  function bukaModalEditPS(id) {
+    const d = dataPS.find(x => x.id_pindah == id);
+    if (!d) return;
+    kosongkanFormPS();
+    document.getElementById('judulModalPS').textContent = 'Edit Surat Pindah Sekolah';
+    document.getElementById('psId').value = d.id_pindah;
+    document.getElementById('psNis').value = d.nis || '';
+    document.getElementById('psNamaWali').value = d.nama_wali || '';
+    document.getElementById('psAlamatWali').value = d.alamat_wali || '';
+    document.getElementById('psNamaSiswa').value = d.nama_siswa || '';
+    document.getElementById('psTtlSiswa').value = d.ttl_siswa || '';
+    document.getElementById('psKelas').value = d.kelas || '';
+    document.getElementById('psJurusan').value = d.jurusan || '';
+    document.getElementById('psAlasan').value = d.alasan || '';
+    document.getElementById('psSekolahTujuan').value = d.sekolah_tujuan || '';
+    document.getElementById('psTanggal').value = d.tanggal_ttd || '';
+    document.getElementById('modalPS').classList.add('open');
+  }
+
+  function tutupModalPS() { document.getElementById('modalPS').classList.remove('open'); }
+
+  function cariSiswaPS() {
+    const nis = document.getElementById('psNis').value.trim();
+    if (!nis) { alert('Isi NIS dulu ya, baru klik Cari.'); return; }
+    const fd = new FormData();
+    fd.append('action', 'cari_siswa');
+    fd.append('nis', nis);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          document.getElementById('psNamaSiswa').value = data.data.nama || '';
+          document.getElementById('psKelas').value = data.data.kelas || '';
+          document.getElementById('psJurusan').value = data.data.jurusan || '';
+          if (data.data.ttl) document.getElementById('psTtlSiswa').value = data.data.ttl;
+        } else {
+          alert('NIS tidak ditemukan. Silakan isi data secara manual.');
+        }
+      });
+  }
+
+  function simpanPS() {
+    const nama = document.getElementById('psNamaSiswa').value.trim();
+    if (!nama) { alert('Nama Siswa wajib diisi.'); return; }
+    const btn = document.getElementById('btnSimpanPS');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
+    const fd = new FormData();
+    fd.append('action', 'simpan_ps');
+    fd.append('id_pindah', document.getElementById('psId').value || 0);
+    fd.append('nis', document.getElementById('psNis').value);
+    fd.append('nama_wali', document.getElementById('psNamaWali').value);
+    fd.append('alamat_wali', document.getElementById('psAlamatWali').value);
+    fd.append('nama_siswa', nama);
+    fd.append('ttl_siswa', document.getElementById('psTtlSiswa').value);
+    fd.append('kelas', document.getElementById('psKelas').value);
+    fd.append('jurusan', document.getElementById('psJurusan').value);
+    fd.append('alasan', document.getElementById('psAlasan').value);
+    fd.append('sekolah_tujuan', document.getElementById('psSekolahTujuan').value);
+    fd.append('tanggal_ttd', document.getElementById('psTanggal').value);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          tutupModalPS();
+          gantiTab('ps');
+          muatPS(document.getElementById('cariPS').value);
+        }
+      })
+      .catch(() => alert('Terjadi kesalahan koneksi saat menyimpan.'))
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
+      });
+  }
+
+  function hapusPS(id) {
+    if (!confirm('Yakin ingin menghapus surat ini?')) return;
+    const fd = new FormData();
+    fd.append('action', 'hapus_ps');
+    fd.append('id_pindah', id);
+    fetch(window.location.pathname, { method: 'POST', body: fd })
+      .then(res => res.json())
+      .then(data => {
+        alert(data.message);
+        if (data.success) {
+          gantiTab('ps');
+          muatPS(document.getElementById('cariPS').value);
+        }
+      });
+  }
+
+  function lihatDetailPS(id) {
+    idDetailPS = id;
+    const d = dataPS.find(x => x.id_pindah == id);
+    if (!d) return;
+    const kelasJurusan = (d.kelas || '') + (d.jurusan ? ' / ' + d.jurusan : '');
+    const item = (label, value, full) => `
+      <div class="${full ? 'col-span-2' : ''}">
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-0.5">${label}</p>
+        <p class="text-sm text-gray-800 leading-relaxed">${value || '<span class="text-gray-300">-</span>'}</p>
+      </div>`;
+    document.getElementById('isiDetailPS').innerHTML = `
+      <div class="grid grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+        ${item('Nama Siswa', escapeHtml(d.nama_siswa))}
+        ${item('Tanggal Surat', formatTgl(d.tanggal_ttd))}
+        ${item('Kelas/Jurusan', escapeHtml(kelasJurusan || '-'))}
+        ${item('Nama Wali', escapeHtml(d.nama_wali || '-'))}
+        ${item('Sekolah Tujuan', escapeHtml(d.sekolah_tujuan || '-'))}
+        ${item('Alamat Wali', escapeHtml(d.alamat_wali || '-'), true)}
+      </div>
+      <div class="space-y-4 pt-4">
+        ${item('Alasan', escapeHtml(d.alasan || '-').replace(/\n/g,'<br>'), true)}
+      </div>
+    `;
+    document.getElementById('modalDetailPS').classList.add('open');
+  }
+
+  function cetakPS() {
+    const d = dataPS.find(x => x.id_pindah == idDetailPS);
+    if (!d) return;
+    document.getElementById('modalDetailPS').classList.remove('open');
+    document.getElementById('psPvTanggal').textContent = 'Tanggal , ' + formatTgl(d.tanggal_ttd || new Date().toISOString().slice(0,10));
+    document.getElementById('psPvNamaWali').textContent = kapitalSetiapKata(d.nama_wali) || '-';
+    document.getElementById('psPvAlamatWali').textContent = kapitalKalimat(d.alamat_wali) || '-';
+    document.getElementById('psPvNamaSiswa').textContent = kapitalSetiapKata(d.nama_siswa) || '-';
+    document.getElementById('psPvTtlSiswa').textContent = kapitalKalimat(d.ttl_siswa) || '-';
+    document.getElementById('psPvNis').textContent = d.nis || '-';
+    document.getElementById('psPvKelasJurusan').textContent = kapitalKelasJurusan(d.kelas, d.jurusan);
+    isiTeksTitikKapital('psPvAlasan', d.alasan);
+    document.getElementById('psPvSekolahTujuan').textContent = kapitalSetiapKata(d.sekolah_tujuan) || '-';
+    document.getElementById('psPvNamaWaliTtd').textContent = kapitalSetiapKata(d.nama_wali);
+    cetakElemenViaIframe('printAreaPS', '@page { size: A4; margin: 20mm 18mm; }', PRINT_CSS_PD);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     muatStateUI();
     gantiTab(tabAktif);
     muatRujukan(document.getElementById('cariRujukan').value);
     muatSP(document.getElementById('cariSP').value);
+    muatPD(document.getElementById('cariPD').value);
+    muatPS(document.getElementById('cariPS').value);
   });
 </script>
     </div>

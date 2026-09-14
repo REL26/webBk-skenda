@@ -831,12 +831,13 @@ cardsContainer.innerHTML += card;
             }
         }
         
-        function confirmExport(url, total) {
+        function confirmExport(url, total, label) {
             if (total == 0) {
                  alert("Tidak ada siswa yang ditemukan untuk di-export.");
                  return false;
             }
-            const konfirmasi = confirm(`Yakin ingin meng-export biodata dari ${total} siswa yang terfilter? Proses ini akan menghasilkan file ZIP dan mungkin memakan waktu.`);
+            const jenis = label || 'data';
+            const konfirmasi = confirm(`Yakin ingin meng-export ${jenis} dari ${total} siswa yang terfilter? Proses ini akan menghasilkan file ZIP dan mungkin memakan waktu.`);
             
             if (konfirmasi) {
                 window.location.href = url;
@@ -1037,7 +1038,7 @@ cardsContainer.innerHTML += card;
                          <?php if ($total_records > 0): ?>
     <div class="flex justify-start md:justify-end justify-end"> 
         <button type="button" 
-    onclick="confirmExport('exportsekaligus_cv.php?action=export_all_cv&<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>)" 
+    onclick="confirmExport('exportsekaligus_cv.php?action=export_all_cv&<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>, 'biodata')" 
     class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 group">
     
     <div class="bg-white/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
@@ -1046,6 +1047,20 @@ cardsContainer.innerHTML += card;
     
     <div class="flex flex-col text-left leading-tight">
         <span>Export Biodata Sekaligus</span>
+        <span class="text-[10px] font-medium opacity-80 uppercase tracking-wider">Format ZIP (PDF)</span>
+    </div>
+</button>
+
+        <button type="button" 
+    onclick="confirmExport('exportsekaligus_datalengkap.php?action=export_all_datalengkap&<?php echo http_build_query($current_filters); ?>', <?php echo $total_records; ?>, 'data lengkap')" 
+    class="inline-flex items-center gap-2 ms-4 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95 group">
+    
+    <div class="bg-white/20 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
+        <i class="fas fa-file-archive text-lg"></i>
+    </div>
+    
+    <div class="flex flex-col text-left leading-tight">
+        <span>Export Data Lengkap Sekaligus</span>
         <span class="text-[10px] font-medium opacity-80 uppercase tracking-wider">Format ZIP (PDF)</span>
     </div>
 </button>

@@ -42,6 +42,29 @@ if ($cekKolomFungsi && mysqli_num_rows($cekKolomFungsi) === 0) {
     mysqli_query($koneksi, "ALTER TABLE bk_materi ADD COLUMN fungsi_layanan VARCHAR(60) DEFAULT NULL AFTER deskripsi");
 }
 
+mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS bk_log_aktivitas (
+    id_log INT(11) NOT NULL AUTO_INCREMENT,
+    id_guru INT(11) DEFAULT NULL,
+    aksi VARCHAR(50) NOT NULL,
+    tabel_terkait VARCHAR(50) DEFAULT NULL,
+    id_terkait INT(11) DEFAULT NULL,
+    keterangan TEXT DEFAULT NULL,
+    dibuat_pada TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_log),
+    KEY id_guru (id_guru),
+    KEY tabel_terkait_id (tabel_terkait, id_terkait)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+function bk_catatLog($koneksi, $id_guru, $aksi, $tabel, $id_terkait, $keterangan) {
+    $aksiEsc = mysqli_real_escape_string($koneksi, $aksi);
+    $tabelEsc = mysqli_real_escape_string($koneksi, $tabel);
+    $ketEsc = mysqli_real_escape_string($koneksi, $keterangan);
+    $idGuruSql = $id_guru ? (int) $id_guru : 'NULL';
+    $idTerkaitSql = $id_terkait !== null ? (int) $id_terkait : 'NULL';
+    mysqli_query($koneksi, "INSERT INTO bk_log_aktivitas (id_guru, aksi, tabel_terkait, id_terkait, keterangan)
+        VALUES ($idGuruSql, '$aksiEsc', '$tabelEsc', $idTerkaitSql, '$ketEsc')");
+}
+
 $FUNGSI_LAYANAN_OPSI = ['Pemahaman', 'Pencegahan (Preventif)', 'Pengentasan (Kuratif)', 'Pemeliharaan dan Pengembangan'];
 
 $GOOGLE_DRIVE_URL = 'https://drive.google.com/drive/folders/GANTI_DENGAN_ID_FOLDER_DRIVE';
@@ -50,9 +73,253 @@ if ($qDrive && ($rDrive = mysqli_fetch_assoc($qDrive)) && !empty($rDrive['nilai'
     $GOOGLE_DRIVE_URL = $rDrive['nilai'];
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function bk_createUploadDir(string $path): array {
+    $path = rtrim($path, '/\\') . DIRECTORY_SEPARATOR;
+    $result = [
+        'ok' => false,
+        'path' => $path,
+        'message' => '',
+        'is_dir' => false,
+        'is_writable' => false,
+        'realpath' => null,
+    ];
+
+    if (is_dir($path)) {
+        $result['is_dir'] = true;
+        $result['realpath'] = realpath($path) ?: null;
+        if (!is_writable($path)) {
+            @chmod($path, 0775);
+            if (!is_writable($path)) {
+                @chmod($path, 0755);
+            }
+        }
+        $result['is_writable'] = is_writable($path);
+        if ($result['is_writable']) {
+            $result['ok'] = true;
+            $result['message'] = 'Folder sudah ada dan writable.';
+        } else {
+            $rel = str_replace(__DIR__ . DIRECTORY_SEPARATOR, '', $path);
+            $result['message'] = 'Folder ada tetapi TIDAK bisa ditulis: ' . $rel
+                . ' (absolute: ' . ($result['realpath'] ?: $path) . '). '
+                . 'Buat/set permission 775 via FTP/cPanel File Manager, dan pastikan owner-nya user web server (bukan root).';
+        }
+        return $result;
+    }
+
+    $created = @mkdir($path, 0775, true);
+    if (!$created && !is_dir($path)) {
+        $created = @mkdir($path, 0755, true);
+    }
+
+    if (!is_dir($path)) {
+        $rel = str_replace(__DIR__ . DIRECTORY_SEPARATOR, '', $path);
+        $parent = dirname(rtrim($path, '/\\'));
+        $parentWritable = is_dir($parent) ? (is_writable($parent) ? 'writable' : 'TIDAK writable') : 'tidak ada';
+        $result['message'] = 'Gagal membuat folder: ' . $rel
+            . ' (absolute: ' . $path . '). Parent (' . $parent . ') status: ' . $parentWritable . '. '
+            . 'Buat manual via FTP/cPanel: uploads/bimbingan_klasikal/{ppt,gambar,arsip} dengan permission 775.';
+        return $result;
+    }
+
+    $result['is_dir'] = true;
+    $result['realpath'] = realpath($path) ?: null;
+    @chmod($path, 0775);
+    if (!is_writable($path)) {
+        @chmod($path, 0755);
+    }
+    $result['is_writable'] = is_writable($path);
+
+    if ($result['is_writable']) {
+        $result['ok'] = true;
+        $result['message'] = 'Folder berhasil dibuat dan writable.';
+    } else {
+        $rel = str_replace(__DIR__ . DIRECTORY_SEPARATOR, '', $path);
+        $result['message'] = 'Folder berhasil dibuat tetapi TIDAK bisa ditulis: ' . $rel
+            . ' (absolute: ' . ($result['realpath'] ?: $path) . '). '
+            . 'Set permission 775 via FTP/cPanel dan pastikan owner = user web server.';
+    }
+    return $result;
+}
+
+
+function bk_uploadIniInfo(): array {
+    return [
+        'upload_max_filesize' => ini_get('upload_max_filesize'),
+        'post_max_size' => ini_get('post_max_size'),
+        'memory_limit' => ini_get('memory_limit'),
+        'max_file_uploads' => ini_get('max_file_uploads'),
+        'file_uploads' => ini_get('file_uploads'),
+        'upload_tmp_dir' => ini_get('upload_tmp_dir') ?: sys_get_temp_dir(),
+        'max_execution_time' => ini_get('max_execution_time'),
+    ];
+}
+
+
+function bk_parseSizeToBytes(string $val): int {
+    $val = trim($val);
+    if ($val === '') return 0;
+    $last = strtolower($val[strlen($val) - 1]);
+    $num = (float) $val;
+    switch ($last) {
+        case 'g': $num *= 1024;
+        
+        case 'm': $num *= 1024;
+        
+        case 'k': $num *= 1024;
+    }
+    return (int) $num;
+}
+
+
+
+
+
+
+function bk_saveUploadedFile(string $tmpName, string $destDir, string $namaBaru, string $label = 'file'): array {
+    $destDir = rtrim($destDir, '/\\') . DIRECTORY_SEPARATOR;
+    $tujuanPenuh = $destDir . $namaBaru;
+    $relBase = str_replace(__DIR__ . DIRECTORY_SEPARATOR, '', $destDir);
+
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        return [
+            'ok' => false,
+            'relative_path' => null,
+            'absolute_path' => $tujuanPenuh,
+            'message' => "$label: file temporary tidak valid / bukan hasil upload PHP (tmp: $tmpName). Cek upload_max_filesize / post_max_size.",
+        ];
+    }
+
+    $dirInfo = bk_createUploadDir($destDir);
+    if (!$dirInfo['ok']) {
+        return [
+            'ok' => false,
+            'relative_path' => null,
+            'absolute_path' => $tujuanPenuh,
+            'message' => "$label: " . $dirInfo['message'],
+        ];
+    }
+
+    $okPindah = @move_uploaded_file($tmpName, $tujuanPenuh);
+    if (!$okPindah) {
+        $okPindah = @copy($tmpName, $tujuanPenuh);
+        if ($okPindah) {
+            @unlink($tmpName);
+        }
+    }
+
+    if ($okPindah && is_file($tujuanPenuh)) {
+        @chmod($tujuanPenuh, 0644);
+        $rel = $relBase . $namaBaru;
+        return [
+            'ok' => true,
+            'relative_path' => str_replace('\\', '/', $rel),
+            'absolute_path' => $tujuanPenuh,
+            'message' => 'OK',
+        ];
+    }
+
+    $lastErr = error_get_last();
+    $errHint = $lastErr ? ($lastErr['message'] ?? '') : '';
+    return [
+        'ok' => false,
+        'relative_path' => null,
+        'absolute_path' => $tujuanPenuh,
+        'message' => "$label: gagal menulis ke disk. Path dicoba: $tujuanPenuh. "
+            . 'is_dir=' . (is_dir($destDir) ? '1' : '0')
+            . ', is_writable=' . (is_writable($destDir) ? '1' : '0')
+            . ($errHint !== '' ? ". PHP: $errHint" : '')
+            . '. Buat folder via FTP dan set permission 775.',
+    ];
+}
+
+
+function bk_uploadErrorMessage(int $code): string {
+    $map = [
+        UPLOAD_ERR_INI_SIZE => 'melebihi upload_max_filesize di php.ini hosting (nilai saat ini: ' . ini_get('upload_max_filesize') . ')',
+        UPLOAD_ERR_FORM_SIZE => 'melebihi batas ukuran form (MAX_FILE_SIZE)',
+        UPLOAD_ERR_PARTIAL => 'hanya terunggah sebagian (koneksi putus)',
+        UPLOAD_ERR_NO_FILE => 'tidak ada file yang diunggah',
+        UPLOAD_ERR_NO_TMP_DIR => 'folder tmp PHP tidak ada di server',
+        UPLOAD_ERR_CANT_WRITE => 'PHP gagal menulis ke disk server',
+        UPLOAD_ERR_EXTENSION => 'diblokir ekstensi PHP',
+    ];
+    return $map[$code] ?? ('kode error ' . $code);
+}
+
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES)
+    && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    header('Content-Type: application/json');
+    $ini = bk_uploadIniInfo();
+    echo json_encode([
+        'success' => false,
+        'message' => 'Ukuran total request melebihi post_max_size hosting. '
+            . 'Naikkan post_max_size dan upload_max_filesize minimal 32M. '
+            . 'Nilai saat ini: post_max_size=' . $ini['post_max_size']
+            . ', upload_max_filesize=' . $ini['upload_max_filesize']
+            . ', memory_limit=' . $ini['memory_limit'] . '. '
+            . 'Buat file .user.ini di folder script berisi: upload_max_filesize=32M dan post_max_size=40M.',
+        'php_ini' => $ini,
+        'content_length' => (int) $_SERVER['CONTENT_LENGTH'],
+    ]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     $action = $_POST['action'];
+
+    
+    if ($action === 'debug_upload') {
+        $dirs = [
+            'uploads' => __DIR__ . '/uploads/',
+            'bimbingan_klasikal' => __DIR__ . '/uploads/bimbingan_klasikal/',
+            'ppt' => __DIR__ . '/uploads/bimbingan_klasikal/ppt/',
+            'gambar' => __DIR__ . '/uploads/bimbingan_klasikal/gambar/',
+            'arsip' => __DIR__ . '/uploads/bimbingan_klasikal/arsip/',
+        ];
+        $dirStatus = [];
+        foreach ($dirs as $label => $p) {
+            $info = bk_createUploadDir($p);
+            $dirStatus[$label] = [
+                'path' => $p,
+                'realpath' => $info['realpath'],
+                'is_dir' => $info['is_dir'],
+                'is_writable' => $info['is_writable'],
+                'ok' => $info['ok'],
+                'message' => $info['message'],
+            ];
+        }
+        echo json_encode([
+            'success' => true,
+            'script_dir' => __DIR__,
+            'realpath_script' => realpath(__DIR__),
+            'php_ini' => bk_uploadIniInfo(),
+            'directories' => $dirStatus,
+            'php_version' => PHP_VERSION,
+            'sapi' => PHP_SAPI,
+        ]);
+        exit;
+    }
 
     if ($action === 'list_arsip') {
         $filterGuru = trim($_POST['guru'] ?? '');
@@ -122,17 +389,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $filePath = null;
-        if (isset($_FILES['file_lampiran']) && $_FILES['file_lampiran']['error'] === UPLOAD_ERR_OK) {
-            $allowedExt = ['pdf','doc','docx','ppt','pptx','xls','xlsx','jpg','jpeg','png','webp'];
-            $ext = strtolower(pathinfo($_FILES['file_lampiran']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, $allowedExt) && $_FILES['file_lampiran']['size'] <= 20 * 1024 * 1024) {
-                $uploadDirArsip = __DIR__ . '/uploads/bimbingan_klasikal/arsip/';
-                if (!is_dir($uploadDirArsip)) mkdir($uploadDirArsip, 0755, true);
-                $namaBaru = 'arsip' . $id_guru_login . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                if (move_uploaded_file($_FILES['file_lampiran']['tmp_name'], $uploadDirArsip . $namaBaru)) {
-                    $filePath = 'uploads/bimbingan_klasikal/arsip/' . $namaBaru;
+        $pesanUploadArsip = [];
+        if (isset($_FILES['file_lampiran'])) {
+            $errFile = (int) ($_FILES['file_lampiran']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($errFile === UPLOAD_ERR_OK) {
+                $allowedExt = ['pdf','doc','docx','ppt','pptx','xls','xlsx','jpg','jpeg','png','webp'];
+                $ext = strtolower(pathinfo($_FILES['file_lampiran']['name'], PATHINFO_EXTENSION));
+                $ukuran = (int) ($_FILES['file_lampiran']['size'] ?? 0);
+                $maxUploadBytes = bk_parseSizeToBytes(ini_get('upload_max_filesize') ?: '2M');
+                if (!in_array($ext, $allowedExt)) {
+                    $pesanUploadArsip[] = 'Ekstensi file tidak diizinkan (.' . $ext . ').';
+                } elseif ($ukuran <= 0) {
+                    $pesanUploadArsip[] = 'File kosong / gagal diterima server.';
+                } elseif ($ukuran > 20 * 1024 * 1024) {
+                    $pesanUploadArsip[] = 'File terlalu besar (' . round($ukuran / 1048576, 1) . ' MB). Maksimal aplikasi 20 MB. Limit PHP upload_max_filesize=' . ini_get('upload_max_filesize') . '.';
+                } elseif ($maxUploadBytes > 0 && $ukuran > $maxUploadBytes) {
+                    $pesanUploadArsip[] = 'File melebihi upload_max_filesize hosting (' . ini_get('upload_max_filesize') . '). Naikkan di .user.ini.';
+                } else {
+                    $uploadDirArsip = __DIR__ . '/uploads/bimbingan_klasikal/arsip/';
+                    $namaBaru = 'arsip' . $id_guru_login . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                    $save = bk_saveUploadedFile($_FILES['file_lampiran']['tmp_name'], $uploadDirArsip, $namaBaru, 'Arsip');
+                    if ($save['ok']) {
+                        $filePath = $save['relative_path'];
+                    } else {
+                        $pesanUploadArsip[] = $save['message'];
+                        error_log('[bk_upload] simpan_arsip gagal: ' . $save['message']);
+                    }
                 }
+            } elseif ($errFile !== UPLOAD_ERR_NO_FILE) {
+                $pesanUploadArsip[] = 'Upload gagal — ' . bk_uploadErrorMessage($errFile)
+                    . '. php_ini: upload_max_filesize=' . ini_get('upload_max_filesize')
+                    . ', post_max_size=' . ini_get('post_max_size');
             }
+        }
+
+        if (!empty($pesanUploadArsip) && in_array($tipeBahan, ['gambar','ppt']) && $link === '' && $filePath === null) {
+            echo json_encode([
+                'success' => false,
+                'message' => implode("\n", $pesanUploadArsip),
+                'php_ini' => bk_uploadIniInfo(),
+            ]);
+            exit;
         }
 
         $judulEsc = mysqli_real_escape_string($koneksi, $judul);
@@ -148,7 +445,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, link, file_lampiran, konten_teks, lkpd_json, keterangan, nama_guru_upload, id_guru)
             VALUES ('$judulEsc', '$kategoriEsc', '$tipeBahanEsc', '$linkEsc', $filePathSql, $kontenTeksSql, $lkpdJsonSql, '$keteranganEsc', '$namaGuruEsc', $id_guru_login)");
 
-        echo json_encode(['success' => true, 'id_arsip' => mysqli_insert_id($koneksi)]);
+        $respArsip = ['success' => true, 'id_arsip' => mysqli_insert_id($koneksi)];
+        if (!empty($pesanUploadArsip)) {
+            $respArsip['upload_warning'] = implode("\n", $pesanUploadArsip);
+            $respArsip['php_ini'] = bk_uploadIniInfo();
+        }
+        echo json_encode($respArsip);
         exit;
     }
 
@@ -181,7 +483,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $kontenTeks = trim($_POST['konten_teks'] ?? '');
 
         if ($id <= 0) {
-            echo json_encode(['success' => false, 'message' => 'Data simpanan tidak ditemukan.']);
+            echo json_encode(['success' => false, 'message' => 'Data pustaka bahan tidak ditemukan.']);
             exit;
         }
         if ($judul === '') {
@@ -192,7 +494,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $qCek = mysqli_query($koneksi, "SELECT tipe_bahan, file_lampiran FROM bk_arsip_materi WHERE id_arsip = $id LIMIT 1");
         $rCek = $qCek ? mysqli_fetch_assoc($qCek) : null;
         if (!$rCek) {
-            echo json_encode(['success' => false, 'message' => 'Data simpanan tidak ditemukan.']);
+            echo json_encode(['success' => false, 'message' => 'Data pustaka bahan tidak ditemukan.']);
             exit;
         }
         $tipeBahan = $rCek['tipe_bahan'];
@@ -217,17 +519,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $filePath = $rCek['file_lampiran'];
-        if (isset($_FILES['file_lampiran']) && $_FILES['file_lampiran']['error'] === UPLOAD_ERR_OK) {
-            $allowedExt = ['pdf','doc','docx','ppt','pptx','xls','xlsx','jpg','jpeg','png','webp'];
-            $ext = strtolower(pathinfo($_FILES['file_lampiran']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext, $allowedExt) && $_FILES['file_lampiran']['size'] <= 20 * 1024 * 1024) {
-                $uploadDirArsip = __DIR__ . '/uploads/bimbingan_klasikal/arsip/';
-                if (!is_dir($uploadDirArsip)) mkdir($uploadDirArsip, 0755, true);
-                $namaBaru = 'arsip' . $id_guru_login . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                if (move_uploaded_file($_FILES['file_lampiran']['tmp_name'], $uploadDirArsip . $namaBaru)) {
-                    if ($filePath && is_file(__DIR__ . '/' . $filePath)) @unlink(__DIR__ . '/' . $filePath);
-                    $filePath = 'uploads/bimbingan_klasikal/arsip/' . $namaBaru;
+        if (isset($_FILES['file_lampiran'])) {
+            $errFile = (int) ($_FILES['file_lampiran']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($errFile === UPLOAD_ERR_OK) {
+                $allowedExt = ['pdf','doc','docx','ppt','pptx','xls','xlsx','jpg','jpeg','png','webp'];
+                $ext = strtolower(pathinfo($_FILES['file_lampiran']['name'], PATHINFO_EXTENSION));
+                $ukuran = (int) ($_FILES['file_lampiran']['size'] ?? 0);
+                if (in_array($ext, $allowedExt) && $ukuran > 0 && $ukuran <= 20 * 1024 * 1024) {
+                    $uploadDirArsip = __DIR__ . '/uploads/bimbingan_klasikal/arsip/';
+                    $namaBaru = 'arsip' . $id_guru_login . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
+                    $save = bk_saveUploadedFile($_FILES['file_lampiran']['tmp_name'], $uploadDirArsip, $namaBaru, 'Arsip');
+                    if ($save['ok']) {
+                        if ($filePath && strpos($filePath, 'http') !== 0 && is_file(__DIR__ . '/' . $filePath)) {
+                            @unlink(__DIR__ . '/' . $filePath);
+                        }
+                        $filePath = $save['relative_path'];
+                    } else {
+                        error_log('[bk_upload] edit_arsip gagal: ' . $save['message']);
+                    }
                 }
+            } elseif ($errFile !== UPLOAD_ERR_NO_FILE) {
+                error_log('[bk_upload] edit_arsip error: ' . bk_uploadErrorMessage($errFile));
             }
         }
 
@@ -252,13 +564,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($action === 'hapus_arsip') {
         $id = (int) ($_POST['id_arsip'] ?? 0);
+        $konfirmasiHapusArsip = ($_POST['konfirmasi_hapus_dipakai'] ?? '') === '1';
         $q = mysqli_query($koneksi, "SELECT file_lampiran FROM bk_arsip_materi WHERE id_arsip = $id LIMIT 1");
         $row = $q ? mysqli_fetch_assoc($q) : null;
+
+        $jumlahMateriPakai = 0;
+        $filePathFull = null;
         if ($row && !empty($row['file_lampiran'])) {
             $filePathFull = __DIR__ . '/' . $row['file_lampiran'];
-            if (is_file($filePathFull)) @unlink($filePathFull);
+            $pathEsc = mysqli_real_escape_string($koneksi, $row['file_lampiran']);
+            $qPakai = mysqli_query($koneksi, "SELECT COUNT(DISTINCT id_materi) AS jml FROM bk_slide
+                WHERE gambar = '$pathEsc' OR file_ppt = '$pathEsc'");
+            if ($qPakai) $jumlahMateriPakai = (int) mysqli_fetch_assoc($qPakai)['jml'];
+        }
+
+        if ($jumlahMateriPakai > 0 && !$konfirmasiHapusArsip) {
+            echo json_encode([
+                'success' => false,
+                'need_confirmation' => true,
+                'message' => "Bahan ini masih dipakai di $jumlahMateriPakai materi aktif. Kalau tetap dihapus, hanya salinan di Pustaka yang hilang — materi yang sudah memakainya tidak akan rusak, tapi Anda tidak bisa memilih bahan ini lagi untuk materi baru. Tetap hapus dari Pustaka?",
+            ]);
+            exit;
+        }
+
+        if ($row && !empty($row['file_lampiran']) && $jumlahMateriPakai === 0 && is_file($filePathFull)) {
+            @unlink($filePathFull);
         }
         mysqli_query($koneksi, "DELETE FROM bk_arsip_materi WHERE id_arsip = $id");
+        if (function_exists('bk_catatLog')) {
+            bk_catatLog($koneksi, $id_guru_login, 'hapus_arsip', 'bk_arsip_materi', $id, 'Hapus bahan dari Pustaka' . ($jumlahMateriPakai > 0 ? " (masih dipakai $jumlahMateriPakai materi, dikonfirmasi guru)" : ''));
+        }
         echo json_encode(['success' => true]);
         exit;
     }
@@ -385,7 +720,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode(['success' => false, 'message' => 'Materi tidak ditemukan.']);
             exit;
         }
-        
+
+        $konfirmasiHapusProgres = ($_POST['konfirmasi_reset_progres'] ?? '') === '1';
+        $jumlahSiswaProgres = 0;
+        $qCekProgres = mysqli_query($koneksi, "SELECT COUNT(DISTINCT ps.id_siswa) AS jml
+            FROM bk_progress_slide ps
+            INNER JOIN bk_slide s ON s.id_slide = ps.id_slide
+            WHERE s.id_materi = $idm");
+        if ($qCekProgres) $jumlahSiswaProgres = (int) mysqli_fetch_assoc($qCekProgres)['jml'];
+
+        if ($jumlahSiswaProgres > 0 && !$konfirmasiHapusProgres) {
+            echo json_encode([
+                'success' => false,
+                'need_confirmation' => true,
+                'message' => "$jumlahSiswaProgres siswa sudah mengerjakan materi ini. Menghapus materi akan membuat progres & jawaban LKPD mereka tidak lagi terlihat di sistem (disarankan nonaktifkan saja materi ini alih-alih hapus permanen). Tetap hapus permanen?",
+            ]);
+            exit;
+        }
+
         $qFile = mysqli_query($koneksi, "SELECT gambar, file_ppt FROM bk_slide WHERE id_materi = $idm");
         if ($qFile) {
             while ($rf = mysqli_fetch_assoc($qFile)) {
@@ -396,6 +748,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
+        if (function_exists('bk_catatLog')) {
+            $keteranganLog = $jumlahSiswaProgres > 0
+                ? "Hapus materi (id=$idm) dengan $jumlahSiswaProgres siswa sudah progres, dikonfirmasi guru"
+                : "Hapus materi (id=$idm)";
+            bk_catatLog($koneksi, $id_guru_login, 'hapus_materi', 'bk_materi', $idm, $keteranganLog);
+        }
+
+        mysqli_query($koneksi, "DELETE FROM bk_slide WHERE id_materi = $idm");
+        mysqli_query($koneksi, "DELETE FROM bk_materi_sasaran WHERE id_materi = $idm");
         mysqli_query($koneksi, "DELETE FROM bk_materi WHERE id_materi = $idm");
         echo json_encode(['success' => true]);
         exit;
@@ -574,7 +935,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
         if (!is_array($slideJudul) || count($slideJudul) === 0) {
-            echo json_encode(['success' => false, 'message' => 'Materi harus memiliki minimal satu slide.']);
+            echo json_encode(['success' => false, 'message' => 'Materi harus memiliki minimal satu bagian.']);
             exit;
         }
         if ($modeUpdate && $idMateriEdit <= 0) {
@@ -588,20 +949,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $guruEsc = mysqli_real_escape_string($koneksi, $guruPembuat);
 
         if ($modeUpdate) {
+            $konfirmasiResetProgres = ($_POST['konfirmasi_reset_progres'] ?? '') === '1';
+            $jumlahSiswaProgres = 0;
+            $qCekProgres = mysqli_query($koneksi, "SELECT COUNT(DISTINCT ps.id_siswa) AS jml
+                FROM bk_progress_slide ps
+                INNER JOIN bk_slide s ON s.id_slide = ps.id_slide
+                WHERE s.id_materi = $idMateriEdit");
+            if ($qCekProgres) $jumlahSiswaProgres = (int) mysqli_fetch_assoc($qCekProgres)['jml'];
+
+            if ($jumlahSiswaProgres > 0 && !$konfirmasiResetProgres) {
+                echo json_encode([
+                    'success' => false,
+                    'need_confirmation' => true,
+                    'message' => "$jumlahSiswaProgres siswa sudah mengerjakan materi ini. Menyimpan perubahan akan memutus tautan progres & jawaban LKPD mereka ke slide lama (data lama tidak dihapus dari database, tapi tidak akan tampil lagi karena slide diganti dengan versi baru). Lanjutkan simpan?",
+                ]);
+                exit;
+            }
+
             mysqli_query($koneksi, "UPDATE bk_materi SET judul = '$judulEsc', deskripsi = '$deskripsiEsc',
                 fungsi_layanan = '$fungsiLayananEsc', urutan = $urutan, nama_guru_pembuat = '$guruEsc'
                 WHERE id_materi = $idMateriEdit");
             $idMateriBaru = $idMateriEdit;
 
-            $qFileLama = mysqli_query($koneksi, "SELECT gambar, file_ppt FROM bk_slide WHERE id_materi = $idMateriBaru");
-            if ($qFileLama) {
-                while ($rfl = mysqli_fetch_assoc($qFileLama)) {
-                    foreach (['gambar', 'file_ppt'] as $kolomFile) {
-                        $p = $rfl[$kolomFile];
-                        if ($p && strpos($p, 'http') !== 0 && is_file(__DIR__ . '/' . $p)) @unlink(__DIR__ . '/' . $p);
-                    }
-                }
+            if (function_exists('bk_catatLog')) {
+                $keteranganLog = $jumlahSiswaProgres > 0
+                    ? "Edit materi (id=$idMateriBaru) dengan $jumlahSiswaProgres siswa sudah progres, dikonfirmasi guru untuk tetap disimpan"
+                    : "Edit materi (id=$idMateriBaru)";
+                bk_catatLog($koneksi, $id_guru_login, 'update_materi', 'bk_materi', $idMateriBaru, $keteranganLog);
             }
+
             mysqli_query($koneksi, "DELETE FROM bk_slide WHERE id_materi = $idMateriBaru");
             mysqli_query($koneksi, "DELETE FROM bk_materi_sasaran WHERE id_materi = $idMateriBaru");
         } else {
@@ -616,10 +992,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             mysqli_query($koneksi, "INSERT INTO bk_materi_sasaran (id_materi, kelas, jurusan) VALUES ($idMateriBaru, '$kls', '$jur')");
         }
 
+        // Jika kelas/jurusan dihilangkan dari sasaran: reset status selesai siswa terkait
+        // agar di halaman siswa tidak tetap "Selesai" bila kelasnya sudah tidak termasuk.
+        if (!empty($modeUpdate) && $idMateriBaru > 0) {
+            $pairs = [];
+            foreach ($sasaranRaw as $sas) {
+                if (!isset($sas['kelas'], $sas['jurusan'])) continue;
+                $pairs[] = "('" . mysqli_real_escape_string($koneksi, $sas['kelas']) . "','" . mysqli_real_escape_string($koneksi, $sas['jurusan']) . "')";
+            }
+            if (count($pairs) > 0) {
+                $inList = implode(',', $pairs);
+                // Hapus progress bagan siswa yang kelas+jurusannya TIDAK lagi di sasaran
+                mysqli_query($koneksi, "DELETE pb FROM bk_progress_bagan pb
+                    INNER JOIN siswa s ON s.id_siswa = pb.id_siswa
+                    WHERE pb.id_materi = $idMateriBaru
+                      AND (s.kelas, s.jurusan) NOT IN ($inList)");
+            } else {
+                // Tidak ada sasaran sama sekali → hapus semua progress materi ini
+                mysqli_query($koneksi, "DELETE FROM bk_progress_bagan WHERE id_materi = $idMateriBaru");
+            }
+        }
+
         $uploadDirGambar = __DIR__ . '/uploads/bimbingan_klasikal/gambar/';
         $uploadDirPpt = __DIR__ . '/uploads/bimbingan_klasikal/ppt/';
-        if (!is_dir($uploadDirGambar)) mkdir($uploadDirGambar, 0755, true);
-        if (!is_dir($uploadDirPpt)) mkdir($uploadDirPpt, 0755, true);
+        $pesanUploadError = [];
+        $phpIniInfo = bk_uploadIniInfo();
+        $maxUploadBytes = bk_parseSizeToBytes($phpIniInfo['upload_max_filesize'] ?: '2M');
+
+        
+        foreach ([$uploadDirGambar, $uploadDirPpt] as $dirCek) {
+            $dirInfo = bk_createUploadDir($dirCek);
+            if (!$dirInfo['ok']) {
+                $pesanUploadError[] = $dirInfo['message']
+                    . ' | is_dir=' . ($dirInfo['is_dir'] ? '1' : '0')
+                    . ' is_writable=' . ($dirInfo['is_writable'] ? '1' : '0')
+                    . ' realpath=' . ($dirInfo['realpath'] ?: '-');
+            }
+        }
 
         $slideGambarArsip = $_POST['slide_gambar_arsip'] ?? [];
         $slidePptArsip = $_POST['slide_ppt_arsip'] ?? [];
@@ -639,19 +1048,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $ytRaw = trim($slideYoutube[$i] ?? '');
             $ytS = mysqli_real_escape_string($koneksi, $ytRaw);
             $butuhLkpd = !empty($slideButuhLkpd[$i]) ? 1 : 0;
+            $labelSlide = 'Slide ' . ($i + 1);
 
             $gambarArsipId = (int) ($slideGambarArsip[$i] ?? 0);
             $gambarBaruDiupload = false;
             $gambarPath = null;
-            if (isset($_FILES['slide_gambar']) && isset($_FILES['slide_gambar']['error'][$i]) && $_FILES['slide_gambar']['error'][$i] === UPLOAD_ERR_OK) {
+            
+            $errGambar = null;
+            if (isset($_FILES['slide_gambar']['error'][$i])) {
+                $errGambar = (int) $_FILES['slide_gambar']['error'][$i];
+            }
+            if ($errGambar === UPLOAD_ERR_OK) {
                 $allowedExt = ['jpg','jpeg','png','webp','gif'];
                 $ext = strtolower(pathinfo($_FILES['slide_gambar']['name'][$i], PATHINFO_EXTENSION));
-                if (in_array($ext, $allowedExt) && $_FILES['slide_gambar']['size'][$i] <= 3 * 1024 * 1024) {
+                $ukuranGambar = (int) ($_FILES['slide_gambar']['size'][$i] ?? 0);
+                $tmpGambar = $_FILES['slide_gambar']['tmp_name'][$i] ?? '';
+                if (!in_array($ext, $allowedExt)) {
+                    $pesanUploadError[] = "$labelSlide: ekstensi gambar tidak diizinkan (.$ext). Gunakan jpg/png/webp/gif.";
+                } elseif ($ukuranGambar <= 0) {
+                    $pesanUploadError[] = "$labelSlide: file gambar kosong / gagal diterima server.";
+                } elseif ($ukuranGambar > 3 * 1024 * 1024) {
+                    $pesanUploadError[] = "$labelSlide: gambar terlalu besar (" . round($ukuranGambar / 1048576, 1) . " MB). Maksimal aplikasi 3 MB. Limit PHP upload_max_filesize=" . $phpIniInfo['upload_max_filesize'] . '.';
+                } elseif ($maxUploadBytes > 0 && $ukuranGambar > $maxUploadBytes) {
+                    $pesanUploadError[] = "$labelSlide: gambar melebihi upload_max_filesize hosting (" . $phpIniInfo['upload_max_filesize'] . '). Naikkan di .user.ini.';
+                } else {
                     $namaBaru = 'bk' . $idMateriBaru . '_' . $i . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                    if (move_uploaded_file($_FILES['slide_gambar']['tmp_name'][$i], $uploadDirGambar . $namaBaru)) {
-                        $gambarPath = 'uploads/bimbingan_klasikal/gambar/' . $namaBaru;
+                    $save = bk_saveUploadedFile($tmpGambar, $uploadDirGambar, $namaBaru, $labelSlide . ' gambar');
+                    if ($save['ok']) {
+                        $gambarPathLama = trim($slideGambarExisting[$i] ?? '');
+                        if ($gambarPathLama && strpos($gambarPathLama, 'http') !== 0 && is_file(__DIR__ . '/' . $gambarPathLama)) {
+                            @unlink(__DIR__ . '/' . $gambarPathLama);
+                        }
+                        $gambarPath = $save['relative_path'];
                         $gambarBaruDiupload = true;
+                    } else {
+                        $pesanUploadError[] = $save['message'];
+                        error_log('[bk_upload] gambar gagal: ' . $save['message']);
                     }
+                }
+            } elseif ($errGambar !== null && $errGambar !== UPLOAD_ERR_NO_FILE) {
+                $pesanUploadError[] = "$labelSlide: upload gambar gagal — " . bk_uploadErrorMessage($errGambar)
+                    . ' | upload_max_filesize=' . $phpIniInfo['upload_max_filesize']
+                    . ' post_max_size=' . $phpIniInfo['post_max_size'];
+                if (!empty($slideGambarExisting[$i])) {
+                    $gambarPath = trim($slideGambarExisting[$i]);
                 }
             } elseif ($gambarArsipId > 0) {
                 $qga = mysqli_query($koneksi, "SELECT file_lampiran, link FROM bk_arsip_materi WHERE id_arsip = $gambarArsipId LIMIT 1");
@@ -664,15 +1104,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pptArsipId = (int) ($slidePptArsip[$i] ?? 0);
             $pptBaruDiupload = false;
             $pptPath = null;
-            if (isset($_FILES['slide_ppt']) && isset($_FILES['slide_ppt']['error'][$i]) && $_FILES['slide_ppt']['error'][$i] === UPLOAD_ERR_OK) {
+            $errPpt = null;
+            if (isset($_FILES['slide_ppt']['error'][$i])) {
+                $errPpt = (int) $_FILES['slide_ppt']['error'][$i];
+            }
+            if ($errPpt === UPLOAD_ERR_OK) {
                 $allowedExtPpt = ['ppt','pptx'];
                 $ext = strtolower(pathinfo($_FILES['slide_ppt']['name'][$i], PATHINFO_EXTENSION));
-                if (in_array($ext, $allowedExtPpt) && $_FILES['slide_ppt']['size'][$i] <= 20 * 1024 * 1024) {
+                $ukuranPpt = (int) ($_FILES['slide_ppt']['size'][$i] ?? 0);
+                $tmpPpt = $_FILES['slide_ppt']['tmp_name'][$i] ?? '';
+                if (!in_array($ext, $allowedExtPpt)) {
+                    $pesanUploadError[] = "$labelSlide: ekstensi PPT tidak diizinkan (.$ext). Gunakan .ppt atau .pptx.";
+                } elseif ($ukuranPpt <= 0) {
+                    $pesanUploadError[] = "$labelSlide: file PPT kosong / gagal diterima server.";
+                } elseif ($ukuranPpt > 20 * 1024 * 1024) {
+                    $pesanUploadError[] = "$labelSlide: file PPT terlalu besar (" . round($ukuranPpt / 1048576, 1) . " MB). Maksimal aplikasi 20 MB. Limit PHP upload_max_filesize=" . $phpIniInfo['upload_max_filesize'] . ', post_max_size=' . $phpIniInfo['post_max_size'] . '.';
+                } elseif ($maxUploadBytes > 0 && $ukuranPpt > $maxUploadBytes) {
+                    $pesanUploadError[] = "$labelSlide: PPT melebihi upload_max_filesize hosting (" . $phpIniInfo['upload_max_filesize'] . '). Naikkan di .user.ini menjadi minimal 32M.';
+                } elseif ($tmpPpt === '' || !is_uploaded_file($tmpPpt)) {
+                    $pesanUploadError[] = "$labelSlide: file PPT tidak valid di server (tmp hilang / bukan is_uploaded_file). "
+                        . 'Cek upload_max_filesize=' . $phpIniInfo['upload_max_filesize']
+                        . ' post_max_size=' . $phpIniInfo['post_max_size']
+                        . ' upload_tmp_dir=' . $phpIniInfo['upload_tmp_dir'] . '.';
+                } else {
                     $namaBaru = 'bkppt' . $idMateriBaru . '_' . $i . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
-                    if (move_uploaded_file($_FILES['slide_ppt']['tmp_name'][$i], $uploadDirPpt . $namaBaru)) {
-                        $pptPath = 'uploads/bimbingan_klasikal/ppt/' . $namaBaru;
+                    $save = bk_saveUploadedFile($tmpPpt, $uploadDirPpt, $namaBaru, $labelSlide . ' PPT');
+                    if ($save['ok']) {
+                        $pptPathLama = trim($slidePptExisting[$i] ?? '');
+                        if ($pptPathLama && strpos($pptPathLama, 'http') !== 0 && is_file(__DIR__ . '/' . $pptPathLama)) {
+                            @unlink(__DIR__ . '/' . $pptPathLama);
+                        }
+                        $pptPath = $save['relative_path'];
                         $pptBaruDiupload = true;
+                    } else {
+                        $pesanUploadError[] = $save['message']
+                            . ' | absolute=' . ($save['absolute_path'] ?? '-')
+                            . ' | php_ini upload_max_filesize=' . $phpIniInfo['upload_max_filesize']
+                            . ' post_max_size=' . $phpIniInfo['post_max_size']
+                            . ' memory_limit=' . $phpIniInfo['memory_limit'];
+                        error_log('[bk_upload] PPT gagal: ' . $save['message']);
                     }
+                }
+            } elseif ($errPpt !== null && $errPpt !== UPLOAD_ERR_NO_FILE) {
+                $pesanUploadError[] = "$labelSlide: upload PPT gagal";
+                error_log('[bk_upload] PPT error code ' . $errPpt . ': ' . bk_uploadErrorMessage($errPpt));
+                if (!empty($slidePptExisting[$i])) {
+                    $pptPath = trim($slidePptExisting[$i]);
                 }
             } elseif ($pptArsipId > 0) {
                 $qpa = mysqli_query($koneksi, "SELECT file_lampiran, link FROM bk_arsip_materi WHERE id_arsip = $pptArsipId LIMIT 1");
@@ -713,36 +1190,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
-            $judulBahan = $judulSlideRaw !== '' ? $judulSlideRaw : $judul;
-            $judulBahanEsc = mysqli_real_escape_string($koneksi, $judulBahan);
-
-            if ($gambarBaruDiupload && $gambarArsipId === 0 && !$modeUpdate) {
-                $gambarPathEsc = mysqli_real_escape_string($koneksi, $gambarPath);
-                mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, file_lampiran, nama_guru_upload, id_guru)
-                    VALUES ('$judulBahanEsc', 'Bimbingan Klasikal', 'gambar', '$gambarPathEsc', '$guruEsc', $id_guru_login)");
-            }
-            if ($pptBaruDiupload && $pptArsipId === 0 && !$modeUpdate) {
-                $pptPathEsc = mysqli_real_escape_string($koneksi, $pptPath);
-                mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, file_lampiran, nama_guru_upload, id_guru)
-                    VALUES ('$judulBahanEsc', 'Bimbingan Klasikal', 'ppt', '$pptPathEsc', '$guruEsc', $id_guru_login)");
-            }
-            if ($ytRaw !== '' && empty($slideYoutubeArsip[$i]) && !$modeUpdate) {
-                mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, link, nama_guru_upload, id_guru)
-                    VALUES ('$judulBahanEsc', 'Bimbingan Klasikal', 'youtube', '$ytS', '$guruEsc', $id_guru_login)");
-            }
-            if ($teksRaw !== '' && empty($slideTeksArsip[$i]) && !$modeUpdate) {
-                $teksArsipEsc = mysqli_real_escape_string($koneksi, $teksRaw);
-                mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, konten_teks, nama_guru_upload, id_guru)
-                    VALUES ('$judulBahanEsc', 'Bimbingan Klasikal', 'teks', '$teksArsipEsc', '$guruEsc', $id_guru_login)");
-            }
-            if ($butuhLkpd && count($daftarPertanyaan) > 0 && empty($slideLkpdArsip[$i]) && !$modeUpdate) {
-                $lkpdJsonEsc = mysqli_real_escape_string($koneksi, json_encode($daftarPertanyaan));
-                mysqli_query($koneksi, "INSERT INTO bk_arsip_materi (judul, kategori, tipe_bahan, lkpd_json, nama_guru_upload, id_guru)
-                    VALUES ('$judulBahanEsc', 'Bimbingan Klasikal', 'lkpd', '$lkpdJsonEsc', '$guruEsc', $id_guru_login)");
-            }
+            
+            
         }
 
-        echo json_encode(['success' => true, 'id_materi' => $idMateriBaru]);
+        $resp = ['success' => true, 'id_materi' => $idMateriBaru];
+        if (!empty($pesanUploadError)) {
+            $resp['upload_warning'] = implode("\n", $pesanUploadError);
+            $resp['message'] = "Materi tersimpan, tetapi ada file yang gagal diunggah:\n" . implode("\n", $pesanUploadError);
+            $resp['php_ini'] = $phpIniInfo;
+            $resp['upload_dirs'] = [
+                'gambar' => [
+                    'path' => $uploadDirGambar,
+                    'is_dir' => is_dir($uploadDirGambar),
+                    'is_writable' => is_dir($uploadDirGambar) && is_writable($uploadDirGambar),
+                    'realpath' => is_dir($uploadDirGambar) ? (realpath($uploadDirGambar) ?: null) : null,
+                ],
+                'ppt' => [
+                    'path' => $uploadDirPpt,
+                    'is_dir' => is_dir($uploadDirPpt),
+                    'is_writable' => is_dir($uploadDirPpt) && is_writable($uploadDirPpt),
+                    'realpath' => is_dir($uploadDirPpt) ? (realpath($uploadDirPpt) ?: null) : null,
+                ],
+            ];
+        }
+        echo json_encode($resp);
         exit;
     }
 
@@ -769,7 +1241,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
     @media (min-width: 768px) { main { margin-left: 260px; } }
 
-    .slide-block { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #fafafa; }
+    .slide-block { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 14px; background: #fafafa; overflow-wrap: anywhere; word-break: break-word; }
+    #isiLihatMateri { overflow-wrap: anywhere; word-break: break-word; }
+    #isiLihatMateri img { max-width: 100%; height: auto; }
     .slide-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
     .pertanyaan-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; background: #fff; }
     .badge-status-aktif { background: #dcfce7; color: #166534; }
@@ -785,34 +1259,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
           <i class="fas fa-chalkboard-teacher text-blue-600 mr-2"></i> Bimbingan Klasikal
         </h1>
-        <p class="text-sm text-gray-600">Buat materi belajar bertahap untuk siswa. Siswa harus menyelesaikan tiap slide secara berurutan sebelum lanjut ke slide berikutnya.</p>
+        <p class="text-sm text-gray-600 mb-4">Kelola materi pembelajaran dan pantau kegiatan siswa.</p>
+        <button onclick="bukaModalTambahMateri()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-sm">
+          <i class="fas fa-plus mr-1"></i> Buat Materi
+        </button>
       </div>
 
       <div id="ringkasanStat" class="grid grid-cols-2 gap-3 mb-5 max-w-md">
         <div class="bg-white rounded-xl shadow-sm border p-4">
-          <p class="text-xs text-gray-500 mb-1">Total Simpanan</p>
-          <p class="text-2xl font-bold text-gray-800" id="statTotalArsip">-</p>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm border p-4">
           <p class="text-xs text-gray-500 mb-1">Total Materi</p>
           <p class="text-2xl font-bold text-gray-800" id="statTotalMateri">-</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border p-4">
+          <p class="text-xs text-gray-500 mb-1">Total Simpanan Bahan</p>
+          <p class="text-2xl font-bold text-gray-800" id="statTotalArsip">-</p>
         </div>
       </div>
 
       <div class="mb-4 flex gap-2 border-b overflow-x-auto">
-        <button type="button" onclick="pindahTab('simpanan')" id="tabBtnSimpanan"
-          class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">
-          <i class="fas fa-archive mr-1"></i> Simpanan <span class="hidden md:inline text-[11px] font-normal opacity-70">(Langkah 1: siapkan bahan)</span>
-        </button>
         <button type="button" onclick="pindahTab('materi')" id="tabBtnMateri"
+          class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-blue-600 text-blue-600 whitespace-nowrap">
+          <i class="fas fa-layer-group mr-1"></i> Materi Saya
+        </button>
+        <button type="button" onclick="pindahTab('simpanan')" id="tabBtnSimpanan"
           class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-transparent text-gray-500 whitespace-nowrap">
-          <i class="fas fa-layer-group mr-1"></i> Buat Materi <span class="hidden md:inline text-[11px] font-normal opacity-70">(Langkah 2: susun & terbitkan)</span>
+          <i class="fas fa-archive mr-1"></i> Simpanan Bahan
         </button>
       </div>
 
-      <div id="tabSimpanan" class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow">
+      <div id="tabSimpanan" class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow hidden">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-          <h2 class="text-base font-bold text-gray-700">Simpanan Bahan (Semua Guru BK)</h2>
+          <h2 class="text-base font-bold text-gray-700">Simpanan Bahan</h2>
           <div class="flex flex-wrap gap-2">
             <a id="linkGoogleDrive" href="<?php echo htmlspecialchars($GOOGLE_DRIVE_URL, ENT_QUOTES); ?>" target="_blank" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm">
               <i class="fab fa-google-drive text-green-600 mr-1"></i> Buka Google Drive BK
@@ -825,7 +1302,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </button>
           </div>
         </div>
-        <p class="text-xs text-gray-400 mb-4">Simpan bahan (gambar, PPT, teks, LKPD, link YouTube) di sini supaya bisa dipakai ulang saat menyusun materi, tanpa upload berkali-kali.</p>
+        <p class="text-xs text-gray-400 mb-4">Bahan yang dapat digunakan kembali dalam materi &mdash; simpan teks, gambar, PPT, video, atau LKPD di sini, lalu pilih saat membuat materi tanpa perlu unggah ulang.</p>
+
 
         <div class="flex flex-wrap items-end gap-2 mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
           <div class="flex-1 min-w-[220px]">
@@ -847,6 +1325,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
               <option value="lkpd">LKPD</option>
               <option value="youtube">Link YouTube</option>
             </select>
+          </div>
+          <div class="pb-0.5">
+            <button type="button" onclick="resetFilterArsip()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 whitespace-nowrap" title="Reset semua filter Pustaka Bahan">
+              <i class="fas fa-rotate-left mr-1"></i> Reset Filter
+            </button>
           </div>
         </div>
 
@@ -871,14 +1354,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         <div id="paginasiArsip" class="flex flex-wrap items-center justify-between gap-2 mt-3"></div>
       </div>
 
-      <div id="tabMateri" class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow hidden">
+      <div id="tabMateri" class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-          <h2 class="text-base font-bold text-gray-700">Daftar Materi</h2>
+          <h2 class="text-base font-bold text-gray-700">Materi Saya</h2>
           <button onclick="bukaModalTambahMateri()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm">
-            <i class="fas fa-plus mr-1"></i> Tambah Materi Baru
+            <i class="fas fa-plus mr-1"></i> Buat Materi
           </button>
         </div>
-        <p class="text-xs text-gray-400 mb-4">Materi ditampilkan ke siswa sesuai urutan (nomor 1 tampil lebih dulu). Gunakan ikon <i class="fas fa-route"></i> untuk mencatat tindak lanjut/monitoring lanjutan dari materi ini.</p>
+        <p class="text-xs text-gray-400 mb-4">Materi ditampilkan ke siswa sesuai urutan dari atas ke bawah. Urutan 1 tampil lebih dulu. Gunakan ikon <i class="fas fa-route"></i> untuk mencatat tindak lanjut/monitoring lanjutan dari materi ini.</p>
+
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <label class="text-xs font-medium text-gray-600">Filter Kelas:</label>
+          <select id="filterKelasMateri" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white" onchange="halamanMateri=1; renderTabelMateri(); simpanFilterArsipKeUrl()">
+            <option value="">Semua Kelas</option>
+          </select>
+          <button type="button" onclick="resetFilterMateri()" class="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 whitespace-nowrap" title="Reset filter kelas">
+            <i class="fas fa-rotate-left mr-1"></i> Reset Filter
+          </button>
+        </div>
 
         <div class="overflow-x-auto">
           <table class="w-full border-collapse text-sm">
@@ -888,7 +1381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 <th class="px-3 py-2 border-b">Judul Materi</th>
                 <th class="px-3 py-2 border-b">Fungsi Layanan</th>
                 <th class="px-3 py-2 border-b">Sasaran</th>
-                <th class="px-3 py-2 border-b">Guru BK</th>
+                <th class="px-3 py-2 border-b">Pembuat</th>
                 <th class="px-3 py-2 border-b text-center">Slide</th>
                 <th class="px-3 py-2 border-b text-center">Siswa Sasaran</th>
                 <th class="px-3 py-2 border-b text-center">Status</th>
@@ -1065,8 +1558,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       <form id="formTambahMateri" class="p-5" onsubmit="return simpanMateri(event)">
         <input type="hidden" id="fIdMateri" value="">
         <input type="hidden" id="fUrutanMateri" value="1">
+        <input type="hidden" id="fDeskripsiMateri" value="">
 
-        <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-4 md:p-5 mb-5">
+        <div class="flex items-center gap-2 mb-4 text-xs font-semibold">
+          <span id="langkahIndikator1" class="flex items-center gap-1.5 text-blue-600"><span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span> Informasi Materi</span>
+          <span class="text-gray-300">&mdash;&mdash;</span>
+          <span id="langkahIndikator2" class="flex items-center gap-1.5 text-gray-400"><span class="w-5 h-5 rounded-full bg-gray-300 text-white flex items-center justify-center text-[10px]">2</span> Susun Materi</span>
+        </div>
+
+        <div id="stepInfoMateri" class="bg-blue-50/60 border border-blue-100 rounded-xl p-4 md:p-5 mb-5">
           <h3 class="flex items-center gap-2 text-sm font-bold text-gray-700 mb-4">
             <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center"><i class="fas fa-info"></i></span>
             Informasi Materi
@@ -1077,12 +1577,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
               <input type="text" id="fJudulMateri" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="Contoh: Mengenal Diri">
             </div>
             <div class="md:col-span-2">
-              <label class="block text-xs font-semibold text-gray-700 mb-1">Deskripsi Singkat <span class="text-gray-400 font-normal">(opsional)</span></label>
-              <textarea id="fDeskripsiMateri" rows="2" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="Ringkasan singkat isi materi ini..."></textarea>
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-xs font-semibold text-gray-700 mb-1">Fungsi Layanan</label>
-              <select id="fFungsiLayanan" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Fungsi Layanan <span class="text-red-500">*</span></label>
+              <select id="fFungsiLayanan" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 <option value="">Pilih Fungsi Layanan</option>
                 <?php foreach ($FUNGSI_LAYANAN_OPSI as $opsiFungsi): ?>
                 <option value="<?php echo htmlspecialchars($opsiFungsi); ?>"><?php echo htmlspecialchars($opsiFungsi); ?></option>
@@ -1091,40 +1587,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
               <p class="flex items-start gap-1 text-[11px] text-gray-500 mt-1.5"><i class="fas fa-circle-info mt-0.5"></i> <span>Pemahaman, Pencegahan (Preventif), Pengentasan (Kuratif), atau Pemeliharaan dan Pengembangan.</span></p>
             </div>
             <div class="md:col-span-2">
-              <label class="block text-xs font-semibold text-gray-700 mb-1">Guru BK Penyusun</label>
-              <select id="fGuruPembuat" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Pembuat <span class="text-red-500">*</span></label>
+              <select id="fGuruPembuat" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
                 <option value="">Pilih Nama Guru</option>
+                <option value="Tim BK">Tim BK</option>
                 <?php foreach ($DAFTAR_GURU_BK as $nama_guru_opt): ?>
                 <option value="<?php echo htmlspecialchars($nama_guru_opt); ?>"><?php echo htmlspecialchars($nama_guru_opt); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="md:col-span-2">
-              <label class="block text-xs font-semibold text-gray-700 mb-1">Sasaran Kelas/Jurusan</label>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Sasaran Kelas <span class="text-red-500">*</span></label>
               <div id="daftarSasaranCheckbox" class="border border-gray-300 bg-white rounded-lg p-3 max-h-40 overflow-y-auto text-sm text-gray-500">Memuat daftar kelas...</div>
             </div>
           </div>
         </div>
 
+        <div class="flex justify-end gap-2 mt-2 pt-4 border-t" id="footerStep1">
+          <button type="button" onclick="tutupModalTambahMateri()" class="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50">Batal</button>
+          <button type="button" onclick="lanjutKeSusunMateri()" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">
+            Lanjut &rarr; Susun Materi
+          </button>
+        </div>
+
+        <div id="stepSusunMateri" class="hidden">
         <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 md:p-5">
           <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
             <h3 class="flex items-center gap-2 text-sm font-bold text-gray-700">
               <span class="w-6 h-6 rounded-full bg-gray-600 text-white text-xs flex items-center justify-center"><i class="fas fa-layer-group"></i></span>
-              Slide Materi
+              Materi Pembelajaran
             </h3>
-            <button type="button" onclick="tambahSlideBlock()" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm">
-              <i class="fas fa-plus mr-1"></i> Tambah Slide
-            </button>
           </div>
-          <p class="text-[11px] text-gray-500 mb-3">Susun materi menjadi beberapa slide. Siswa akan mengerjakan slide secara berurutan dari atas ke bawah.</p>
+          <p class="text-[11px] text-gray-500 mb-3">Isi materi yang akan dipelajari siswa (satu materi = satu isian).</p>
           <div id="daftarSlideBlock"></div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
-          <button type="button" onclick="tutupModalTambahMateri()" class="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50">Batal</button>
+        <div class="flex justify-between gap-2 mt-6 pt-4 border-t">
+          <button type="button" onclick="kembaliKeInfoMateri()" class="px-4 py-2 rounded-lg text-sm border hover:bg-gray-50">&larr; Kembali</button>
           <button type="submit" class="px-4 py-2 rounded-lg text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm">
             <i class="fas fa-save mr-1"></i> <span id="tulisanTombolSimpanMateri">Simpan Materi</span>
           </button>
+        </div>
         </div>
       </form>
     </div>
@@ -1143,7 +1646,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   <div id="modalPickerSimpanan" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-2 md:p-4 z-[9999]">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
       <div class="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
-        <h2 class="text-base font-bold text-gray-800"><i class="fas fa-archive text-blue-600 mr-1"></i> Pilih dari Simpanan</h2>
+        <h2 class="text-base font-bold text-gray-800"><i class="fas fa-archive text-blue-600 mr-1"></i> Pilih dari Pustaka Bahan</h2>
         <button type="button" onclick="tutupPickerSimpanan()" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-lg"></i></button>
       </div>
       <div id="isiPickerSimpanan" class="p-4 text-sm">
@@ -1197,7 +1700,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   }
 
   function gantiHalamanMateri(p) {
-    const totalHalaman = Math.max(1, Math.ceil(daftarMateri.length / BARIS_PER_HALAMAN));
+    const filtered = filterKelasSekarang
+      ? daftarMateri.filter(m => (m.sasaran || []).includes(filterKelasSekarang))
+      : daftarMateri;
+    const totalHalaman = Math.max(1, Math.ceil(filtered.length / BARIS_PER_HALAMAN));
     if (p < 1 || p > totalHalaman) return;
     halamanMateri = p;
     renderTabelMateri();
@@ -1220,11 +1726,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('tabBtnMateri').classList.toggle('text-blue-600', tab === 'materi');
     document.getElementById('tabBtnMateri').classList.toggle('border-transparent', tab !== 'materi');
     document.getElementById('tabBtnMateri').classList.toggle('text-gray-500', tab !== 'materi');
+    simpanFilterArsipKeUrl();
   }
 
   const LABEL_TIPE_BAHAN = { teks: 'Teks', gambar: 'Gambar', ppt: 'PPT', lkpd: 'LKPD', youtube: 'Link YouTube' };
 
   let daftarArsipSaatIni = [];
+  let skipSimpanUrl = false;
+
+  function simpanFilterArsipKeUrl() {
+    if (skipSimpanUrl) return;
+    const params = new URLSearchParams(window.location.search);
+    const g = document.getElementById('filterGuruArsip').value;
+    const t = document.getElementById('filterTipeArsip').value;
+    if (g) params.set('filter_guru', g); else params.delete('filter_guru');
+    if (t) params.set('filter_tipe', t); else params.delete('filter_tipe');
+    const tabAktif = document.getElementById('tabSimpanan').classList.contains('hidden') ? 'materi' : 'simpanan';
+    params.set('tab', tabAktif);
+    const fk = (document.getElementById('filterKelasMateri') || {}).value || '';
+    if (fk) params.set('filter_kelas', fk); else params.delete('filter_kelas');
+    const qs = params.toString();
+    history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+  }
+
+  function resetFilterArsip() {
+    document.getElementById('filterGuruArsip').value = '';
+    document.getElementById('filterTipeArsip').value = '';
+    muatDaftarArsip();
+  }
+
+  function resetFilterMateri() {
+    const sel = document.getElementById('filterKelasMateri');
+    if (sel) sel.value = '';
+    halamanMateri = 1;
+    renderTabelMateri();
+    simpanFilterArsipKeUrl();
+  }
 
   function muatDaftarArsip() {
     halamanArsip = 1;
@@ -1241,12 +1778,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
           document.getElementById('statTotalArsip').textContent = data.data.length;
         }
       });
+    simpanFilterArsipKeUrl();
   }
 
   function renderTabelArsip(data) {
     const tbody = document.getElementById('isiTabelArsip');
     if (data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">Belum ada simpanan bahan.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400">Belum ada bahan di Pustaka. Klik "Tambah Bahan" untuk mulai simpan.</td></tr>`;
       document.getElementById('paginasiArsip').innerHTML = '';
       return;
     }
@@ -1292,7 +1830,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('formTambahArsip').reset();
     document.getElementById('aIdArsip').value = '';
     document.getElementById('aDaftarPertanyaanLkpd').innerHTML = '';
-    document.getElementById('judulModalArsip').textContent = 'Tambah Simpanan Bahan';
+    document.getElementById('judulModalArsip').textContent = 'Tambah Bahan Baru';
     document.getElementById('tombolSimpanArsip').innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
     document.getElementById('aTipeBahan').disabled = false;
     document.getElementById('aCatatanJenis').classList.add('hidden');
@@ -1319,7 +1857,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       const pertanyaan = JSON.parse(a.lkpd_json || '[]');
       pertanyaan.forEach(p => tambahPertanyaanDariData(document.getElementById('aDaftarPertanyaanLkpd'), p));
     }
-    document.getElementById('judulModalArsip').textContent = 'Edit Simpanan Bahan';
+    document.getElementById('judulModalArsip').textContent = 'Edit Bahan';
     document.getElementById('tombolSimpanArsip').innerHTML = '<i class="fas fa-save mr-1"></i> Simpan Perubahan';
     toggleFieldArsip();
     document.getElementById('modalTambahArsip').classList.remove('hidden');
@@ -1411,14 +1949,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     return false;
   }
 
-  function hapusArsip(id) {
-    if (!confirm('Hapus simpanan ini?')) return;
+  function hapusArsip(id, konfirmasiDipakai) {
+    if (!konfirmasiDipakai && !confirm('Hapus simpanan ini?')) return;
     const fd = new FormData();
     fd.append('action', 'hapus_arsip');
     fd.append('id_arsip', id);
+    if (konfirmasiDipakai) fd.append('konfirmasi_hapus_dipakai', '1');
     fetch(window.location.pathname, { method: 'POST', body: fd })
       .then(res => res.json())
-      .then(data => { if (data.success) muatDaftarArsip(); else alert(data.message || 'Gagal menghapus.'); });
+      .then(data => {
+        if (data.success) {
+          muatDaftarArsip();
+        } else if (data.need_confirmation) {
+          if (confirm(data.message)) hapusArsip(id, true);
+        } else {
+          alert(data.message || 'Gagal menghapus.');
+        }
+      });
   }
 
   const WARNA_FUNGSI = {
@@ -1428,33 +1975,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     'Pemeliharaan dan Pengembangan': 'bg-purple-50 text-purple-700'
   };
 
+  let filterKelasSekarang = '';
+
   function muatDaftarMateri() {
     halamanMateri = 1;
     const fd = new FormData();
     fd.append('action', 'list_materi');
-    fetch(window.location.pathname, { method: 'POST', body: fd })
+    return fetch(window.location.pathname, { method: 'POST', body: fd })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
           daftarMateri = data.data;
+          isiFilterKelasMateri();
           renderTabelMateri();
           document.getElementById('statTotalMateri').textContent = daftarMateri.length;
         }
       });
   }
 
+  function isiFilterKelasMateri() {
+    const semuaKelas = new Set();
+    daftarMateri.forEach(m => {
+      (m.sasaran || []).forEach(s => semuaKelas.add(s));
+    });
+    const sel = document.getElementById('filterKelasMateri');
+    const valLama = sel.value;
+    sel.innerHTML = '<option value="">Semua Kelas</option>' +
+      Array.from(semuaKelas).sort().map(k => `<option value="${escapeHtml(k)}" ${k === valLama ? 'selected' : ''}>${escapeHtml(k)}</option>`).join('');
+  }
+
   function renderTabelMateri() {
+    filterKelasSekarang = (document.getElementById('filterKelasMateri') || {}).value || '';
+    const filtered = filterKelasSekarang
+      ? daftarMateri.filter(m => (m.sasaran || []).includes(filterKelasSekarang))
+      : daftarMateri;
     const tbody = document.getElementById('isiTabelMateri');
-    if (daftarMateri.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-400">Belum ada materi Bimbingan Klasikal. Klik "Tambah Materi Baru" untuk mulai.</td></tr>`;
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-gray-400">Belum ada materi. Klik "Buat Materi Baru" untuk mulai.</td></tr>`;
       document.getElementById('paginasiMateri').innerHTML = '';
       return;
     }
     
-    const totalHalaman = Math.max(1, Math.ceil(daftarMateri.length / BARIS_PER_HALAMAN));
+    const totalHalaman = Math.max(1, Math.ceil(filtered.length / BARIS_PER_HALAMAN));
     if (halamanMateri > totalHalaman) halamanMateri = totalHalaman;
     const mulai = (halamanMateri - 1) * BARIS_PER_HALAMAN;
-    const dataHalaman = daftarMateri.slice(mulai, mulai + BARIS_PER_HALAMAN);
+    const dataHalaman = filtered.slice(mulai, mulai + BARIS_PER_HALAMAN);
     tbody.innerHTML = dataHalaman.map((m, i) => {
       const posisi = mulai + i;
       const bisaNaik = posisi > 0;
@@ -1492,13 +2057,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       </tr>
     `;
     }).join('');
-    renderPaginasi('paginasiMateri', daftarMateri.length, halamanMateri, 'gantiHalamanMateri');
+    renderPaginasi('paginasiMateri', filtered.length, halamanMateri, 'gantiHalamanMateri');
   }
 
   function bukaMenuAksiMateri(id, judul, statusAktif) {
     document.getElementById('aksiJudulMateri').textContent = judul;
     document.getElementById('aksiDaftarMenu').innerHTML = `
-      <button onclick="tutupMenuAksiMateri(); bukaModalLanjutan(${id}, ${JSON.stringify(judul)})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-route text-purple-600 w-5"></i> Tindak Lanjut / Monitoring</button>
       <a href="bimbinganklasikal_monitoring.php?id_materi=${id}" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-chart-line text-indigo-600 w-5"></i> Lihat Progress Siswa</a>
       <button onclick="tutupMenuAksiMateri(); duplikatMateri(${id})" class="w-full flex items-center gap-3 px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"><i class="fas fa-copy text-gray-500 w-5"></i> Duplikat Materi</button>
       ${statusAktif == 1
@@ -1553,14 +2117,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       .then(data => { if (data.success) muatDaftarMateri(); else alert(data.message || 'Gagal mengaktifkan materi.'); });
   }
 
-  function hapusMateri(id) {
-    if (!confirm('Hapus materi ini secara PERMANEN? Semua slide, LKPD, dan progress siswa untuk materi ini akan ikut terhapus dan tidak bisa dikembalikan.\n\nKalau hanya ingin menyembunyikan materi sementara, gunakan tombol Nonaktifkan saja.')) return;
+  function hapusMateri(id, konfirmasiProgres) {
+    if (!konfirmasiProgres && !confirm('Hapus materi ini secara PERMANEN? Semua slide dan LKPD untuk materi ini akan ikut terhapus dan tidak bisa dikembalikan.\n\nKalau hanya ingin menyembunyikan materi sementara, gunakan tombol Nonaktifkan saja.')) return;
     const fd = new FormData();
     fd.append('action', 'hapus_materi');
     fd.append('id_materi', id);
+    if (konfirmasiProgres) fd.append('konfirmasi_reset_progres', '1');
     fetch(window.location.pathname, { method: 'POST', body: fd })
       .then(res => res.json())
-      .then(data => { if (data.success) muatDaftarMateri(); else alert(data.message || 'Gagal menghapus materi.'); });
+      .then(data => {
+        if (data.success) {
+          muatDaftarMateri();
+        } else if (data.need_confirmation) {
+          if (confirm(data.message)) hapusMateri(id, true);
+        } else {
+          alert(data.message || 'Gagal menghapus materi.');
+        }
+      });
   }
 
   let daftarLanjutanSaatIni = [];
@@ -1676,12 +2249,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       .then(data => {
         if (!data.success) { alert(data.message || 'Gagal memuat materi.'); return; }
         const m = data.data;
-        let html = `<h3 class="text-lg font-bold mb-1">${escapeHtml(m.judul)}</h3>`;
-        html += `<p class="text-gray-500 mb-3">${escapeHtml(m.deskripsi || '')}</p>`;
-        html += `<p class="text-xs text-gray-500 mb-4">Sasaran: ${m.sasaran.map(s => escapeHtml(s.kelas + ' ' + s.jurusan)).join(', ') || '-'} &bull; Penyusun: ${escapeHtml(m.nama_guru_pembuat || '-')}</p>`;
+        let html = `<h3 class="text-lg font-bold mb-1 break-words">${escapeHtml(m.judul)}</h3>`;
+        html += `<p class="text-gray-500 mb-3 break-words whitespace-pre-line">${escapeHtml(m.deskripsi || '')}</p>`;
+        html += `<p class="text-xs text-gray-500 mb-4 break-words">Sasaran: ${m.sasaran.map(s => escapeHtml(s.kelas + ' ' + s.jurusan)).join(', ') || '-'} &bull; Penyusun: ${escapeHtml(m.nama_guru_pembuat || '-')}</p>`;
         m.slides.forEach((sl, i) => {
-          html += `<div class="slide-block"><div class="slide-block-header"><span class="font-semibold">Slide ${i + 1}${sl.judul_slide ? ': ' + escapeHtml(sl.judul_slide) : ''}</span></div>`;
-          if (sl.konten_teks) html += `<p class="text-sm text-gray-700 mb-2 whitespace-pre-line">${escapeHtml(sl.konten_teks)}</p>`;
+          html += `<div class="slide-block" style="overflow-wrap:anywhere;"><div class="slide-block-header"><span class="font-semibold break-words">${sl.judul_slide ? escapeHtml(sl.judul_slide) : 'Materi'}</span></div>`;
+          if (sl.konten_teks) html += `<p class="text-sm text-gray-700 mb-2 whitespace-pre-line break-words" style="overflow-wrap:anywhere;">${escapeHtml(sl.konten_teks)}</p>`;
           if (sl.gambar) html += `<img src="${sl.gambar.startsWith('http') ? sl.gambar : BASE_URL + sl.gambar}" class="max-w-full rounded-lg mb-2 border">`;
           if (sl.file_ppt) html += `<p class="text-sm mb-2"><a href="${sl.file_ppt.startsWith('http') ? sl.file_ppt : BASE_URL + sl.file_ppt}" target="_blank" class="text-blue-600 hover:underline"><i class="fas fa-file-powerpoint text-orange-600 mr-1"></i> ${escapeHtml(sl.file_ppt.split('/').pop())}</a></p>`;
           if (sl.link_youtube) html += `<p class="text-sm mb-2"><i class="fab fa-youtube text-red-600 mr-1"></i> ${escapeHtml(sl.link_youtube)}</p>`;
@@ -1768,6 +2341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('ikonModalMateri').className = 'fas fa-plus text-blue-600 mr-1';
     document.getElementById('tulisanTombolSimpanMateri').textContent = 'Simpan Materi';
     muatDaftarKelasJurusan().then(() => {});
+    tampilkanStepInfoMateri();
     document.getElementById('modalTambahMateri').classList.remove('hidden');
   }
 
@@ -1794,7 +2368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         document.getElementById('daftarSlideBlock').innerHTML = '';
         hitungSlide = 0;
         if (m.slides.length > 0) {
-          m.slides.forEach(sl => tambahSlideBlock(sl));
+          tambahSlideBlock(m.slides[0]);
         } else {
           tambahSlideBlock();
         }
@@ -1811,6 +2385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         });
 
         document.getElementById('modalTambahMateri').classList.remove('hidden');
+        tampilkanStepInfoMateri();
       })
       .catch(() => alert('Terjadi kesalahan saat memuat materi.'));
   }
@@ -1819,68 +2394,138 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     document.getElementById('modalTambahMateri').classList.add('hidden');
   }
 
+  function tampilkanStepInfoMateri() {
+    document.getElementById('stepInfoMateri').classList.remove('hidden');
+    document.getElementById('footerStep1').classList.remove('hidden');
+    document.getElementById('stepSusunMateri').classList.add('hidden');
+    document.getElementById('langkahIndikator1').className = 'flex items-center gap-1.5 text-blue-600';
+    document.getElementById('langkahIndikator1').querySelector('span').className = 'w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]';
+    document.getElementById('langkahIndikator2').className = 'flex items-center gap-1.5 text-gray-400';
+    document.getElementById('langkahIndikator2').querySelector('span').className = 'w-5 h-5 rounded-full bg-gray-300 text-white flex items-center justify-center text-[10px]';
+    document.getElementById('modalTambahMateri').querySelector('.overflow-y-auto').scrollTop = 0;
+  }
+
+  function lanjutKeSusunMateri() {
+    const judul = document.getElementById('fJudulMateri').value.trim();
+    if (!judul) { alert('Judul materi belum diisi.'); document.getElementById('fJudulMateri').focus(); return; }
+    const fungsi = document.getElementById('fFungsiLayanan').value;
+    if (!fungsi) { alert('Fungsi layanan belum dipilih.'); document.getElementById('fFungsiLayanan').focus(); return; }
+    const guru = document.getElementById('fGuruPembuat').value;
+    if (!guru) { alert('Guru BK belum dipilih.'); document.getElementById('fGuruPembuat').focus(); return; }
+    const adaSasaran = document.querySelectorAll('.sasaran-checkbox:checked').length > 0;
+    if (!adaSasaran) { alert('Sasaran kelas belum dipilih.'); return; }
+
+    document.getElementById('stepInfoMateri').classList.add('hidden');
+    document.getElementById('footerStep1').classList.add('hidden');
+    document.getElementById('stepSusunMateri').classList.remove('hidden');
+    document.getElementById('langkahIndikator1').className = 'flex items-center gap-1.5 text-gray-400';
+    document.getElementById('langkahIndikator1').querySelector('span').className = 'w-5 h-5 rounded-full bg-gray-300 text-white flex items-center justify-center text-[10px]';
+    document.getElementById('langkahIndikator2').className = 'flex items-center gap-1.5 text-blue-600';
+    document.getElementById('langkahIndikator2').querySelector('span').className = 'w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]';
+    document.getElementById('modalTambahMateri').querySelector('.overflow-y-auto').scrollTop = 0;
+  }
+
+  function kembaliKeInfoMateri() {
+    tampilkanStepInfoMateri();
+  }
+
   function tambahSlideBlock(dataSlide) {
-    const idx = hitungSlide++;
     const wrap = document.getElementById('daftarSlideBlock');
+    if (wrap.children.length > 0) return;
+    const idx = hitungSlide++;
     const div = document.createElement('div');
     div.className = 'slide-block';
     div.dataset.idx = idx;
     div.innerHTML = `
       <div class="slide-block-header">
-        <span class="font-semibold text-sm">Slide ${wrap.children.length + 1}</span>
-        <button type="button" onclick="hapusSlideBlock(this)" class="text-red-500 hover:text-red-700 text-xs"><i class="fas fa-trash mr-1"></i>Hapus Slide</button>
+        <span class="font-semibold text-sm">Isi Materi</span>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium text-gray-600 mb-1">Judul Slide (opsional)</label>
-          <input type="text" class="slide-input-judul w-full px-3 py-2 border rounded-lg text-sm">
+      <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-600 mb-1">Topik</label>
+        <input type="text" class="slide-input-judul w-full px-3 py-2 border rounded-lg text-sm" placeholder="Contoh: Apa itu Mengenal Diri?">
+      </div>
+      <div class="mb-3">
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Materi Pembelajaran</label>
+          <button type="button" onclick="bukaPickerSimpanan('teks', this.closest('.slide-block'), 'teks')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih dari Simpanan</button>
         </div>
-        <div class="md:col-span-2">
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-medium text-gray-600">Isi Teks</label>
-            <button type="button" onclick="bukaPickerSimpanan('teks', this.closest('.slide-block'), 'teks')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Teks dari Simpanan</button>
+        <textarea class="slide-input-teks w-full px-3 py-2 border rounded-lg text-sm" rows="4" placeholder="Tulis materi yang akan dipelajari siswa di bagian ini..." oninput="this.closest('.slide-block').dataset.teksArsip=''; renderChipBahan(this.closest('.slide-block'),'teks');"></textarea>
+        <div class="chip-bahan-teks"></div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap mb-3">
+        <button type="button" class="media-toggle-btn text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50" onclick="toggleMediaField(this, 'gambar')"><i class="fas fa-image mr-1"></i>Gambar</button>
+        <button type="button" class="media-toggle-btn text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50" onclick="toggleMediaField(this, 'youtube')"><i class="fas fa-video mr-1"></i>Video</button>
+        <button type="button" class="media-toggle-btn text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50" onclick="toggleMediaField(this, 'ppt')"><i class="fas fa-file mr-1"></i>File</button>
+      </div>
+
+      <div class="media-field-gambar hidden mb-3 bg-gray-50 border rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Gambar</label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="bukaPickerSimpanan('gambar', this.closest('.slide-block'), 'gambar')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="toggleMediaField(this, 'gambar', true)" class="text-gray-400 hover:text-red-600" title="Batalkan"><i class="fas fa-times"></i></button>
           </div>
-          <textarea class="slide-input-teks w-full px-3 py-2 border rounded-lg text-sm" rows="3" oninput="this.closest('.slide-block').dataset.teksArsip=''; renderChipBahan(this.closest('.slide-block'),'teks');"></textarea>
-          <div class="chip-bahan-teks"></div>
         </div>
+        <input type="file" class="slide-input-gambar w-full text-sm" accept="image/*" onchange="onPilihFileBaru(this, 'gambar')">
+        <div class="chip-bahan-gambar"></div>
+      </div>
+      <div class="media-field-youtube hidden mb-3 bg-gray-50 border rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">Link YouTube</label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="bukaPickerSimpanan('youtube', this.closest('.slide-block'), 'youtube')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="toggleMediaField(this, 'youtube', true)" class="text-gray-400 hover:text-red-600" title="Batalkan"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+        <input type="text" class="slide-input-youtube w-full px-3 py-2 border rounded-lg text-sm" placeholder="https://youtube.com/watch?v=..." oninput="this.closest('.slide-block').dataset.youtubeArsip='';">
+        <div class="chip-bahan-youtube"></div>
+      </div>
+      <div class="media-field-ppt hidden mb-3 bg-gray-50 border rounded-lg p-3">
+        <div class="flex items-center justify-between mb-1">
+          <label class="block text-xs font-medium text-gray-600">File PPT</label>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="bukaPickerSimpanan('ppt', this.closest('.slide-block'), 'ppt')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih dari Simpanan</button>
+            <button type="button" onclick="toggleMediaField(this, 'ppt', true)" class="text-gray-400 hover:text-red-600" title="Batalkan"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+        <input type="file" class="slide-input-ppt w-full text-sm" accept=".ppt,.pptx" onchange="onPilihFileBaru(this, 'ppt')">
+        <div class="chip-bahan-ppt"></div>
+      </div>
+
+      <div class="lkpd-summary flex items-center justify-between bg-gray-50 border rounded-lg px-3 py-2.5 mt-2">
         <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-medium text-gray-600">Gambar (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('gambar', this.closest('.slide-block'), 'gambar')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Gambar dari Simpanan</button>
-          </div>
-          <input type="file" class="slide-input-gambar w-full text-sm" accept="image/*" onchange="batalPilihanArsip(this, 'gambar', true)">
-          <div class="chip-bahan-gambar"></div>
+          <span class="text-xs font-semibold text-gray-500 block mb-0.5">Aktivitas Siswa / LKPD</span>
+          <span class="lkpd-summary-text text-sm text-gray-400">Belum ada LKPD</span>
         </div>
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-medium text-gray-600">Link YouTube (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('youtube', this.closest('.slide-block'), 'youtube')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih Video dari Simpanan</button>
-          </div>
-          <input type="text" class="slide-input-youtube w-full px-3 py-2 border rounded-lg text-sm" placeholder="https://youtube.com/watch?v=..." oninput="this.closest('.slide-block').dataset.youtubeArsip='';">
-          <div class="chip-bahan-youtube"></div>
-        </div>
-        <div class="md:col-span-2">
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-medium text-gray-600">File PPT (opsional)</label>
-            <button type="button" onclick="bukaPickerSimpanan('ppt', this.closest('.slide-block'), 'ppt')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Pilih PPT dari Simpanan</button>
-          </div>
-          <input type="file" class="slide-input-ppt w-full text-sm" accept=".ppt,.pptx" onchange="batalPilihanArsip(this, 'ppt', true)">
-          <div class="chip-bahan-ppt"></div>
+        <div class="lkpd-summary-actions flex items-center gap-2">
+          <button type="button" onclick="bukaPopupLkpd(this)" class="text-xs font-semibold text-blue-600 hover:text-blue-800 px-2 py-1"><i class="fas fa-plus mr-1"></i>Tambahkan LKPD</button>
         </div>
       </div>
-      <label class="flex items-center gap-2 text-sm mt-2 mb-2">
-        <input type="checkbox" class="slide-input-butuh-lkpd" onchange="toggleLkpdBuilder(this)">
-        <span>Slide ini butuh LKPD (siswa wajib isi sebelum lanjut)</span>
-      </label>
-      <div class="lkpd-builder hidden bg-white border rounded-lg p-3">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-gray-600">Pertanyaan</span>
-          <button type="button" onclick="bukaPickerSimpanan('lkpd', this.closest('.slide-block'), 'lkpd')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Impor Pertanyaan LKPD dari Simpanan</button>
+
+      <div class="lkpd-builder hidden fixed inset-0 bg-black/50 flex items-center justify-center p-3 md:p-4 z-[9999]">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto p-4 md:p-5">
+          <div class="flex items-center justify-between mb-3 pb-3 border-b">
+            <h3 class="text-sm font-bold text-gray-800"><i class="fas fa-clipboard-list text-blue-600 mr-1"></i> Aktivitas Siswa / LKPD</h3>
+            <button type="button" onclick="tutupPopupLkpd(this)" class="text-gray-400 hover:text-gray-700"><i class="fas fa-times text-lg"></i></button>
+          </div>
+          <label class="flex items-center gap-2 text-sm mb-3 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+            <input type="checkbox" class="slide-input-butuh-lkpd">
+            <span>Siswa wajib mengisi LKPD ini sebelum lanjut ke bagian berikutnya</span>
+          </label>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-gray-600">Pertanyaan</span>
+            <button type="button" onclick="bukaPickerSimpanan('lkpd', this.closest('.slide-block'), 'lkpd')" class="inline-flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-archive"></i>Impor dari Simpanan</button>
+          </div>
+          <div class="daftar-pertanyaan"></div>
+          <button type="button" onclick="tambahPertanyaanLkpd(this)" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs mt-1">
+            <i class="fas fa-plus mr-1"></i> Tambah Pertanyaan
+          </button>
+          <div class="flex items-center justify-between gap-2 pt-3 mt-3 border-t">
+            <button type="button" onclick="hapusSemuaLkpd(this)" class="text-red-600 hover:text-red-800 text-xs font-semibold"><i class="fas fa-trash mr-1"></i>Hapus LKPD</button>
+            <button type="button" onclick="tutupPopupLkpd(this)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold">Selesai</button>
+          </div>
         </div>
-        <div class="daftar-pertanyaan"></div>
-        <button type="button" onclick="tambahPertanyaanLkpd(this)" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs mt-1">
-          <i class="fas fa-plus mr-1"></i> Tambah Pertanyaan
-        </button>
       </div>
     `;
     wrap.appendChild(div);
@@ -1889,25 +2534,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
       div.querySelector('.slide-input-judul').value = dataSlide.judul_slide || '';
       div.querySelector('.slide-input-teks').value = dataSlide.konten_teks || '';
       div.querySelector('.slide-input-youtube').value = dataSlide.link_youtube || '';
+      if (dataSlide.link_youtube) div.querySelector('.media-field-youtube').classList.remove('hidden');
       if (dataSlide.gambar) {
         div.dataset.gambarExisting = dataSlide.gambar;
         div.querySelector('.slide-input-gambar').disabled = true;
+        div.querySelector('.media-field-gambar').classList.remove('hidden');
         div.querySelector('.chip-bahan-gambar').innerHTML = `<span class="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full mt-1"><i class="fas fa-image"></i> Gambar sudah ada <button type="button" onclick="lepasFileExisting(this,'gambar')" class="text-green-500 hover:text-green-800 ml-1"><i class="fas fa-times"></i></button></span>`;
       }
       if (dataSlide.file_ppt) {
         div.dataset.pptExisting = dataSlide.file_ppt;
         div.querySelector('.slide-input-ppt').disabled = true;
-        div.querySelector('.chip-bahan-ppt').innerHTML = `<span class="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full mt-1"><i class="fas fa-file-powerpoint"></i> File PPT sudah ada <button type="button" onclick="lepasFileExisting(this,'ppt')" class="text-green-500 hover:text-green-800 ml-1"><i class="fas fa-times"></i></button></span>`;
+        div.querySelector('.media-field-ppt').classList.remove('hidden');
+        const namaPpt = dataSlide.file_ppt.split('/').pop().split('?')[0];
+        div.querySelector('.chip-bahan-ppt').innerHTML = `<span class="inline-flex items-center gap-1 bg-green-50 text-green-700 text-xs px-2 py-1 rounded-full mt-1"><i class="fas fa-file-powerpoint"></i> ${escapeHtml(namaPpt)} <button type="button" onclick="lepasFileExisting(this,'ppt')" class="text-green-500 hover:text-green-800 ml-1" title="Hapus file PPT"><i class="fas fa-times"></i></button></span>`;
       }
       if (dataSlide.butuh_lkpd == 1 && dataSlide.pertanyaan && dataSlide.pertanyaan.length > 0) {
         const cb = div.querySelector('.slide-input-butuh-lkpd');
         cb.checked = true;
         const builder = div.querySelector('.lkpd-builder');
-        builder.classList.remove('hidden');
         const daftarP = builder.querySelector('.daftar-pertanyaan');
         dataSlide.pertanyaan.forEach(p => tambahPertanyaanDariData(daftarP, { teks: p.teks_pertanyaan, tipe: p.tipe_jawaban, opsi: p.opsi_jawaban || [] }));
       }
     }
+    perbaruiRingkasanLkpd(div);
   }
 
   function lepasFileExisting(btn, field) {
@@ -1920,16 +2569,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
   function hapusSlideBlock(btn) {
     const wrap = document.getElementById('daftarSlideBlock');
-    if (wrap.children.length <= 1) { alert('Materi minimal harus punya 1 slide.'); return; }
+    if (wrap.children.length <= 1) { alert('Materi minimal harus punya 1 bagian.'); return; }
     btn.closest('.slide-block').remove();
-    Array.from(wrap.children).forEach((el, i) => { el.querySelector('.slide-block-header span').textContent = 'Slide ' + (i + 1); });
+    Array.from(wrap.children).forEach((el, i) => { el.querySelector('.slide-block-header span').textContent = 'Bagian ' + (i + 1); });
   }
 
-  function toggleLkpdBuilder(checkbox) {
-    const builder = checkbox.closest('.slide-block').querySelector('.lkpd-builder');
-    builder.classList.toggle('hidden', !checkbox.checked);
-    if (checkbox.checked && builder.querySelector('.daftar-pertanyaan').children.length === 0) {
-      tambahPertanyaanLkpd(builder.querySelector('button'));
+  function toggleMediaField(btn, field, paksaTutup) {
+    const slideBlock = btn.closest('.slide-block');
+    const fieldWrap = slideBlock.querySelector('.media-field-' + field);
+    const akanTutup = paksaTutup || !fieldWrap.classList.contains('hidden');
+    fieldWrap.classList.toggle('hidden', akanTutup);
+    if (akanTutup) {
+      if (field === 'gambar' || field === 'ppt') {
+        const input = slideBlock.querySelector('.slide-input-' + field);
+        input.value = '';
+        input.disabled = false;
+      } else if (field === 'youtube') {
+        slideBlock.querySelector('.slide-input-youtube').value = '';
+      }
+      delete slideBlock.dataset[field + 'Existing'];
+      slideBlock.dataset[field + 'Arsip'] = '';
+      slideBlock.querySelector('.chip-bahan-' + field).innerHTML = '';
+    }
+  }
+
+  function bukaPopupLkpd(btn) {
+    const slideBlock = btn.closest('.slide-block');
+    const builder = slideBlock.querySelector('.lkpd-builder');
+    const daftarP = builder.querySelector('.daftar-pertanyaan');
+    if (daftarP.children.length === 0) {
+      tambahPertanyaanLkpd(builder.querySelector('button[onclick^="tambahPertanyaanLkpd"]'));
+    }
+    slideBlock.querySelector('.slide-input-butuh-lkpd').checked = true;
+    builder.classList.remove('hidden');
+  }
+
+  function tutupPopupLkpd(btn) {
+    const slideBlock = btn.closest('.slide-block');
+    const builder = slideBlock.querySelector('.lkpd-builder');
+    builder.classList.add('hidden');
+    perbaruiRingkasanLkpd(slideBlock);
+  }
+
+  function hapusSemuaLkpd(btn) {
+    if (!confirm('Hapus LKPD di bagian ini?')) return;
+    const slideBlock = btn.closest('.slide-block');
+    const builder = slideBlock.querySelector('.lkpd-builder');
+    builder.querySelector('.daftar-pertanyaan').innerHTML = '';
+    slideBlock.querySelector('.slide-input-butuh-lkpd').checked = false;
+    builder.classList.add('hidden');
+    perbaruiRingkasanLkpd(slideBlock);
+  }
+
+  function perbaruiRingkasanLkpd(slideBlock) {
+    const builder = slideBlock.querySelector('.lkpd-builder');
+    const jumlah = builder.querySelectorAll('.pertanyaan-block').length;
+    const teks = slideBlock.querySelector('.lkpd-summary-text');
+    const aksi = slideBlock.querySelector('.lkpd-summary-actions');
+    if (jumlah > 0) {
+      teks.textContent = '✓ LKPD sudah ditambahkan • ' + jumlah + ' pertanyaan';
+      teks.className = 'lkpd-summary-text text-sm text-green-600 font-medium';
+      aksi.innerHTML = `
+        <button type="button" onclick="bukaPopupLkpd(this)" class="text-xs font-semibold text-blue-600 hover:text-blue-800 px-2 py-1">Edit LKPD</button>
+        <button type="button" onclick="hapusSemuaLkpd(this)" class="text-xs font-semibold text-red-500 hover:text-red-700 px-2 py-1">Hapus LKPD</button>
+      `;
+    } else {
+      teks.textContent = 'Belum ada LKPD';
+      teks.className = 'lkpd-summary-text text-sm text-gray-400';
+      aksi.innerHTML = `<button type="button" onclick="bukaPopupLkpd(this)" class="text-xs font-semibold text-blue-600 hover:text-blue-800 px-2 py-1"><i class="fas fa-plus mr-1"></i>Tambahkan LKPD</button>`;
     }
   }
 
@@ -2024,7 +2731,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if (sasaranTerpilih.length === 0) { alert('Pilih minimal satu sasaran kelas/jurusan.'); return false; }
 
     const slideBlocks = document.querySelectorAll('#daftarSlideBlock .slide-block');
-    if (slideBlocks.length === 0) { alert('Materi harus memiliki minimal satu slide.'); return false; }
+    if (slideBlocks.length === 0) { alert('Materi harus memiliki minimal satu bagian.'); return false; }
 
     const idMateriEdit = document.getElementById('fIdMateri').value;
     const modeEdit = !!idMateriEdit;
@@ -2040,16 +2747,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     fd.append('sasaran', JSON.stringify(sasaranTerpilih));
 
     let semuaValid = true;
-    slideBlocks.forEach(block => {
+    slideBlocks.forEach((block, i) => {
       fd.append('slide_judul[]', block.querySelector('.slide-input-judul').value.trim());
       fd.append('slide_teks[]', block.querySelector('.slide-input-teks').value.trim());
       fd.append('slide_youtube[]', block.querySelector('.slide-input-youtube').value.trim());
       const gambarFile = block.querySelector('.slide-input-gambar').files[0];
-      if (gambarFile) fd.append('slide_gambar[]', gambarFile);
-      else fd.append('slide_gambar[]', '');
+      if (gambarFile) {
+        if (gambarFile.size > 3 * 1024 * 1024) {
+          alert('Gambar di bagian ' + (i + 1) + ' melebihi 3 MB. Kompres dulu.');
+          semuaValid = false;
+          return;
+        }
+        if (gambarFile.size > 10 * 1024 * 1024) {
+          alert('File besar di bagian ' + (i + 1) + '. Pastikan hosting mengizinkan upload_max_filesize ≥ 20M.');
+        }
+        fd.append('slide_gambar[' + i + ']', gambarFile);
+      }
       const pptFile = block.querySelector('.slide-input-ppt').files[0];
-      if (pptFile) fd.append('slide_ppt[]', pptFile);
-      else fd.append('slide_ppt[]', '');
+      if (pptFile) {
+        if (pptFile.size > 20 * 1024 * 1024) {
+          alert('File PPT di bagian ' + (i + 1) + ' melebihi 20 MB. Kompres dulu atau unggah lewat link.');
+          semuaValid = false;
+          return;
+        }
+        if (pptFile.size > 10 * 1024 * 1024) {
+          if (!confirm('File PPT di bagian ' + (i + 1) + ' berukuran ' + Math.round(pptFile.size / 1048576 * 10) / 10 + ' MB (besar).\n\nPastikan hosting mengizinkan upload_max_filesize ≥ 20M dan post_max_size ≥ 32M.\n\nLanjutkan unggah?')) {
+            semuaValid = false;
+            return;
+          }
+        }
+        fd.append('slide_ppt[' + i + ']', pptFile);
+      }
       fd.append('slide_gambar_arsip[]', block.dataset.gambarArsip || '');
       fd.append('slide_ppt_arsip[]', block.dataset.pptArsip || '');
       fd.append('slide_gambar_existing[]', block.dataset.gambarExisting || '');
@@ -2077,17 +2805,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if (!semuaValid) { alert('Ada pertanyaan LKPD yang belum lengkap (teks kosong atau opsi kurang dari 2).'); return false; }
 
+    kirimSimpanMateri(fd);
+    return false;
+  }
+
+  function kirimSimpanMateri(fd) {
     fetch(window.location.pathname, { method: 'POST', body: fd })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          tutupModalTambahMateri();
-          muatDaftarMateri();
-        } else {
-          alert(data.message || 'Gagal menyimpan materi.');
+      .then(async (res) => {
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error('Server mengembalikan respons non-JSON. Kemungkinan post_max_size terlewati atau error PHP. Cuplikan: ' + text.slice(0, 200));
         }
       })
-      .catch(() => alert('Terjadi kesalahan saat menyimpan materi.'));
+      .then(data => {
+        if (data.success) {
+          if (data.upload_warning) {
+            const baris = String(data.upload_warning).split(/\r?\n/).filter(Boolean)[0] || data.upload_warning;
+            alert('Materi tersimpan, tetapi ada file yang GAGAL diunggah: ' + baris);
+          }
+          tutupModalTambahMateri();
+          muatDaftarMateri();
+        } else if (data.need_confirmation) {
+          if (confirm(data.message)) {
+            fd.set('konfirmasi_reset_progres', '1');
+            kirimSimpanMateri(fd);
+          }
+        } else {
+          let msg = data.message || 'Gagal menyimpan materi.';
+          if (data.php_ini) {
+            msg += '\n\nLimit PHP: upload_max_filesize=' + data.php_ini.upload_max_filesize
+              + ', post_max_size=' + data.php_ini.post_max_size;
+          }
+          alert(msg);
+        }
+      })
+      .catch((err) => alert('Terjadi kesalahan saat menyimpan materi.\n' + (err && err.message ? err.message : '')));
 
     return false;
   }
@@ -2118,7 +2872,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   function renderPickerSimpanan(data) {
     const wrap = document.getElementById('isiPickerSimpanan');
     if (data.length === 0) {
-      wrap.innerHTML = '<p class="text-center text-gray-400 py-6">Belum ada bahan jenis ini di Simpanan.</p>';
+      wrap.innerHTML = '<p class="text-center text-gray-400 py-6">Belum ada bahan jenis ini di Pustaka Bahan.</p>';
       return;
     }
     wrap.innerHTML = data.map((a, i) => `
@@ -2161,6 +2915,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     renderChipBahan(slideBlock, field);
   }
 
+  function onPilihFileBaru(inputEl, field) {
+    const slideBlock = inputEl.closest('.slide-block');
+    slideBlock.dataset[field + 'Arsip'] = '';
+    slideBlock.dataset[field + 'ArsipJudul'] = '';
+    delete slideBlock.dataset[field + 'Existing'];
+    const file = inputEl.files && inputEl.files[0];
+    const chipWrap = slideBlock.querySelector('.chip-bahan-' + field);
+    if (!chipWrap) return;
+    if (file) {
+      const ikon = field === 'ppt' ? 'fa-file-powerpoint' : 'fa-image';
+      const ukuranMb = file.size / 1048576;
+      const ukuranLabel = ukuranMb >= 1
+        ? (Math.round(ukuranMb * 10) / 10) + ' MB'
+        : Math.round(file.size / 1024) + ' KB';
+      let warn = '';
+      if (field === 'ppt' && file.size > 10 * 1024 * 1024) {
+        warn = ' — file besar, pastikan hosting upload_max_filesize ≥ 20M';
+      } else if (field === 'gambar' && file.size > 2 * 1024 * 1024) {
+        warn = ' — gambar cukup besar (disarankan ≤ 1–2 MB)';
+      }
+      if (field === 'ppt' && file.size > 20 * 1024 * 1024) {
+        alert('File PPT melebihi 20 MB. Kompres dulu atau unggah lewat link Google Drive.');
+        inputEl.value = '';
+        chipWrap.innerHTML = '';
+        return;
+      }
+      if (field === 'gambar' && file.size > 3 * 1024 * 1024) {
+        alert('Gambar melebihi 3 MB. Kompres dulu.');
+        inputEl.value = '';
+        chipWrap.innerHTML = '';
+        return;
+      }
+      chipWrap.innerHTML = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 text-xs px-2 py-1 rounded-full mt-1">
+        <i class="fas ${ikon}"></i> ${escapeHtml(file.name)} (${ukuranLabel})${warn} — siap diunggah
+      </span>`;
+    } else {
+      chipWrap.innerHTML = '';
+    }
+  }
+
   function batalPilihanArsip(el, field) {
     const slideBlock = el.closest('.slide-block');
     slideBlock.dataset[field + 'Arsip'] = '';
@@ -2187,8 +2981,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    skipSimpanUrl = true;
+
+    const fg = document.getElementById('filterGuruArsip');
+    const ft = document.getElementById('filterTipeArsip');
+    if (params.get('filter_guru')) fg.value = params.get('filter_guru');
+    if (params.get('filter_tipe')) ft.value = params.get('filter_tipe');
+
+    const tabParam = params.get('tab');
+    if (tabParam === 'simpanan') pindahTab('simpanan');
+
     muatDaftarArsip();
-    muatDaftarMateri();
+
+    muatDaftarMateri().then(() => {
+      const fk = params.get('filter_kelas');
+      if (fk) {
+        const sel = document.getElementById('filterKelasMateri');
+        if (sel) {
+          if (![...sel.options].some(o => o.value === fk)) {
+            const opt = document.createElement('option');
+            opt.value = fk;
+            opt.textContent = fk;
+            sel.appendChild(opt);
+          }
+          sel.value = fk;
+          renderTabelMateri();
+        }
+      }
+      skipSimpanUrl = false;
+      simpanFilterArsipKeUrl();
+    }).catch(() => {
+      skipSimpanUrl = false;
+      simpanFilterArsipKeUrl();
+    });
   });
 </script>
 </body>

@@ -98,10 +98,18 @@ if ($nis_siswa !== '') {
     }
 }
 
-// Ringkas gejala/permasalahan per kategori: ambil catatan unik saja, digabung singkat
+// Ringkas gejala/permasalahan per kategori: ambil catatan unik saja, potong jika > 120 karakter
+$total_layanan_bk = 0;
 foreach ($track_record_bk as $key_bk => &$data_bk) {
+    $total_layanan_bk += $data_bk['jumlah'];
     $gejala_unik = array_values(array_unique(array_filter(array_map('trim', $data_bk['gejala']))));
-    $data_bk['gejala_ringkas'] = !empty($gejala_unik) ? implode(', ', $gejala_unik) : '';
+    $data_bk['gejala_list'] = [];
+    foreach ($gejala_unik as $g_item) {
+        if (mb_strlen($g_item) > 120) {
+            $g_item = mb_substr($g_item, 0, 120) . '...';
+        }
+        $data_bk['gejala_list'][] = $g_item;
+    }
 }
 unset($data_bk);
 // ================= END TRACK RECORD BK =================
@@ -455,15 +463,8 @@ table { border-collapse: collapse; }
         box-shadow: none !important;
         margin: 0 !important;
     }
-    .track-record-bk {
-        display: block !important;
-    }
 }
 
-/* Track Record BK: hanya muncul pada hasil ekspor/print, disembunyikan di halaman web */
-.track-record-bk {
-    display: none;
-}
 
 @media (max-width: 850px) {
     .cv-outer { padding: 16px 0 32px 0; }
@@ -496,7 +497,7 @@ table { border-collapse: collapse; }
     <td width="150" style="width:300px;background-color:#14243c;padding:24px 18px 24px 24px;text-align:center;vertical-align:middle;">
         <img src="<?php echo $foto_src; ?>" alt="Foto Profil"
              width="108" height="108"
-             style="width:108px;height:108px;border:3px solid #4a90c4;display:block;margin:0 auto;">
+             style="width:108px;height:108px;object-fit:cover;object-position:center;border:3px solid #4a90c4;display:block;margin:0 auto;">
     </td>
     <!-- Info -->
     <td style="padding:22px 24px 22px 20px;vertical-align:middle;background-color:#1a2e4a;">
@@ -788,42 +789,47 @@ table { border-collapse: collapse; }
         </table>
         <?php endif; ?>
 
+        <?php if ($total_layanan_bk > 0): ?>
+        <!-- ========== TRACK RECORD BIMBINGAN & KONSELING (khusus tampil saat Ekspor PDF) ========== -->
+        <div class="track-record-bk">
+            <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+            <tr>
+                <td style="font-size:10px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;border-bottom:2px solid #4a90c4;padding-bottom:5px;padding-top:0;">
+                    <table cellpadding="0" cellspacing="0"><tr>
+                        <td width="7" height="7" style="width:7px;height:7px;background-color:#4a90c4;font-size:1px;line-height:1px;">&nbsp;</td>
+                        <td style="padding-left:6px;font-size:10px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;">Track Record Bimbingan dan Konseling</td>
+                    </tr></table>
+                </td>
+            </tr>
+            <tr><td style="padding-top:10px;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+                    <?php foreach ($track_record_bk as $key_bk => $data_bk): 
+                        if ($data_bk['jumlah'] <= 0) continue;
+                    ?>
+                    <tr>
+                        <td style="padding:6px 0;border-bottom:1px solid #eaecef;">
+                            <div style="font-size:10px;font-weight:bold;color:#1a5f8a;margin-bottom:3px;"><?php echo htmlspecialchars($data_bk['label']); ?></div>
+                            <?php if (!empty($data_bk['gejala_list'])): ?>
+                            <div style="font-size:9.5px;color:#3d3d3d;line-height:1.5;"><strong>Gejala/permasalahan:</strong></div>
+                            <ol style="margin:2px 0 4px 18px;padding:0;font-size:9.5px;color:#3d3d3d;line-height:1.5;">
+                                <?php foreach ($data_bk['gejala_list'] as $g_item): ?>
+                                <li><?php echo htmlspecialchars($g_item); ?></li>
+                                <?php endforeach; ?>
+                            </ol>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </table>
+            </td></tr>
+            </table>
+        </div>
+        <?php endif; ?>
+
     </td>
 
 </tr>
 </table>
-
-<!-- ========== TRACK RECORD BIMBINGAN & KONSELING (khusus tampil saat Ekspor PDF) ========== -->
-<div class="track-record-bk" style="padding:14px 24px 18px 24px;border-top:1px solid #dde3ea;background-color:#f9fafb;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
-    <tr>
-        <td style="font-size:9px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;border-bottom:2px solid #4a90c4;padding-bottom:4px;">
-            <table cellpadding="0" cellspacing="0"><tr>
-                <td width="7" height="7" style="width:7px;height:7px;background-color:#4a90c4;font-size:1px;line-height:1px;">&nbsp;</td>
-                <td style="padding-left:6px;font-size:9px;font-weight:bold;text-transform:uppercase;color:#1a2e4a;">Track Record Bimbingan dan Konseling</td>
-            </tr></table>
-        </td>
-    </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-top:8px;">
-        <?php foreach ($track_record_bk as $key_bk => $data_bk): ?>
-        <tr>
-            <td style="padding:5px 0;border-bottom:1px solid #e6e9ee;">
-                <div style="font-size:9px;font-weight:bold;color:#1a5f8a;margin-bottom:2px;"><?php echo htmlspecialchars($data_bk['label']); ?></div>
-                <?php if ($data_bk['jumlah'] > 0): ?>
-                    <div style="font-size:8.5px;color:#3d3d3d;line-height:1.5;">Pernah mendapatkan layanan <?php echo (int) $data_bk['jumlah']; ?> kali.</div>
-                    <?php if (!empty($data_bk['gejala_ringkas'])): ?>
-                    <div style="font-size:8.5px;color:#3d3d3d;line-height:1.5;"><strong>Gejala/permasalahan:</strong> <?php echo htmlspecialchars($data_bk['gejala_ringkas']); ?>.</div>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <div style="font-size:8.5px;color:#9aa3af;line-height:1.5;">Belum ada riwayat.</div>
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
-</div>
 
 </div>
 </div>
