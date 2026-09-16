@@ -31,6 +31,12 @@ $qColNg = mysqli_query($koneksi, "SHOW COLUMNS FROM bk_tanggapan_lkpd LIKE 'nama
 if (!$qColNg || mysqli_num_rows($qColNg) === 0) {
     @mysqli_query($koneksi, "ALTER TABLE bk_tanggapan_lkpd ADD COLUMN nama_guru VARCHAR(150) DEFAULT NULL AFTER id_guru");
 }
+// Unique key per siswa+materi+pertanyaan (id_pertanyaan=0 = tanggapan seluruh LKPD materi)
+$qIdxTg = mysqli_query($koneksi, "SHOW INDEX FROM bk_tanggapan_lkpd WHERE Key_name = 'uniq_siswa_materi_pertanyaan'");
+if (!$qIdxTg || mysqli_num_rows($qIdxTg) === 0) {
+    @mysqli_query($koneksi, "ALTER TABLE bk_tanggapan_lkpd DROP INDEX uniq_siswa_pertanyaan");
+    @mysqli_query($koneksi, "ALTER TABLE bk_tanggapan_lkpd ADD UNIQUE KEY uniq_siswa_materi_pertanyaan (id_siswa, id_materi, id_pertanyaan)");
+}
 
 $WARNA_FUNGSI_PHP = [
     'Pemahaman' => 'bg-blue-50 text-blue-700',
@@ -81,8 +87,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if ($jmlSlide > 0 && $selesai >= $jmlSlide) $status = 'selesai';
                     else if ($selesai > 0) $status = 'berjalan';
 
+                    $idSiswaRow = (int) $r['id_siswa'];
+                    $punyaTanggapan = 0;
+                    $qtg = mysqli_query($koneksi, "SELECT id_tanggapan FROM bk_tanggapan_lkpd WHERE id_siswa = $idSiswaRow AND id_materi = $idm AND id_pertanyaan = 0 AND rating >= 1 LIMIT 1");
+                    if ($qtg && mysqli_fetch_assoc($qtg)) $punyaTanggapan = 1;
+
                     $data[] = [
-                        'id_siswa' => (int) $r['id_siswa'],
+                        'id_siswa' => $idSiswaRow,
                         'nis' => $r['nis'],
                         'nama' => $r['nama'],
                         'kelas' => $r['kelas'],
@@ -92,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'persen' => $jmlSlide > 0 ? round(($selesai / $jmlSlide) * 100) : 100,
                         'status' => $status,
                         'waktu_terakhir' => $r['waktu_terakhir'],
+                        'punya_tanggapan' => $punyaTanggapan,
                     ];
                 }
             }
@@ -127,29 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             $jawaban = '';
                             $qj = mysqli_query($koneksi, "SELECT jawaban FROM bk_jawaban_lkpd WHERE id_siswa = $id_siswa AND id_pertanyaan = $idp LIMIT 1");
                             if ($qj && ($rj = mysqli_fetch_assoc($qj))) $jawaban = $rj['jawaban'];
-                            $rating = 0;
-                            $catatan = '';
-                            $nama_guru_tanggapan = '';
-                            $qt = mysqli_query($koneksi, "SELECT t.rating, t.catatan, t.id_guru, t.nama_guru, g.nama AS nama_guru_tbl
-                                FROM bk_tanggapan_lkpd t
-                                LEFT JOIN guru g ON g.id_guru = t.id_guru
-                                WHERE t.id_siswa = $id_siswa AND t.id_pertanyaan = $idp LIMIT 1");
-                            if ($qt && ($rt = mysqli_fetch_assoc($qt))) {
-                                $rating = (int) $rt['rating'];
-                                $catatan = $rt['catatan'] ?? '';
-                                $nama_guru_tanggapan = trim((string) ($rt['nama_guru'] ?? ''));
-                                if ($nama_guru_tanggapan === '') {
-                                    $nama_guru_tanggapan = trim((string) ($rt['nama_guru_tbl'] ?? ''));
-                                }
-                            }
                             $pertanyaan[] = [
                                 'id_pertanyaan' => $idp,
                                 'teks_pertanyaan' => $p['teks_pertanyaan'],
                                 'tipe_jawaban' => $p['tipe_jawaban'],
                                 'jawaban' => $jawaban,
-                                'rating' => $rating,
-                                'catatan' => $catatan,
-                                'nama_guru' => $nama_guru_tanggapan,
                             ];
                         }
                     }
@@ -169,18 +163,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $qs = mysqli_query($koneksi, "SELECT nama, nis, kelas, jurusan FROM siswa WHERE id_siswa = $id_siswa LIMIT 1");
         $siswa = $qs ? mysqli_fetch_assoc($qs) : null;
 
-        echo json_encode(['success' => true, 'siswa' => $siswa, 'slides' => $slides]);
+        // Tanggapan bintang per LKPD (seluruh materi), id_pertanyaan = 0
+        $tanggapan_lkpd = ['rating' => 0, 'catatan' => '', 'nama_guru' => ''];
+        $qt = mysqli_query($koneksi, "SELECT t.rating, t.catatan, t.nama_guru, g.nama AS nama_guru_tbl
+            FROM bk_tanggapan_lkpd t
+            LEFT JOIN guru g ON g.id_guru = t.id_guru
+            WHERE t.id_siswa = $id_siswa AND t.id_materi = $idm AND t.id_pertanyaan = 0 LIMIT 1");
+        if ($qt && ($rt = mysqli_fetch_assoc($qt))) {
+            $tanggapan_lkpd['rating'] = (int) $rt['rating'];
+            $tanggapan_lkpd['catatan'] = $rt['catatan'] ?? '';
+            $nm = trim((string) ($rt['nama_guru'] ?? ''));
+            if ($nm === '') $nm = trim((string) ($rt['nama_guru_tbl'] ?? ''));
+            $tanggapan_lkpd['nama_guru'] = $nm;
+        }
+
+        echo json_encode(['success' => true, 'siswa' => $siswa, 'slides' => $slides, 'tanggapan_lkpd' => $tanggapan_lkpd]);
         exit;
     }
 
     if ($action === 'simpan_tanggapan') {
         $id_siswa = (int) ($_POST['id_siswa'] ?? 0);
-        $id_pertanyaan = (int) ($_POST['id_pertanyaan'] ?? 0);
+        // id_pertanyaan = 0 → tanggapan untuk seluruh LKPD materi (bukan per soal)
+        $id_pertanyaan = 0;
         $idm = (int) ($_POST['id_materi'] ?? 0);
         $rating = (int) ($_POST['rating'] ?? 0);
         $catatan = trim((string) ($_POST['catatan'] ?? ''));
         $nama_guru = trim((string) ($_POST['nama_guru'] ?? ''));
-        if ($id_siswa <= 0 || $id_pertanyaan <= 0) {
+        if ($id_siswa <= 0 || $idm <= 0) {
             echo json_encode(['success' => false, 'message' => 'Data tidak lengkap.']);
             exit;
         }
@@ -194,11 +203,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         $catEsc = mysqli_real_escape_string($koneksi, $catatan);
         $namaEsc = mysqli_real_escape_string($koneksi, $nama_guru);
-        $qCek = mysqli_query($koneksi, "SELECT id_tanggapan FROM bk_tanggapan_lkpd WHERE id_siswa = $id_siswa AND id_pertanyaan = $id_pertanyaan LIMIT 1");
+        $qCek = mysqli_query($koneksi, "SELECT id_tanggapan FROM bk_tanggapan_lkpd WHERE id_siswa = $id_siswa AND id_materi = $idm AND id_pertanyaan = 0 LIMIT 1");
         if ($qCek && mysqli_fetch_assoc($qCek)) {
-            $ok = mysqli_query($koneksi, "UPDATE bk_tanggapan_lkpd SET rating = $rating, catatan = '$catEsc', id_guru = $id_guru_login, nama_guru = '$namaEsc', id_materi = $idm WHERE id_siswa = $id_siswa AND id_pertanyaan = $id_pertanyaan");
+            $ok = mysqli_query($koneksi, "UPDATE bk_tanggapan_lkpd SET rating = $rating, catatan = '$catEsc', id_guru = $id_guru_login, nama_guru = '$namaEsc' WHERE id_siswa = $id_siswa AND id_materi = $idm AND id_pertanyaan = 0");
         } else {
-            $ok = mysqli_query($koneksi, "INSERT INTO bk_tanggapan_lkpd (id_siswa, id_pertanyaan, id_materi, rating, catatan, id_guru, nama_guru) VALUES ($id_siswa, $id_pertanyaan, $idm, $rating, '$catEsc', $id_guru_login, '$namaEsc')");
+            $ok = mysqli_query($koneksi, "INSERT INTO bk_tanggapan_lkpd (id_siswa, id_pertanyaan, id_materi, rating, catatan, id_guru, nama_guru) VALUES ($id_siswa, 0, $idm, $rating, '$catEsc', $id_guru_login, '$namaEsc')");
         }
         if (!$ok) {
             echo json_encode(['success' => false, 'message' => 'Gagal menyimpan tanggapan: ' . mysqli_error($koneksi)]);
@@ -352,6 +361,11 @@ if ($materi) {
       <select id="filterKelasProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="onFilterProgressBerubah()">
         <option value="">Semua Kelas</option>
       </select>
+      <select id="filterTanggapanProgress" class="px-3 py-2 border rounded-lg text-sm bg-white" onchange="onFilterProgressBerubah()">
+        <option value="">Semua Tanggapan</option>
+        <option value="sudah">Sudah diberi tanggapan</option>
+        <option value="belum">Belum diberi tanggapan</option>
+      </select>
       <button type="button" onclick="resetFilterProgress()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-800 whitespace-nowrap" title="Reset semua filter">
         <i class="fas fa-rotate-left mr-1"></i> Reset Filter
       </button>
@@ -455,13 +469,15 @@ if ($materi) {
     const q = (document.getElementById('cariSiswa')?.value || '').trim();
     const st = document.getElementById('filterStatusProgress')?.value || '';
     const kl = document.getElementById('filterKelasProgress')?.value || '';
+    const tg = document.getElementById('filterTanggapanProgress')?.value || '';
     if (q) params.set('q', q); else params.delete('q');
     if (st) params.set('status', st); else params.delete('status');
     if (kl) params.set('kelas', kl); else params.delete('kelas');
+    if (tg) params.set('tanggapan', tg); else params.delete('tanggapan');
     const url = window.location.pathname + '?' + params.toString();
     history.replaceState(null, document.title, url);
     try {
-      localStorage.setItem(kunciFilterProgress(), JSON.stringify({ q, status: st, kelas: kl }));
+      localStorage.setItem(kunciFilterProgress(), JSON.stringify({ q, status: st, kelas: kl, tanggapan: tg }));
     } catch (e) {}
   }
 
@@ -470,8 +486,9 @@ if ($materi) {
     let q = params.get('q') || '';
     let st = params.get('status') || '';
     let kl = params.get('kelas') || '';
+    let tg = params.get('tanggapan') || '';
     // Fallback localStorage jika URL kosong
-    if (!q && !st && !kl) {
+    if (!q && !st && !kl && !tg) {
       try {
         const raw = localStorage.getItem(kunciFilterProgress());
         if (raw) {
@@ -479,16 +496,19 @@ if ($materi) {
           q = o.q || '';
           st = o.status || '';
           kl = o.kelas || '';
+          tg = o.tanggapan || '';
         }
       } catch (e) {}
     }
     const elQ = document.getElementById('cariSiswa');
     const elSt = document.getElementById('filterStatusProgress');
     const elKl = document.getElementById('filterKelasProgress');
+    const elTg = document.getElementById('filterTanggapanProgress');
     if (elQ) elQ.value = q;
     if (elSt) elSt.value = st;
+    if (elTg) elTg.value = tg;
     // kelas di-set setelah opsi diisi di isiFilterKelas
-    return { q, status: st, kelas: kl };
+    return { q, status: st, kelas: kl, tanggapan: tg };
   }
 
   function onFilterProgressBerubah() {
@@ -500,9 +520,11 @@ if ($materi) {
     const elQ = document.getElementById('cariSiswa');
     const elSt = document.getElementById('filterStatusProgress');
     const elKl = document.getElementById('filterKelasProgress');
+    const elTg = document.getElementById('filterTanggapanProgress');
     if (elQ) elQ.value = '';
     if (elSt) elSt.value = '';
     if (elKl) elKl.value = '';
+    if (elTg) elTg.value = '';
     try { localStorage.removeItem(kunciFilterProgress()); } catch (e) {}
     simpanFilterProgressKeUrl();
     renderTabelProgress();
@@ -526,6 +548,8 @@ if ($materi) {
         const elSt = document.getElementById('filterStatusProgress');
         if (elQ && filterAwal.q) elQ.value = filterAwal.q;
         if (elSt && filterAwal.status) elSt.value = filterAwal.status;
+        const elTg = document.getElementById('filterTanggapanProgress');
+        if (elTg && filterAwal.tanggapan) elTg.value = filterAwal.tanggapan;
         renderTabelProgress();
         simpanFilterProgressKeUrl();
       });
@@ -552,11 +576,14 @@ if ($materi) {
     const kataCari = (document.getElementById('cariSiswa').value || '').toLowerCase().trim();
     const statusFilter = document.getElementById('filterStatusProgress').value;
     const kelasFilter = document.getElementById('filterKelasProgress').value;
+    const tanggapanFilter = document.getElementById('filterTanggapanProgress')?.value || '';
 
     return daftarProgressSiswa.filter(s => {
       if (kataCari && !(`${s.nama} ${s.nis}`.toLowerCase().includes(kataCari))) return false;
       if (statusFilter && s.status !== statusFilter) return false;
       if (kelasFilter && `${s.kelas} ${s.jurusan}` !== kelasFilter) return false;
+      if (tanggapanFilter === 'sudah' && !(s.punya_tanggapan == 1)) return false;
+      if (tanggapanFilter === 'belum' && s.punya_tanggapan == 1) return false;
       return true;
     });
   }
@@ -605,7 +632,7 @@ if ($materi) {
         </td>
         <td class="px-3 py-2 text-xs text-gray-500">${formatWaktu(s.waktu_terakhir)}</td>
         <td class="px-3 py-2 text-center">
-          <button onclick="bukaModalDetailSiswa(${s.id_siswa}, '${escapeHtml(s.nama).replace(/'/g, "&#39;")}')" class="action-btn text-indigo-600 hover:text-indigo-800" title="Lihat detail progress & jawaban LKPD">
+          <button onclick="bukaModalDetailSiswa(${s.id_siswa}, ${JSON.stringify(s.nama).replace(/"/g, '&quot;')})" class="action-btn text-indigo-600 hover:text-indigo-800" title="Lihat detail progress & jawaban LKPD">
             <i class="fas fa-eye"></i>
           </button>
         </td>
@@ -667,35 +694,34 @@ if ($materi) {
           document.getElementById('isiModalDetailSiswa').innerHTML = '<p class="text-center text-red-500 py-6">Gagal memuat detail siswa.</p>';
           return;
         }
-        renderIsiModalDetailSiswa(data.slides);
+        renderIsiModalDetailSiswa(data.slides, data.tanggapan_lkpd || null);
       });
   }
 
-  function htmlBintangPilih(idPertanyaan, ratingAktif, namaGuru) {
+  // Satu blok bintang untuk seluruh LKPD materi (bukan per soal)
+  function htmlBintangPilih(ratingAktif, namaGuru) {
     const rating = ratingAktif || 0;
     const selected = namaGuru || '';
-    let h = '<div class="mt-2" data-id-pertanyaan="' + idPertanyaan + '" data-rating-aktif="' + rating + '">';
+    let h = '<div class="mt-2" data-id-pertanyaan="0" data-rating-aktif="' + rating + '">';
     h += '<div class="flex items-center gap-2 flex-wrap">';
-    h += '<span class="text-xs text-gray-500">Tanggapan:</span>';
+    h += '<span class="text-xs text-gray-500">Tanggapan LKPD:</span>';
     h += '<span class="star-rating-wrap" onmouseleave="starHoverLeave(this)">';
     for (let i = 1; i <= 5; i++) {
       const on = i <= rating ? ' is-on' : '';
-      h += `<button type="button" class="star-btn text-lg leading-none focus:outline-none${on}" data-rating="${i}" onmouseenter="starHoverEnter(this, ${i})" onclick="simpanTanggapanBintang(${idPertanyaan}, ${i})" title="${i} bintang"><i class="fas fa-star"></i></button>`;
+      h += `<button type="button" class="star-btn text-lg leading-none focus:outline-none${on}" data-rating="${i}" onmouseenter="starHoverEnter(this, ${i})" onclick="simpanTanggapanBintang(0, ${i})" title="${i} bintang"><i class="fas fa-star"></i></button>`;
     }
     h += '</span>';
-    // Dropdown pilih guru
-    h += `<select id="selGuru_${idPertanyaan}" class="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white max-w-[220px]" title="Pilih guru pemberi tanggapan">`;
+    h += `<select id="selGuru_0" class="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white max-w-[220px]" title="Pilih guru pemberi tanggapan">`;
     h += '<option value="">— Pilih guru —</option>';
     DAFTAR_GURU_TANGGAPAN.forEach(n => {
       const sel = (selected === n) ? ' selected' : '';
       h += '<option value="' + escapeHtml(n) + '"' + sel + '>' + escapeHtml(n) + '</option>';
     });
-    // Jika nama tersimpan tidak ada di list, tetap tampilkan
     if (selected && !DAFTAR_GURU_TANGGAPAN.includes(selected)) {
       h += '<option value="' + escapeHtml(selected) + '" selected>' + escapeHtml(selected) + '</option>';
     }
     h += '</select>';
-    h += `<span class="text-xs text-gray-400 star-status" id="starStatus_${idPertanyaan}">${rating ? rating + '/5' : ''}</span>`;
+    h += `<span class="text-xs text-gray-400 star-status" id="starStatus_0">${rating ? rating + '/5' : ''}</span>`;
     h += '</div>';
     h += '</div>';
     return h;
@@ -747,8 +773,9 @@ if ($materi) {
   }
 
   // Klik bintang hanya menandai UI; penyimpanan lewat tombol Simpan di bawah modal
+  // Catatan: idPertanyaan = 0 untuk tanggapan seluruh LKPD (jangan pakai !idPertanyaan karena 0 = falsy)
   function simpanTanggapanBintang(idPertanyaan, rating) {
-    if (!idPertanyaan || rating < 1 || rating > 5) return;
+    if (idPertanyaan === null || idPertanyaan === undefined || idPertanyaan < 0 || rating < 1 || rating > 5) return;
     const box = document.querySelector('[data-id-pertanyaan="' + idPertanyaan + '"]');
     if (box) box.setAttribute('data-rating-aktif', String(rating));
     const wrap = box ? box.querySelector('.star-rating-wrap') : null;
@@ -778,34 +805,25 @@ if ($materi) {
 
   async function simpanSemuaTanggapan() {
     if (!idSiswaDetailAktif) return;
-    const boxes = document.querySelectorAll('#isiModalDetailSiswa [data-id-pertanyaan]');
-    const antrian = [];
-    const kurangGuru = [];
-
-    boxes.forEach(box => {
-      const idP = parseInt(box.getAttribute('data-id-pertanyaan'), 10);
-      const rating = parseInt(box.getAttribute('data-rating-aktif') || '0', 10);
-      if (!idP || rating < 1) return;
-      const sel = document.getElementById('selGuru_' + idP);
-      const namaGuru = (sel && sel.value) ? sel.value.trim() : '';
-      if (!namaGuru) {
-        kurangGuru.push(idP);
-        const statusEl = document.getElementById('starStatus_' + idP);
-        if (statusEl) statusEl.textContent = 'Pilih nama guru';
-        return;
-      }
-      antrian.push({ idP, rating, namaGuru });
-    });
-
+    const box = document.querySelector('#isiModalDetailSiswa [data-id-pertanyaan="0"]');
     const pesan = document.getElementById('pesanSimpanTanggapan');
     const btn = document.getElementById('btnSimpanTanggapan');
-
-    if (kurangGuru.length > 0) {
-      if (pesan) pesan.textContent = 'Pilih nama guru untuk semua soal yang diberi bintang.';
+    if (!box) {
+      if (pesan) pesan.textContent = 'Tidak ada LKPD yang bisa dinilai.';
       return;
     }
-    if (antrian.length === 0) {
-      if (pesan) pesan.textContent = 'Belum ada rating yang dipilih.';
+    const rating = parseInt(box.getAttribute('data-rating-aktif') || '0', 10);
+    const sel = document.getElementById('selGuru_0');
+    const namaGuru = (sel && sel.value) ? sel.value.trim() : '';
+    if (rating < 1) {
+      if (pesan) pesan.textContent = 'Pilih jumlah bintang terlebih dahulu.';
+      return;
+    }
+    if (!namaGuru) {
+      if (pesan) pesan.textContent = 'Pilih nama guru terlebih dahulu.';
+      const statusEl = document.getElementById('starStatus_0');
+      if (statusEl) statusEl.textContent = 'Pilih nama guru';
+      if (sel) sel.focus();
       return;
     }
 
@@ -813,50 +831,44 @@ if ($materi) {
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...';
     }
-    if (pesan) pesan.textContent = 'Menyimpan ' + antrian.length + ' tanggapan...';
+    if (pesan) pesan.textContent = 'Menyimpan tanggapan LKPD...';
 
-    let ok = 0, gagal = 0;
-    for (const item of antrian) {
-      try {
-        const data = await simpanSatuTanggapan(item.idP, item.rating, item.namaGuru);
-        if (data && data.success) {
-          ok++;
-          terapkanBintangUI(item.idP, item.rating, item.namaGuru);
-        } else {
-          gagal++;
-          const statusEl = document.getElementById('starStatus_' + item.idP);
-          if (statusEl) statusEl.textContent = (data && data.message) ? data.message : 'Gagal';
-        }
-      } catch (e) {
-        gagal++;
+    try {
+      const data = await simpanSatuTanggapan(0, rating, namaGuru);
+      if (data && data.success) {
+        terapkanBintangUI(0, rating, namaGuru);
+        if (pesan) pesan.textContent = 'Tanggapan LKPD berhasil disimpan.';
+      } else {
+        if (pesan) pesan.textContent = (data && data.message) ? data.message : 'Gagal menyimpan.';
       }
+    } catch (e) {
+      if (pesan) pesan.textContent = 'Gagal jaringan.';
     }
 
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-save mr-1"></i> Simpan';
     }
-    if (pesan) {
-      if (gagal === 0) pesan.textContent = 'Berhasil menyimpan ' + ok + ' tanggapan.';
-      else pesan.textContent = 'Tersimpan ' + ok + ', gagal ' + gagal + '.';
-    }
   }
 
-  function renderIsiModalDetailSiswa(slides) {
+  function renderIsiModalDetailSiswa(slides, tanggapanLkpd) {
     if (!slides || slides.length === 0) {
       document.getElementById('isiModalDetailSiswa').innerHTML = '<p class="text-center text-gray-400 py-6">Materi ini belum memiliki slide aktif.</p>';
       return;
     }
 
+    let adaJawabanLkpd = false;
     const html = slides.map((sl, i) => {
       let jawabanHtml = '';
       if (sl.butuh_lkpd && sl.pertanyaan.length > 0) {
-        jawabanHtml = `<div class="mt-3 space-y-2">` + sl.pertanyaan.map((p, pi) => `
+        jawabanHtml = `<div class="mt-3 space-y-2">` + sl.pertanyaan.map((p, pi) => {
+          if (p.jawaban) adaJawabanLkpd = true;
+          return `
           <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <p class="text-xs font-semibold text-gray-700 mb-1">${pi + 1}. ${escapeHtml(p.teks_pertanyaan)}</p>
             <p class="text-sm text-gray-600 whitespace-pre-wrap break-words">${p.jawaban ? escapeHtml(p.jawaban) : '<span class="text-gray-400 italic">Belum dijawab</span>'}</p>
-            ${p.jawaban && p.id_pertanyaan ? htmlBintangPilih(p.id_pertanyaan, p.rating || 0, p.nama_guru || '') : ''}
-          </div>`).join('') + `</div>`;
+          </div>`;
+        }).join('') + `</div>`;
       }
 
       return `
@@ -872,7 +884,19 @@ if ($materi) {
       </div>`;
     }).join('');
 
-    document.getElementById('isiModalDetailSiswa').innerHTML = html;
+    // Satu blok bintang untuk seluruh LKPD (bukan per soal)
+    let bintangHtml = '';
+    if (adaJawabanLkpd) {
+      const tg = tanggapanLkpd || {};
+      bintangHtml = `
+      <div class="border border-indigo-200 bg-indigo-50/50 rounded-xl p-4 mb-1">
+        <p class="text-sm font-bold text-gray-800 mb-1"><i class="fas fa-star text-amber-400 mr-1"></i> Tanggapan Tugas / Kuis (LKPD)</p>
+        <p class="text-xs text-gray-500 mb-2">Berikan satu penilaian bintang untuk keseluruhan LKPD siswa ini.</p>
+        ${htmlBintangPilih(tg.rating || 0, tg.nama_guru || '')}
+      </div>`;
+    }
+
+    document.getElementById('isiModalDetailSiswa').innerHTML = html + bintangHtml;
   }
 
   function tutupModalDetailSiswa() {

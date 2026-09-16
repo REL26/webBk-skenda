@@ -319,25 +319,34 @@ function kumpulkan_konten_bagan($koneksi, $id_siswa, $id_materi) {
                 $qj = mysqli_query($koneksi, "SELECT jawaban FROM bk_jawaban_lkpd WHERE id_siswa = $id_siswa AND id_pertanyaan = $idp LIMIT 1");
                 $rj = $qj ? mysqli_fetch_assoc($qj) : null;
                 $p['jawaban_tersimpan'] = $rj ? $rj['jawaban'] : '';
-                $p['rating_guru'] = 0;
-                $p['catatan_guru'] = '';
-                $p['nama_guru_tanggapan'] = '';
-                $qt = mysqli_query($koneksi, "SELECT t.rating, t.catatan, t.nama_guru, g.nama AS nama_guru_tbl
-                    FROM bk_tanggapan_lkpd t
-                    LEFT JOIN guru g ON g.id_guru = t.id_guru
-                    WHERE t.id_siswa = $id_siswa AND t.id_pertanyaan = $idp LIMIT 1");
-                if ($qt && ($rt = mysqli_fetch_assoc($qt))) {
-                    $p['rating_guru'] = (int) $rt['rating'];
-                    $p['catatan_guru'] = $rt['catatan'] ?? '';
-                    $nm = trim((string) ($rt['nama_guru'] ?? ''));
-                    if ($nm === '') $nm = trim((string) ($rt['nama_guru_tbl'] ?? ''));
-                    $p['nama_guru_tanggapan'] = $nm;
-                }
                 $pertanyaan[] = $p;
             }
         }
     }
-    return ['ppt' => $pptList, 'teks' => $teksPendukung, 'video' => $videoList, 'tugas' => $pertanyaan];
+    // Tanggapan bintang per LKPD (seluruh materi), bukan per soal
+    $rating_lkpd = 0;
+    $catatan_lkpd = '';
+    $nama_guru_lkpd = '';
+    $qt = mysqli_query($koneksi, "SELECT t.rating, t.catatan, t.nama_guru, g.nama AS nama_guru_tbl
+        FROM bk_tanggapan_lkpd t
+        LEFT JOIN guru g ON g.id_guru = t.id_guru
+        WHERE t.id_siswa = $id_siswa AND t.id_materi = $idm AND t.id_pertanyaan = 0 LIMIT 1");
+    if ($qt && ($rt = mysqli_fetch_assoc($qt))) {
+        $rating_lkpd = (int) $rt['rating'];
+        $catatan_lkpd = $rt['catatan'] ?? '';
+        $nm = trim((string) ($rt['nama_guru'] ?? ''));
+        if ($nm === '') $nm = trim((string) ($rt['nama_guru_tbl'] ?? ''));
+        $nama_guru_lkpd = $nm;
+    }
+    return [
+        'ppt' => $pptList,
+        'teks' => $teksPendukung,
+        'video' => $videoList,
+        'tugas' => $pertanyaan,
+        'rating_lkpd' => $rating_lkpd,
+        'catatan_lkpd' => $catatan_lkpd,
+        'nama_guru_lkpd' => $nama_guru_lkpd,
+    ];
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -919,7 +928,7 @@ function renderDaftarMateriSiswa(daftar){
       '<div class="flex items-start justify-between gap-2 mb-3"><span class="w-9 h-9 rounded-lg bg-[#2A6163]/10 text-[#2A6163] font-extrabold text-sm flex items-center justify-center">'+m.nomor+'</span>'+
       '<span class="badge badge-'+m.status+'"><i class="fas '+STATUS_ICON[m.status]+' mr-1"></i>'+STATUS_LABEL[m.status]+'</span></div>'+
       '<h3 class="font-bold text-slate-800 text-lg">'+escapeHtml(m.judul)+'</h3>'+
-      '<p class="text-sm text-slate-500 mt-1.5 line-clamp-2">'+escapeHtml(m.deskripsi||'Tidak ada deskripsi.')+'</p>'+
+      (m.deskripsi ? '<p class="text-sm text-slate-500 mt-1.5 line-clamp-2">'+escapeHtml(m.deskripsi)+'</p>' : '')+
       (m.status==='terkunci'&&m.judul_materi_sebelum?'<p class="text-xs text-amber-600 mt-2"><i class="fas fa-circle-info mr-1"></i>Selesaikan "'+escapeHtml(m.judul_materi_sebelum)+'" terlebih dahulu.</p>':'')+
       '<div class="mt-4"><div class="flex justify-between text-xs text-slate-500 mb-1"><span>'+m.jumlah_selesai+'/'+m.jumlah_slide+' bagan</span><span>'+persen+'%</span></div>'+
       '<div class="progress-track"><div class="progress-fill" style="width:'+persen+'%"></div></div></div>'+
@@ -1340,21 +1349,21 @@ function renderKontenTugas(k,sudah){
     else if(p.tipe_jawaban==='checkbox'){const t=jawab.split(',').map(s=>s.trim()).filter(Boolean);(p.opsi_jawaban||[]).forEach(o=>{h+='<label class="flex items-center gap-2 text-sm py-1"><input type="checkbox" value="'+escapeHtml(o)+'" '+(t.includes(o)?'checked':'')+' '+dis+' class="lkpd-input-checkbox" data-id-pertanyaan="'+p.id_pertanyaan+'"> '+escapeHtml(o)+'</label>';});}
     else if(p.tipe_jawaban==='isian_singkat')h+='<input type="text" class="lkpd-input w-full border rounded-lg px-3 py-2 text-sm" data-id-pertanyaan="'+p.id_pertanyaan+'" value="'+escapeHtml(jawab)+'" '+dis+'>';
     else h+='<textarea class="lkpd-input w-full border rounded-lg px-3 py-2 text-sm" rows="3" data-id-pertanyaan="'+p.id_pertanyaan+'" '+dis+'>'+escapeHtml(jawab)+'</textarea>';
-    // Tampilkan bintang tanggapan guru jika sudah selesai & ada rating
-    const rating=parseInt(p.rating_guru||0,10);
-    if(sudah && rating>=1 && rating<=5){
-      h+='<div class="mt-3 pt-2 border-t border-gray-200 flex items-center gap-1 flex-wrap">';
-      h+='<span class="text-xs text-gray-500 mr-1">Tanggapan guru:</span>';
-      for(let i=1;i<=5;i++){
-        h+='<i class="fas fa-star text-sm '+(i<=rating?'text-amber-400':'text-gray-300')+'"></i>';
-      }
-      h+='<span class="text-xs text-gray-500 ml-1">'+rating+'/5</span>';
-      if(p.nama_guru_tanggapan) h+='<span class="text-xs text-gray-400 ml-1">oleh '+escapeHtml(p.nama_guru_tanggapan)+'</span>';
-      if(p.catatan_guru) h+='<p class="w-full text-xs text-gray-600 mt-1 italic">'+escapeHtml(p.catatan_guru)+'</p>';
-      h+='</div>';
-    }
     h+='</div>';
   });
+  // Satu tanggapan bintang untuk seluruh LKPD (bukan per soal)
+  const ratingLkpd=parseInt((k&&k.rating_lkpd)||0,10);
+  if(sudah && ratingLkpd>=1 && ratingLkpd<=5){
+    h+='<div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-1 flex-wrap">';
+    h+='<span class="text-xs text-gray-600 mr-1">Tanggapan guru:</span>';
+    for(let i=1;i<=5;i++){
+      h+='<i class="fas fa-star text-sm '+(i<=ratingLkpd?'text-amber-400':'text-gray-300')+'"></i>';
+    }
+    h+='<span class="text-xs text-gray-500 ml-1">'+ratingLkpd+'/5</span>';
+    if(k.nama_guru_lkpd) h+='<span class="text-xs text-gray-400 ml-1">oleh '+escapeHtml(k.nama_guru_lkpd)+'</span>';
+    if(k.catatan_lkpd) h+='<p class="w-full text-xs text-gray-600 mt-1 italic">'+escapeHtml(k.catatan_lkpd)+'</p>';
+    h+='</div>';
+  }
   return h+'</div>';
 }
 function kunciDraftLkpd(idMateri){ return 'bk_lkpd_draft_'+idMateri; }
